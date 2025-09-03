@@ -6,7 +6,7 @@
 
 ## 📋 Descripción
 
-HyMacro es una herramienta de automatización diseñada específicamente para el modo Garden de Hypixel Skyblock. Este macro permite automatizar la recolección de diferentes cultivos como cocoa beans, nether wart y cobblestone, optimizando el tiempo de farming y mejorando la eficiencia en el juego.
+HyMacro es una herramienta de automatización diseñada específicamente para el modo Garden de Hypixel Skyblock. Este macro permite automatizar la recolección de diferentes cultivos como cocoa beans, nether wart y cobblestone.
 
 ## ✨ Características
 
@@ -14,7 +14,6 @@ HyMacro es una herramienta de automatización diseñada específicamente para el
 - **⌨️ Controles intuitivos**: Activación mediante teclas de función (F8, F9, F10)
 - **🔄 Automatización completa**: Incluye movimiento, recolección y teletransporte automático
 - **⚡ Optimizado**: Tiempos de espera ajustados para máxima eficiencia
-- **🎮 Interfaz visual**: ASCII art y controles claros en consola
 
 ## 🚀 Instalación
 
@@ -22,13 +21,12 @@ HyMacro es una herramienta de automatización diseñada específicamente para el
 
 - Python 3.7 o superior
 - Windows (requerido para las librerías de automatización)
-- Minecraft Java Edition con acceso a Hypixel
 
 ### Pasos de instalación
 
 1. **Clona o descarga el repositorio**:
    ```bash
-   git clone https://github.com/tu-usuario/hymacro.git
+   git clone https://github.com/THIONG/hymacro.git
    cd hymacro
    ```
 
