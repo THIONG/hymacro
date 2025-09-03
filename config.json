@@ -1,0 +1,37 @@
+{
+  "macros": {
+    "cocoa_beans": {
+      "keys": ["w", "d", "s", "a"],
+      "routes_per_warp": 8,
+      "use_cocoa_wait": true,
+      "timing_ms": 93,
+      "cocoa_wait_seconds": 1
+    },
+    "nether_wart": {
+      "keys": ["w", "d", "w", "a"],
+      "routes_per_warp": 4,
+      "use_cocoa_wait": false,
+      "timing_ms": 119
+    },
+    "cobblestone": {
+      "key": "w",
+      "mining_duration_seconds": 240,
+      "hub_wait_seconds": 3
+    }
+  },
+  "commands": {
+    "warp_garden": "/warp garden",
+    "warp_hub": "/hub",
+    "warp_island": "/is"
+  },
+  "keybinds": {
+    "cocoa_beans": "F8",
+    "nether_wart": "F9",
+    "cobblestone": "F10"
+  },
+  "general": {
+    "loop_delay_ms": 100,
+    "mouse_button": "left",
+    "chat_key": "t"
+  }
+}
