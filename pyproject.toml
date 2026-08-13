@@ -1,0 +1,82 @@
+[project]
+name = "hymacro"
+version = "3.0.0"
+description = "Herramienta de automatizacion para el Garden de Hypixel Skyblock"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "HyMacro Team" }]
+keywords = ["hypixel", "skyblock", "garden", "macro", "automation"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    # Unica dependencia en tiempo de ejecucion: instala el hook global de teclado.
+    # Todo lo demas (SendInput, foco de ventana, posicion del raton) va por ctypes.
+    "keyboard>=0.13.5",
+]
+
+[project.scripts]
+hymacro = "hymacro.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/THIONG/hymacro"
+Issues = "https://github.com/THIONG/hymacro/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hymacro"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11",
+    "pyinstaller>=6.10",
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "W",    # warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "BLE",  # blind-except (los catch amplios van justificados con noqa)
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "RUF",  # ruff
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+# Se analiza siempre como Windows: winput.py usa ctypes.WinDLL, que en otras
+# plataformas no existe y haria fallar el chequeo en el runner de Linux.
+platform = "win32"
+python_version = "3.11"
+files = ["src", "tests"]
+strict = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = "keyboard.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

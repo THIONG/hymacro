@@ -31,6 +31,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# ...menos la receta del release, que si va versionada.
+!packaging/hymacro.spec
 
 # Installer logs
 pip-log.txt

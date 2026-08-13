@@ -1,130 +1,210 @@
 # HyMacro - Hypixel Garden Automation Tool
 
-![Python](https://img.shields.io/badge/python-v3.7+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
+[![CI](https://github.com/THIONG/hymacro/actions/workflows/ci.yml/badge.svg)](https://github.com/THIONG/hymacro/actions/workflows/ci.yml)
 
-## 📋 Descripción
+## Descripción
 
-HyMacro es una herramienta de automatización diseñada específicamente para el modo Garden de Hypixel Skyblock. Este macro permite automatizar la recolección de diferentes cultivos como cocoa beans, nether wart y cobblestone.
+HyMacro automatiza la recolección en el modo Garden de Hypixel Skyblock: cocoa
+beans, nether wart y cobblestone.
 
-## ✨ Características
+## Novedades de la v3
 
-- **🌱 Múltiples tipos de cultivos**: Soporte para cocoa beans, nether wart y cobblestone
-- **⌨️ Controles intuitivos**: Activación mediante teclas de función (F8, F9, F10)
-- **🔄 Automatización completa**: Incluye movimiento, recolección y teletransporte automático
-- **⚡ Optimizado**: Tiempos de espera ajustados para máxima eficiencia
+| | v2 | v3 |
+|---|---|---|
+| **Parar el macro** | solo `Ctrl+C` en la consola | hotkey **F12**, responde al instante |
+| **Ejecución** | bloqueaba el hilo principal | hilo worker + watchdog |
+| **Alt+Tab** | seguía escribiendo en otras ventanas | se detiene solo |
+| **Entrada** | pyautogui (virtual-keys) | `SendInput` con scancodes |
+| **Timings** | fijos | con variación aleatoria configurable |
+| **Distribución** | clonar el repo | `.exe` en Releases |
+| **Dependencias** | pyautogui + keyboard | solo `keyboard` |
 
-## 🚀 Instalación
+Además se corrigieron cuatro bugs de la v2, entre ellos un `TypeError` al
+arrancar que impedía que el bucle principal llegara a ejecutarse.
 
-### Prerrequisitos
+## Instalación
 
-- Python 3.7 o superior
-- Windows (requerido para las librerías de automatización)
+### Opción A: descargar el ejecutable (recomendado)
 
-### Pasos de instalación
+Baja el `.zip` de la [última release](https://github.com/THIONG/hymacro/releases),
+descomprime y ejecuta `HyMacro.exe`. No necesitas Python.
 
-1. **Clona o descarga el repositorio**:
-   ```bash
-   git clone https://github.com/THIONG/hymacro.git
-   cd hymacro
-   ```
+> **SmartScreen y antivirus**: el ejecutable no está firmado digitalmente, así que
+> Windows mostrará un aviso ("Más información" → "Ejecutar de todas formas"). Tu
+> antivirus también puede marcarlo: un programa que engancha el teclado global se
+> parece mucho a un keylogger para las heurísticas. Es un falso positivo — el
+> código está entero en este repo y el binario se construye públicamente con
+> [`release.yml`](.github/workflows/release.yml). Cada release incluye un
+> `.sha256` para verificar la descarga.
 
-2. **Instala las dependencias**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Opción B: desde el código con [uv](https://docs.astral.sh/uv/)
 
-3. **Ejecuta el programa**:
-   ```bash
-   python main.py
-   ```
+```bash
+git clone https://github.com/THIONG/hymacro.git
+```
 
-## 🎮 Uso
+```bash
+cd hymacro && uv run hymacro
+```
 
-### Configuración inicial
+`uv` se encarga de instalar Python 3.12 y las dependencias. También funciona
+`python main.py` si ya tienes un entorno preparado.
 
-1. **Prepara tu garden en Hypixel**:
-   - Asegúrate de tener acceso al Garden
-   - Configura tus plots según el tipo de cultivo que quieras automatizar
-   - Posiciónate en el punto de inicio adecuado
-
-2. **Ejecuta HyMacro**:
-   ```bash
-   python main.py
-   ```
+## Uso
 
 ### Controles
 
-| Tecla | Función | Cultivo | Descripción |
-|-------|---------|---------|-------------|
-| **F8** | Cocoa Beans | 🍫 | Automatiza la recolección de cocoa beans con patrón optimizado |
-| **F9** | Nether Wart | 🔥 | Automatiza la recolección de nether wart |
-| **F10** | Cobblestone | 🪨 | Automatiza la minería de cobblestone (240 segundos por ciclo) |
+| Tecla | Acción |
+|-------|--------|
+| **F8** | Cocoa Beans — patrón W→D→S→A, 8 recorridos por warp |
+| **F9** | Nether Wart — patrón W→D→W→A, 4 recorridos por warp |
+| **F10** | Cobblestone — minado continuo con ciclo hub → isla |
+| **F12** | **DETENER** el macro en marcha |
+| **Ctrl+C** | Salir de HyMacro |
 
-### Patrones de movimiento
+Al detenerse (por hotkey, por failsafe o al salir), HyMacro suelta todas las
+teclas y botones que tenía presionados y te imprime las estadísticas de la sesión.
 
-- **Cocoa Beans (F8)**: Patrón W→D→S→A con 8 recorridos por warp
-- **Nether Wart (F9)**: Patrón W→D→W→A con 4 recorridos por warp
-- **Cobblestone (F10)**: Movimiento continuo hacia adelante con auto-warp
+### Failsafes
 
-## ⚙️ Configuración avanzada
+El macro se detiene solo cuando:
 
-### Tiempos de espera
+- **Minecraft pierde el foco** — evita que `/warp garden` acabe en tu Discord.
+- **Mueves el ratón** más de N píxeles — tu intervención manda.
+- Se alcanza el **límite de sesión**, si lo configuras.
 
-- **Cocoa Beans**: 93ms entre acciones + 1s de espera adicional
-- **Nether Wart**: 119ms entre acciones
-- **Cobblestone**: 240 segundos de minería continua
+El watchdog los comprueba cada 100 ms, también durante los 4 minutos de minado
+de cobblestone.
 
-### Personalización
+### Línea de comandos
 
-Puedes modificar los parámetros en el código fuente:
-
-```python
-# Ejemplo para cocoa beans
-self.realizar_conjunto_recorridos(['w', 'd', 's', 'a'], 8, True, 93)
-#                                 [teclas]              recorridos, cocoa, timing
+```bash
+uv run hymacro --check
 ```
 
-## 🛡️ Consideraciones de seguridad
+| Flag | Descripción |
+|------|-------------|
+| `--config RUTA` | Usa otro `config.json` |
+| `--check` | Valida la configuración y sale, sin registrar hotkeys |
+| `--verbose` | Muestra los logs de debug en consola |
+| `--version` | Muestra la versión |
 
-### ⚠️ Advertencias importantes
+También se respeta la variable de entorno `HYMACRO_CONFIG`.
 
-- **Uso bajo tu propia responsabilidad**: Este macro automatiza acciones en Minecraft
-- **Términos de servicio**: Asegúrate de cumplir con los términos de servicio de Hypixel
-- **Detección**: Usa con moderación para evitar posibles detecciones automáticas
-- **Supervisión**: Mantén supervisión mientras el macro está activo
+## Configuración
 
-### 🔒 Buenas prácticas
+Todo se edita en `config.json`, junto al ejecutable. Si lo borras se regenera
+con los valores por defecto. Un `config.json` de la v2 sigue siendo válido: las
+claves nuevas se heredan automáticamente.
 
-- No uses el macro durante períodos excesivamente largos
-- Varía los tiempos de uso para parecer más natural
-- Mantén el juego visible mientras el macro está activo
-- Detén el macro si experimentas lag o problemas de conexión
+### `macros`
 
-## 🐛 Solución de problemas
+| Clave | Descripción |
+|-------|-------------|
+| `keys` | Las 4 teclas del patrón (dos tramos de dos) |
+| `routes_per_warp` | Recorridos antes de hacer warp al garden |
+| `timing_ms` | Milisegundos entre las dos teclas de un tramo |
+| `use_cocoa_wait` / `cocoa_wait_seconds` | Espera extra al inicio del primer tramo |
+| `mining_duration_seconds` | (cobblestone) Segundos de minado por ciclo |
+| `hub_wait_seconds` | (cobblestone) Espera en el hub antes de volver a la isla |
 
-### Problemas comunes
+### `general`
 
-**El macro no responde a las teclas**:
-- Asegúrate de que Minecraft esté en primer plano
-- Verifica que las teclas F8-F10 no estén siendo usadas por otros programas
-- Ejecuta Python como administrador si es necesario
+| Clave | Por defecto | Descripción |
+|-------|-------------|-------------|
+| `mouse_button` | `left` | Botón que se mantiene pulsado |
+| `chat_key` | `t` | Tecla que abre el chat |
+| `chat_open_delay_ms` | `120` | Espera antes de escribir el comando |
+| `command_input_mode` | `unicode` | `unicode` o `scancode` (ver abajo) |
+| `timing_jitter_ms` | `8` | Variación aleatoria de los timings, en ms |
+| `wait_jitter_percent` | `5` | Variación aleatoria de las esperas largas, en % |
+| `suppress_hotkeys` | `true` | Impide que F8–F12 lleguen también al juego |
+| `loop_delay_ms` | `100` | Periodo del bucle inactivo |
 
-**Movimientos incorrectos**:
-- Calibra tu posición inicial en el garden
-- Verifica que no hay lag de red significativo
-- Ajusta los tiempos de espera si es necesario
+> Si los comandos llegan al chat cortados o no llegan, prueba a subir
+> `chat_open_delay_ms` o a cambiar `command_input_mode` a `scancode`.
 
-**Errores de instalación**:
-- Asegúrate de tener Python 3.7+
-- Instala las dependencias con `pip install -r requirements.txt`
-- En Windows, puede requerir permisos de administrador
+### `safety`
 
-## 📝 Licencia
+| Clave | Por defecto | Descripción |
+|-------|-------------|-------------|
+| `require_window_focus` | `true` | Parar si la ventana activa no es Minecraft |
+| `window_title_contains` | `Minecraft` | Texto a buscar en el título de la ventana |
+| `mouse_failsafe` | `true` | Parar si mueves el ratón |
+| `mouse_failsafe_px` | `100` | Umbral del failsafe de ratón |
+| `max_session_minutes` | `0` | Límite de sesión (`0` = sin límite) |
+| `watchdog_interval_ms` | `100` | Frecuencia de comprobación de los failsafes |
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+### `keybinds` y `commands`
 
----
+`keybinds` acepta cualquier nombre de tecla soportado (`f8`, `f12`, `home`...);
+no puede haber dos iguales. `commands` define los comandos de chat
+(`/warp garden`, `/hub`, `/is`).
 
-**Nota**: Este proyecto es para fines educativos y de automatización personal. Úsalo responsablemente y respeta los términos de servicio de Hypixel.
+## Desarrollo
+
+```bash
+uv sync --all-groups
+```
+
+| Comando | Qué hace |
+|---------|----------|
+| `uv run ruff check .` | Lint |
+| `uv run ruff format .` | Formato |
+| `uv run mypy` | Tipos (en modo estricto) |
+| `uv run pytest` | Tests |
+| `uv run pyinstaller packaging/hymacro.spec --noconfirm` | Construir el `.exe` |
+
+### Estructura
+
+```
+src/hymacro/
+  winput.py      SendInput por ctypes: scancodes, ratón, foco de ventana
+  config.py      Carga, validación y resolución de rutas
+  safety.py      Watchdog y failsafes
+  controller.py  Bucles de macro en hilo worker + estadísticas
+  app.py         Consola y hotkeys globales
+packaging/       Receta de PyInstaller
+```
+
+### Publicar una release
+
+Sube la versión en `pyproject.toml` y `src/hymacro/__init__.py`, y empuja el tag:
+
+```bash
+git tag v3.0.0 && git push origin v3.0.0
+```
+
+El workflow verifica que el tag coincida con la versión del paquete, construye
+el `.exe`, comprueba que arranca, genera el SHA256 y publica la release.
+
+## Solución de problemas
+
+**Los hotkeys no responden** — ejecuta HyMacro como administrador. Los hooks
+globales de teclado no pueden interceptar entrada dirigida a procesos elevados.
+
+**El macro no arranca y dice que la ventana activa no es Minecraft** — el
+failsafe de foco. Pulsa F8 con Minecraft en primer plano, o ajusta
+`safety.window_title_contains` al título real de tu launcher.
+
+**Se detiene solo a los pocos segundos** — casi siempre es el failsafe de ratón.
+Sube `safety.mouse_failsafe_px` o ponlo en `false`.
+
+**Los movimientos se desincronizan** — ajusta `timing_ms` para tu ping y
+recalibra la posición inicial en el garden.
+
+Los logs completos están en `hymacro.log`, junto al ejecutable.
+
+## Consideraciones
+
+- **Úsalo bajo tu propia responsabilidad.** Automatizar acciones puede ir contra
+  las reglas de Hypixel; revísalas antes.
+- Mantén supervisión mientras el macro esté activo.
+- Los failsafes reducen accidentes, pero no sustituyen estar pendiente.
+
+## Licencia
+
+MIT. Ver [LICENSE](LICENSE).
