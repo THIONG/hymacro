@@ -7,7 +7,14 @@ import logging
 import sys
 
 from . import __version__
-from .app import HyMacroApp, check_config, enable_utf8_console, setup_logging
+from .app import (
+    HyMacroApp,
+    check_config,
+    enable_utf8_console,
+    setup_logging,
+    test_chat,
+    test_move,
+)
 from .config import ConfigError
 
 logger = logging.getLogger(__name__)
@@ -26,6 +33,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--verbose", action="store_true", help="Muestra los logs de debug en consola")
     parser.add_argument("--version", action="version", version=f"HyMacro {__version__}")
+
+    diag = parser.add_argument_group("diagnostico")
+    diag.add_argument(
+        "--test-move",
+        nargs="?",
+        const="",
+        metavar="TECLA",
+        help="Mantiene una tecla de movimiento unos segundos para ver si el juego la registra",
+    )
+    diag.add_argument(
+        "--test-seconds",
+        type=float,
+        default=3.0,
+        metavar="N",
+        help="Duracion de --test-move (por defecto 3)",
+    )
+    diag.add_argument(
+        "--test-chat",
+        action="store_true",
+        help="Abre el chat y escribe el comando de warp sin enviarlo",
+    )
     return parser
 
 
@@ -34,6 +62,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         return check_config(args.config)
+
+    if args.test_move is not None:
+        return test_move(args.config, args.test_move or None, args.test_seconds)
+
+    if args.test_chat:
+        return test_chat(args.config)
 
     enable_utf8_console()
     setup_logging(verbose=args.verbose)

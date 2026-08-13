@@ -228,3 +228,90 @@ def check_config(config_path: str | None = None) -> int:
         print(f"  {bind:<5} -> {macro_type}")
     print(f"  {str(config.get('keybinds', 'stop')).upper():<5} -> stop")
     return 0
+
+
+def _load_for_diagnostic(config_path: str | None) -> ConfigManager | None:
+    enable_utf8_console()
+    if sys.platform != "win32":
+        print("[ERROR] Los diagnosticos solo funcionan en Windows.", file=sys.stderr)
+        return None
+    try:
+        return ConfigManager(config_path, auto_create=False)
+    except ConfigError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return None
+
+
+def _countdown(seconds: int) -> None:
+    print("  Pon Minecraft en primer plano AHORA.")
+    for remaining in range(seconds, 0, -1):
+        print(f"  {remaining}...", flush=True)
+        time.sleep(1)
+
+
+def test_move(config_path: str | None = None, key: str | None = None, seconds: float = 3.0) -> int:
+    """Mantiene una tecla de movimiento para ver si el juego la registra.
+
+    Separa dos fallos que se parecen: que la entrada no llegue a Minecraft, y
+    que llegue pero durante demasiado poco tiempo.
+    """
+    config = _load_for_diagnostic(config_path)
+    if config is None:
+        return 1
+
+    from .winput import InputBackend, foreground_window_title
+
+    key = key or str(config.get("macros", "cocoa_beans", "keys")[0])
+    button = config.get_str("general", "mouse_button")
+    backend = InputBackend()
+
+    print(f"Se mantendra '{key}' + click {button} durante {seconds:.1f} s seguidos.")
+    _countdown(5)
+    print(f"  ventana activa: {foreground_window_title()!r}")
+
+    try:
+        backend.mouse_down(button)
+        backend.key_down(key)
+        time.sleep(seconds)
+    finally:
+        backend.release_all()
+
+    print("")
+    print("Listo. Interpreta el resultado:")
+    print("  - No se movio nada        -> la entrada no llega al juego")
+    print("  - Se movio de forma fluida -> la entrada llega; el problema son los timings")
+    return 0
+
+
+def test_chat(config_path: str | None = None) -> int:
+    """Abre el chat y escribe el comando de warp SIN enviarlo."""
+    config = _load_for_diagnostic(config_path)
+    if config is None:
+        return 1
+
+    from .winput import InputBackend, foreground_window_title
+
+    command = config.get_str("commands", "warp_garden")
+    chat_key = config.get_str("general", "chat_key")
+    open_delay = config.get_float("general", "chat_open_delay_ms") / 1000.0
+    mode = config.get_str("general", "command_input_mode")
+    backend = InputBackend()
+
+    print(f"Se abrira el chat con '{chat_key}' y se escribira {command!r}.")
+    print("NO se pulsa enter: el comando no se ejecuta, solo se queda escrito.")
+    _countdown(5)
+    print(f"  ventana activa: {foreground_window_title()!r}  (modo: {mode})")
+
+    try:
+        backend.tap(chat_key)
+        time.sleep(open_delay)
+        backend.type_text(command, mode=mode)
+    finally:
+        backend.release_all()
+
+    print("")
+    print("Mira la caja del chat:")
+    print(f"  - Aparece {command!r} entero -> la escritura funciona")
+    print("  - Aparece cortado           -> sube general.chat_open_delay_ms")
+    print("  - No aparece nada           -> prueba general.command_input_mode = 'scancode'")
+    return 0
