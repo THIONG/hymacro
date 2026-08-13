@@ -7,9 +7,10 @@
       "timing_ms": 93
     },
     "nether_wart": {
-      "keys": ["w", "d", "w", "a"],
+      "keys": ["a", "w", "d", "w"],
       "routes_per_warp": 4,
-      "forward_seconds": 1,
+      "forward_seconds": 10,
+      "return_seconds": 10,
       "timing_ms": 119
     },
     "cobblestone": {

@@ -107,10 +107,11 @@ claves nuevas se heredan automáticamente.
 
 | Clave | Descripción |
 |-------|-------------|
-| `keys` | Las 4 teclas del patrón (dos tramos de dos) |
+| `keys` | Las 4 teclas del patrón: `[ida, paso, vuelta, paso]` |
 | `routes_per_warp` | Recorridos antes de hacer warp al garden |
-| **`forward_seconds`** | **Segundos caminando antes de girar. Es lo que te desplaza** |
-| `timing_ms` | Milisegundos del giro, al final del tramo |
+| **`forward_seconds`** | **Segundos del tramo de ida (tecla 1). Es lo que te desplaza** |
+| **`return_seconds`** | **Segundos del tramo de vuelta (tecla 3). `0` = un solo sentido** |
+| `timing_ms` | Milisegundos del paso entre filas (teclas 2 y 4) |
 | `mining_duration_seconds` | (cobblestone) Segundos de minado por ciclo |
 | `hub_wait_seconds` | (cobblestone) Espera en el hub antes de volver a la isla |
 
@@ -122,6 +123,33 @@ claves nuevas se heredan automáticamente.
 > Los configs de la v2 usaban `use_cocoa_wait` + `cocoa_wait_seconds` para lo
 > mismo, pero sólo en cocoa beans — por eso nether wart nunca avanzaba. Se
 > siguen leyendo si no defines `forward_seconds`.
+
+#### Los dos tipos de recorrido
+
+**Serpentina** (nether wart) — miras al frente picando y te desplazas de lado.
+El tramo largo es lateral y el paso entre filas es hacia delante:
+
+```json
+"keys": ["a", "w", "d", "w"],
+"forward_seconds": 10,
+"return_seconds": 10
+```
+
+Recorre la fila hacia la izquierda → paso adelante → recorre la siguiente hacia
+la derecha → paso adelante → y vuelta a empezar.
+
+**Un solo sentido** (cocoa beans) — avanzas, corriges y repites. La vuelta no
+tiene tramo largo, así que `return_seconds` se queda en `0`:
+
+```json
+"keys": ["w", "d", "s", "a"],
+"forward_seconds": 1,
+"return_seconds": 0
+```
+
+> En la v2 el tramo de vuelta estaba **fijado a 0 en el código**, así que la
+> serpentina era imposible: por mucho que ajustaras los tiempos, la fila de
+> vuelta duraba sólo `timing_ms`.
 
 ### Calibrar el recorrido
 

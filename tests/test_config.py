@@ -18,7 +18,7 @@ from hymacro.config import (
     ensure_config_exists,
     resolve_config_path,
 )
-from hymacro.controller import resolve_forward_hold
+from hymacro.controller import resolve_forward_hold, resolve_return_hold
 
 
 def write_config(tmp_path: Path, data: dict[str, Any]) -> Path:
@@ -198,3 +198,37 @@ def test_config_del_repo_camina_en_los_dos_macros() -> None:
     config = ConfigManager(repo_config, auto_create=False)
     for name in ("cocoa_beans", "nether_wart"):
         assert resolve_forward_hold(config.get("macros", name)) > 0, name
+
+
+def test_return_hold_por_defecto_es_cero() -> None:
+    """Los recorridos de un solo sentido, como cocoa, no deben cambiar."""
+    assert resolve_return_hold({"forward_seconds": 5}) == 0.0
+
+
+def test_return_hold_se_lee_cuando_esta() -> None:
+    assert resolve_return_hold({"return_seconds": 12.5}) == 12.5
+
+
+def test_return_hold_negativo_se_recorta() -> None:
+    assert resolve_return_hold({"return_seconds": -2}) == 0.0
+
+
+def test_nether_wart_del_repo_hace_serpentina() -> None:
+    """Regresion: la vuelta estaba a 0 a fuego y la fila de vuelta no duraba nada."""
+    repo_config = Path(__file__).resolve().parents[1] / "config.json"
+    config = ConfigManager(repo_config, auto_create=False)
+    macro = config.get("macros", "nether_wart")
+
+    assert resolve_forward_hold(macro) > 0
+    assert resolve_return_hold(macro) > 0
+    # Los tramos largos son laterales y el paso entre filas es hacia delante.
+    assert macro["keys"][0] in ("a", "d")
+    assert macro["keys"][1] == "w"
+    assert macro["keys"][2] in ("a", "d")
+    assert macro["keys"][3] == "w"
+
+
+def test_cocoa_del_repo_sigue_siendo_de_un_solo_sentido() -> None:
+    repo_config = Path(__file__).resolve().parents[1] / "config.json"
+    config = ConfigManager(repo_config, auto_create=False)
+    assert resolve_return_hold(config.get("macros", "cocoa_beans")) == 0.0

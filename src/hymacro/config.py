@@ -215,8 +215,9 @@ class ConfigManager:
                 raise ConfigError(f"macros.{name}.routes_per_warp debe ser >= 1")
             if float(macro.get("timing_ms", 0)) <= 0:
                 raise ConfigError(f"macros.{name}.timing_ms debe ser > 0")
-            if float(macro.get("forward_seconds", 0)) < 0:
-                raise ConfigError(f"macros.{name}.forward_seconds no puede ser negativo")
+            for campo in ("forward_seconds", "return_seconds"):
+                if float(macro.get(campo, 0)) < 0:
+                    raise ConfigError(f"macros.{name}.{campo} no puede ser negativo")
 
         cobble = self.get("macros", "cobblestone")
         if not isinstance(cobble, dict):

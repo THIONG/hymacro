@@ -36,6 +36,17 @@ def resolve_forward_hold(macro: dict[str, Any]) -> float:
     return 0.0
 
 
+def resolve_return_hold(macro: dict[str, Any]) -> float:
+    """Segundos del tramo de vuelta, el que usa las teclas 3 y 4.
+
+    En la v2 este valor estaba escrito a fuego a 0, asi que la vuelta duraba
+    solo `timing_ms`. Sirve para recorridos en serpentina, donde ida y vuelta
+    miden lo mismo. Por defecto sigue siendo 0 para no alterar los recorridos
+    que solo avanzan en un sentido, como el de cocoa beans.
+    """
+    return max(0.0, float(macro.get("return_seconds", 0)))
+
+
 @dataclass
 class SessionStats:
     """Contadores de una sesion de macro."""
@@ -250,25 +261,26 @@ class MacroController:
         routes_per_warp = int(macro["routes_per_warp"])
         timing_ms = float(macro["timing_ms"])
         forward = resolve_forward_hold(macro)
+        back = resolve_return_hold(macro)
         warp_command = self.config.get_str("commands", "warp_garden")
 
         self._emit(
             "info",
             f"{macro_type}: {routes_per_warp} recorridos por warp, "
-            f"avance {forward:.2f} s, giro {timing_ms:.0f} ms",
+            f"ida {forward:.1f} s, vuelta {back:.1f} s, paso {timing_ms:.0f} ms",
         )
         if forward <= 0:
             self._emit(
                 "info",
                 f"AVISO: macros.{macro_type}.forward_seconds es 0, "
-                "asi que no se camina antes de girar y no avanzaras.",
+                "asi que el tramo de ida no dura nada y no te desplazaras.",
             )
 
         while not self._stop.is_set():
             for _ in range(routes_per_warp):
                 if not self._execute_route(keys[0:2], forward, timing_ms):
                     return
-                if not self._execute_route(keys[2:4], 0.0, timing_ms):
+                if not self._execute_route(keys[2:4], back, timing_ms):
                     return
                 self.stats.routes += 2
 
