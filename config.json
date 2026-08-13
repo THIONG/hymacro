@@ -11,7 +11,7 @@
       "routes_per_warp": 4,
       "forward_seconds": 120,
       "return_seconds": 120,
-      "step_seconds": 0.12
+      "step_seconds": 1.2
     },
     "cobblestone": {
       "key": "w",

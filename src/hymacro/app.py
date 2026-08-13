@@ -13,6 +13,7 @@ from typing import Any
 from . import __version__
 from .config import MACRO_TYPES, ConfigError, ConfigManager, app_dir
 from .controller import MacroController, MacroEvent
+from .winput import InputBackend
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +260,7 @@ def test_move(config_path: str | None = None, key: str | None = None, seconds: f
     if config is None:
         return 1
 
-    from .winput import InputBackend, foreground_window_title
+    from .winput import foreground_window_title
 
     key = key or str(config.get("macros", "cocoa_beans", "keys")[0])
     button = config.get_str("general", "mouse_button")
@@ -283,11 +284,34 @@ def test_move(config_path: str | None = None, key: str | None = None, seconds: f
     return 0
 
 
-def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -> int:
-    """Mide cuanto se tarda en cruzar una fila y da el forward_seconds exacto.
+def _cronometrar(
+    backend: InputBackend,
+    keyboard: Any,
+    button: str,
+    key: str,
+    stop_key: str,
+    limite: float,
+) -> float:
+    """Mantiene una tecla y devuelve los segundos hasta que se pulsa stop_key."""
+    inicio = time.perf_counter()
+    try:
+        backend.mouse_down(button)
+        backend.key_down(key)
+        while not keyboard.is_pressed(stop_key):
+            time.sleep(0.02)
+            if time.perf_counter() - inicio > limite:
+                print(f"  limite de {limite:.0f} s alcanzado, se corta")
+                break
+    finally:
+        backend.release_all()
+    return time.perf_counter() - inicio
 
-    Es el numero que no se puede adivinar desde fuera: depende del tamano de tu
-    plot, de tu velocidad y de tus buffs.
+
+def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -> int:
+    """Cronometra los dos tramos del recorrido sobre tu propio plot.
+
+    Ninguno de los dos valores se puede adivinar desde fuera: dependen del
+    tamano de la parcela, de tu velocidad y de tus buffs.
     """
     config = _load_for_diagnostic(config_path)
     if config is None:
@@ -298,37 +322,43 @@ def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -
 
     import keyboard
 
-    from .winput import InputBackend, foreground_window_title
+    from .winput import foreground_window_title
 
-    key = str(config.get("macros", macro_type, "keys")[0])
+    keys = [str(k) for k in config.get("macros", macro_type, "keys")]
+    fila_key, paso_key = keys[0], keys[1]
     button = config.get_str("general", "mouse_button")
-    stop_key = str(config.get("keybinds", "stop"))
+    stop_key = str(config.get("keybinds", "stop")).upper()
     backend = InputBackend()
 
-    print(f"Calibrando macros.{macro_type}.forward_seconds")
-    print(f"Se mantendra '{key}' + click {button} y se ira contando.")
-    print(f"Pulsa {stop_key.upper()} JUSTO al llegar al final de la fila.")
+    print(f"Calibrando macros.{macro_type} en dos fases.")
+    print(f"En ambas se pulsa {stop_key} para marcar el final del tramo.\n")
+
+    print(f"FASE 1/2 - la fila entera (tecla '{fila_key}')")
+    print(f"  Pulsa {stop_key} JUSTO al llegar al final de la fila.")
     _countdown(5)
     print(f"  ventana activa: {foreground_window_title()!r}")
-    print("  caminando... (limite de seguridad: 120 s)")
+    print("  recorriendo la fila...")
+    fila = _cronometrar(backend, keyboard, button, fila_key, stop_key.lower(), 600.0)
+    print(f"  -> {fila:.1f} s")
 
-    inicio = time.perf_counter()
-    try:
-        backend.mouse_down(button)
-        backend.key_down(key)
-        while not keyboard.is_pressed(stop_key):
-            time.sleep(0.02)
-            if time.perf_counter() - inicio > 120:
-                print("  limite alcanzado, se corta")
-                break
-    finally:
-        backend.release_all()
+    while keyboard.is_pressed(stop_key.lower()):
+        time.sleep(0.02)
 
-    transcurrido = time.perf_counter() - inicio
-    print("")
-    print(f"Has tardado {transcurrido:.1f} s en cruzar la fila.")
-    print("Copia esto en tu config.json, dentro de ese macro:")
-    print(f'    "forward_seconds": {transcurrido:.1f}')
+    print(f"\nFASE 2/2 - el paso a la fila siguiente (tecla '{paso_key}')")
+    print(f"  Pulsa {stop_key} en cuanto estes encarado a la fila de al lado.")
+    _countdown(5)
+    print("  dando el paso...")
+    paso = _cronometrar(backend, keyboard, button, paso_key, stop_key.lower(), 30.0)
+    print(f"  -> {paso:.2f} s")
+
+    print("\n" + "=" * 58)
+    print("Copia esto dentro de tu macro en config.json:\n")
+    print(f'    "forward_seconds": {fila:.1f},')
+    print(f'    "return_seconds": {fila:.1f},')
+    print(f'    "step_seconds": {paso:.2f}')
+    print("=" * 58)
+    print("\nSi la fila de vuelta te mide distinto, calibrala aparte y cambia")
+    print("solo return_seconds.")
     return 0
 
 
@@ -338,7 +368,7 @@ def test_chat(config_path: str | None = None) -> int:
     if config is None:
         return 1
 
-    from .winput import InputBackend, foreground_window_title
+    from .winput import foreground_window_title
 
     command = config.get_str("commands", "warp_garden")
     chat_key = config.get_str("general", "chat_key")

@@ -133,7 +133,7 @@ El tramo largo es lateral y el paso entre filas es hacia delante:
 "keys": ["d", "w", "a", "w"],
 "forward_seconds": 120,
 "return_seconds": 120,
-"step_seconds": 0.12
+"step_seconds": 1.2
 ```
 
 Recorre la fila hacia la derecha → paso adelante → recorre la siguiente hacia
@@ -158,9 +158,20 @@ tiene tramo largo, así que `return_seconds` se queda en `0`:
 uv run hymacro --calibrate nether_wart
 ```
 
-Te da 5 segundos para pasar a Minecraft, empieza a caminar picando, y cronometra
-hasta que pulses **F12** al llegar al final de la fila. Te imprime el valor
-exacto para pegar en `config.json`.
+Mide los dos tramos en una sola pasada, con 5 segundos de margen para que pases
+a Minecraft antes de cada uno:
+
+1. **La fila entera** — recorre la fila y pulsas **F12** al llegar al final.
+2. **El paso a la fila siguiente** — avanza y pulsas **F12** en cuanto estés
+   encarado a la fila de al lado.
+
+Al terminar te imprime el bloque listo para pegar en `config.json`:
+
+```
+    "forward_seconds": 120.4,
+    "return_seconds": 120.4,
+    "step_seconds": 1.20
+```
 
 ### `general`
 
