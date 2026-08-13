@@ -60,7 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="nether_wart",
         metavar="MACRO",
-        help="Cronometra la fila y el paso entre filas, y te da los tres tiempos del recorrido",
+        help="Cronometro manual: mides tu recorrido con F12 y te da los tres tiempos",
     )
     return parser
 

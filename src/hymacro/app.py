@@ -284,34 +284,44 @@ def test_move(config_path: str | None = None, key: str | None = None, seconds: f
     return 0
 
 
-def _cronometrar(
-    backend: InputBackend,
-    keyboard: Any,
-    button: str,
-    key: str,
-    stop_key: str,
-    limite: float,
-) -> float:
-    """Mantiene una tecla y devuelve los segundos hasta que se pulsa stop_key."""
-    inicio = time.perf_counter()
-    try:
-        backend.mouse_down(button)
-        backend.key_down(key)
-        while not keyboard.is_pressed(stop_key):
-            time.sleep(0.02)
-            if time.perf_counter() - inicio > limite:
-                print(f"  limite de {limite:.0f} s alcanzado, se corta")
-                break
-    finally:
-        backend.release_all()
-    return time.perf_counter() - inicio
+def _esperar_pulsacion(keyboard: Any, key: str) -> float:
+    """Espera una pulsacion completa y devuelve el instante en que se apreto.
+
+    Se espera tambien a que se suelte antes de volver: si no, la misma
+    pulsacion marcaria el inicio y el final del tramo.
+    """
+    while not keyboard.is_pressed(key):
+        time.sleep(0.01)
+    instante = time.perf_counter()
+    while keyboard.is_pressed(key):
+        time.sleep(0.01)
+    return instante
+
+
+def _cronometrar_tramo(keyboard: Any, key: str, titulo: str, instruccion: str) -> float:
+    """Cronometra un tramo entre dos pulsaciones, sin tocar la entrada del juego."""
+    marca = key.upper()
+    print(f"\n{titulo}")
+    print(f"  1. Ponte en posicion y pulsa {marca} para arrancar el cronometro.")
+    print(f"  2. {instruccion}")
+    print(f"  3. Vuelve a pulsar {marca} al terminar.")
+    print(f"  esperando el primer {marca}...")
+
+    inicio = _esperar_pulsacion(keyboard, key)
+    print("  cronometro EN MARCHA, haz el recorrido...")
+    fin = _esperar_pulsacion(keyboard, key)
+
+    transcurrido = fin - inicio
+    print(f"  -> {transcurrido:.2f} s")
+    return transcurrido
 
 
 def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -> int:
-    """Cronometra los dos tramos del recorrido sobre tu propio plot.
+    """Cronometro manual: tu haces el recorrido y el programa solo mide.
 
-    Ninguno de los dos valores se puede adivinar desde fuera: dependen del
-    tamano de la parcela, de tu velocidad y de tus buffs.
+    No inyecta ninguna tecla, asi que no hay riesgo de que el personaje se vaya
+    del plot. Los tiempos dependen del tamano de la parcela, de tu velocidad y
+    de tus buffs, asi que la unica medida fiable es la tuya.
     """
     config = _load_for_diagnostic(config_path)
     if config is None:
@@ -322,34 +332,25 @@ def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -
 
     import keyboard
 
-    from .winput import foreground_window_title
-
     keys = [str(k) for k in config.get("macros", macro_type, "keys")]
-    fila_key, paso_key = keys[0], keys[1]
-    button = config.get_str("general", "mouse_button")
-    stop_key = str(config.get("keybinds", "stop")).upper()
-    backend = InputBackend()
+    stop_key = str(config.get("keybinds", "stop")).lower()
 
-    print(f"Calibrando macros.{macro_type} en dos fases.")
-    print(f"En ambas se pulsa {stop_key} para marcar el final del tramo.\n")
+    print(f"Cronometro para macros.{macro_type}")
+    print("El programa NO se mueve solo: conduces tu y el solo mide.")
+    print(f"Se marca cada tramo con {stop_key.upper()}, dos veces: inicio y final.")
 
-    print(f"FASE 1/2 - la fila entera (tecla '{fila_key}')")
-    print(f"  Pulsa {stop_key} JUSTO al llegar al final de la fila.")
-    _countdown(5)
-    print(f"  ventana activa: {foreground_window_title()!r}")
-    print("  recorriendo la fila...")
-    fila = _cronometrar(backend, keyboard, button, fila_key, stop_key.lower(), 600.0)
-    print(f"  -> {fila:.1f} s")
-
-    while keyboard.is_pressed(stop_key.lower()):
-        time.sleep(0.02)
-
-    print(f"\nFASE 2/2 - el paso a la fila siguiente (tecla '{paso_key}')")
-    print(f"  Pulsa {stop_key} en cuanto estes encarado a la fila de al lado.")
-    _countdown(5)
-    print("  dando el paso...")
-    paso = _cronometrar(backend, keyboard, button, paso_key, stop_key.lower(), 30.0)
-    print(f"  -> {paso:.2f} s")
+    fila = _cronometrar_tramo(
+        keyboard,
+        stop_key,
+        f"TRAMO 1/2 - la fila entera (en el macro la hace '{keys[0]}')",
+        "Recorre la fila de punta a punta como lo harias tu.",
+    )
+    paso = _cronometrar_tramo(
+        keyboard,
+        stop_key,
+        f"TRAMO 2/2 - el paso a la fila siguiente (en el macro lo hace '{keys[1]}')",
+        "Pasa a la fila de al lado y quedate encarado a ella.",
+    )
 
     print("\n" + "=" * 58)
     print("Copia esto dentro de tu macro en config.json:\n")
@@ -357,7 +358,7 @@ def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -
     print(f'    "return_seconds": {fila:.1f},')
     print(f'    "step_seconds": {paso:.2f}')
     print("=" * 58)
-    print("\nSi la fila de vuelta te mide distinto, calibrala aparte y cambia")
+    print("\nSi la fila de vuelta te mide distinto, cronometrala aparte y cambia")
     print("solo return_seconds.")
     return 0
 

@@ -158,12 +158,14 @@ tiene tramo largo, así que `return_seconds` se queda en `0`:
 uv run hymacro --calibrate nether_wart
 ```
 
-Mide los dos tramos en una sola pasada, con 5 segundos de margen para que pases
-a Minecraft antes de cada uno:
+Es un **cronómetro manual**: el programa no mueve nada, conduces tú y él sólo
+mide. Marcas cada tramo pulsando **F12** dos veces, al empezar y al acabar:
 
-1. **La fila entera** — recorre la fila y pulsas **F12** al llegar al final.
-2. **El paso a la fila siguiente** — avanza y pulsas **F12** en cuanto estés
-   encarado a la fila de al lado.
+1. **La fila entera** — F12, recorres la fila de punta a punta, F12.
+2. **El paso a la fila siguiente** — F12, pasas a la fila de al lado, F12.
+
+Al no inyectar ninguna tecla, no hay riesgo de que el personaje se te vaya del
+plot mientras calibras.
 
 Al terminar te imprime el bloque listo para pegar en `config.json`:
 
