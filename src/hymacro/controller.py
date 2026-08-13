@@ -8,6 +8,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from .config import ConfigManager
 from .safety import SafetyGuard, SafetyLimits
@@ -17,6 +18,22 @@ logger = logging.getLogger(__name__)
 
 #: Pausa despues de enviar un comando al chat, para que el servidor procese el warp.
 _POST_COMMAND_SETTLE_SECONDS = 0.35
+
+
+def resolve_forward_hold(macro: dict[str, Any]) -> float:
+    """Segundos que se mantiene la primera tecla antes de pulsar la de giro.
+
+    Este es el tramo que de verdad te desplaza por el plot; `timing_ms` solo
+    cubre el giro. En la v2 el concepto existia escondido bajo el nombre
+    `cocoa_wait_seconds` y solo se activaba con `use_cocoa_wait`, asi que
+    nether_wart nunca caminaba. Se sigue leyendo el par antiguo para no romper
+    los config.json de la v2.
+    """
+    if "forward_seconds" in macro:
+        return max(0.0, float(macro["forward_seconds"]))
+    if macro.get("use_cocoa_wait", False):
+        return max(0.0, float(macro.get("cocoa_wait_seconds", 0)))
+    return 0.0
 
 
 @dataclass
@@ -232,15 +249,24 @@ class MacroController:
         keys = [str(key) for key in macro["keys"]]
         routes_per_warp = int(macro["routes_per_warp"])
         timing_ms = float(macro["timing_ms"])
-        use_lead_wait = bool(macro.get("use_cocoa_wait", False))
-        lead_wait = float(macro.get("cocoa_wait_seconds", 0)) if use_lead_wait else 0.0
+        forward = resolve_forward_hold(macro)
         warp_command = self.config.get_str("commands", "warp_garden")
 
-        self._emit("info", f"{macro_type}: {routes_per_warp} recorridos por warp, {timing_ms:.0f} ms")
+        self._emit(
+            "info",
+            f"{macro_type}: {routes_per_warp} recorridos por warp, "
+            f"avance {forward:.2f} s, giro {timing_ms:.0f} ms",
+        )
+        if forward <= 0:
+            self._emit(
+                "info",
+                f"AVISO: macros.{macro_type}.forward_seconds es 0, "
+                "asi que no se camina antes de girar y no avanzaras.",
+            )
 
         while not self._stop.is_set():
             for _ in range(routes_per_warp):
-                if not self._execute_route(keys[0:2], lead_wait, timing_ms):
+                if not self._execute_route(keys[0:2], forward, timing_ms):
                     return
                 if not self._execute_route(keys[2:4], 0.0, timing_ms):
                     return

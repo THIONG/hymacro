@@ -9,6 +9,7 @@ import sys
 from . import __version__
 from .app import (
     HyMacroApp,
+    calibrate,
     check_config,
     enable_utf8_console,
     setup_logging,
@@ -54,6 +55,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Abre el chat y escribe el comando de warp sin enviarlo",
     )
+    diag.add_argument(
+        "--calibrate",
+        nargs="?",
+        const="nether_wart",
+        metavar="MACRO",
+        help="Camina y cronometra hasta que pulses la tecla de parada, y te da el forward_seconds",
+    )
     return parser
 
 
@@ -68,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.test_chat:
         return test_chat(args.config)
+
+    if args.calibrate is not None:
+        return calibrate(args.config, args.calibrate)
 
     enable_utf8_console()
     setup_logging(verbose=args.verbose)

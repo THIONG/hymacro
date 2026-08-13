@@ -18,6 +18,7 @@ from hymacro.config import (
     ensure_config_exists,
     resolve_config_path,
 )
+from hymacro.controller import resolve_forward_hold
 
 
 def write_config(tmp_path: Path, data: dict[str, Any]) -> Path:
@@ -169,3 +170,31 @@ def test_plantilla_del_paquete_coincide_con_la_del_repo() -> None:
         (root / "src" / "hymacro" / "data" / "config.default.json").read_text(encoding="utf-8")
     )
     assert repo == bundled
+
+
+def test_forward_hold_prefiere_la_clave_nueva() -> None:
+    assert resolve_forward_hold({"forward_seconds": 2.5}) == 2.5
+
+
+def test_forward_hold_lee_el_par_antiguo_de_la_v2() -> None:
+    """Un config.json de la v2 no tiene forward_seconds."""
+    assert resolve_forward_hold({"use_cocoa_wait": True, "cocoa_wait_seconds": 1}) == 1.0
+    # nether_wart de la v2: por esto nunca caminaba.
+    assert resolve_forward_hold({"use_cocoa_wait": False, "cocoa_wait_seconds": 0}) == 0.0
+
+
+def test_forward_hold_la_clave_nueva_gana_a_la_antigua() -> None:
+    macro = {"forward_seconds": 4, "use_cocoa_wait": True, "cocoa_wait_seconds": 1}
+    assert resolve_forward_hold(macro) == 4.0
+
+
+def test_forward_hold_negativo_se_recorta_a_cero() -> None:
+    assert resolve_forward_hold({"forward_seconds": -3}) == 0.0
+
+
+def test_config_del_repo_camina_en_los_dos_macros() -> None:
+    """Regresion: nether_wart salia con 0 s de avance y no se movia del sitio."""
+    repo_config = Path(__file__).resolve().parents[1] / "config.json"
+    config = ConfigManager(repo_config, auto_create=False)
+    for name in ("cocoa_beans", "nether_wart"):
+        assert resolve_forward_hold(config.get("macros", name)) > 0, name

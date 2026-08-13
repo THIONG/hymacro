@@ -89,6 +89,9 @@ uv run hymacro --check
 |------|-------------|
 | `--config RUTA` | Usa otro `config.json` |
 | `--check` | Valida la configuración y sale, sin registrar hotkeys |
+| `--calibrate [MACRO]` | Cronometra tu fila y te da el `forward_seconds` exacto |
+| `--test-move [TECLA]` | Mantiene una tecla unos segundos, para ver si el juego la registra |
+| `--test-chat` | Escribe el comando de warp en el chat sin enviarlo |
 | `--verbose` | Muestra los logs de debug en consola |
 | `--version` | Muestra la versión |
 
@@ -106,10 +109,29 @@ claves nuevas se heredan automáticamente.
 |-------|-------------|
 | `keys` | Las 4 teclas del patrón (dos tramos de dos) |
 | `routes_per_warp` | Recorridos antes de hacer warp al garden |
-| `timing_ms` | Milisegundos entre las dos teclas de un tramo |
-| `use_cocoa_wait` / `cocoa_wait_seconds` | Espera extra al inicio del primer tramo |
+| **`forward_seconds`** | **Segundos caminando antes de girar. Es lo que te desplaza** |
+| `timing_ms` | Milisegundos del giro, al final del tramo |
 | `mining_duration_seconds` | (cobblestone) Segundos de minado por ciclo |
 | `hub_wait_seconds` | (cobblestone) Espera en el hub antes de volver a la isla |
+
+> `forward_seconds` es el ajuste que más importa y el único que no se puede
+> adivinar desde fuera: depende del tamaño de tu plot, tu velocidad y tus buffs.
+> Si el macro "va muy rápido" y cambia de fila sin llegar al fondo, es este.
+> Mídelo con `--calibrate` (ver abajo) en vez de probar a ojo.
+>
+> Los configs de la v2 usaban `use_cocoa_wait` + `cocoa_wait_seconds` para lo
+> mismo, pero sólo en cocoa beans — por eso nether wart nunca avanzaba. Se
+> siguen leyendo si no defines `forward_seconds`.
+
+### Calibrar el recorrido
+
+```bash
+uv run hymacro --calibrate nether_wart
+```
+
+Te da 5 segundos para pasar a Minecraft, empieza a caminar picando, y cronometra
+hasta que pulses **F12** al llegar al final de la fila. Te imprime el valor
+exacto para pegar en `config.json`.
 
 ### `general`
 

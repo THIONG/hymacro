@@ -283,6 +283,55 @@ def test_move(config_path: str | None = None, key: str | None = None, seconds: f
     return 0
 
 
+def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -> int:
+    """Mide cuanto se tarda en cruzar una fila y da el forward_seconds exacto.
+
+    Es el numero que no se puede adivinar desde fuera: depende del tamano de tu
+    plot, de tu velocidad y de tus buffs.
+    """
+    config = _load_for_diagnostic(config_path)
+    if config is None:
+        return 1
+    if macro_type not in MACRO_TYPES or macro_type == "cobblestone":
+        print(f"[ERROR] Calibra 'cocoa_beans' o 'nether_wart', no {macro_type!r}", file=sys.stderr)
+        return 1
+
+    import keyboard
+
+    from .winput import InputBackend, foreground_window_title
+
+    key = str(config.get("macros", macro_type, "keys")[0])
+    button = config.get_str("general", "mouse_button")
+    stop_key = str(config.get("keybinds", "stop"))
+    backend = InputBackend()
+
+    print(f"Calibrando macros.{macro_type}.forward_seconds")
+    print(f"Se mantendra '{key}' + click {button} y se ira contando.")
+    print(f"Pulsa {stop_key.upper()} JUSTO al llegar al final de la fila.")
+    _countdown(5)
+    print(f"  ventana activa: {foreground_window_title()!r}")
+    print("  caminando... (limite de seguridad: 120 s)")
+
+    inicio = time.perf_counter()
+    try:
+        backend.mouse_down(button)
+        backend.key_down(key)
+        while not keyboard.is_pressed(stop_key):
+            time.sleep(0.02)
+            if time.perf_counter() - inicio > 120:
+                print("  limite alcanzado, se corta")
+                break
+    finally:
+        backend.release_all()
+
+    transcurrido = time.perf_counter() - inicio
+    print("")
+    print(f"Has tardado {transcurrido:.1f} s en cruzar la fila.")
+    print("Copia esto en tu config.json, dentro de ese macro:")
+    print(f'    "forward_seconds": {transcurrido:.1f}')
+    return 0
+
+
 def test_chat(config_path: str | None = None) -> int:
     """Abre el chat y escribe el comando de warp SIN enviarlo."""
     config = _load_for_diagnostic(config_path)
