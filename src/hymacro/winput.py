@@ -251,6 +251,48 @@ def resolve_scancode(key: str) -> int:
     return _SCANCODES[normalized]
 
 
+#: Virtual-keys para consultar el estado real del teclado con GetAsyncKeyState.
+#: Es una via independiente del hook de `keyboard`, que puede dejar de entregar
+#: eventos sin avisar (Windows desengancha los hooks lentos por su cuenta).
+_VK_CODES: dict[str, int] = {
+    **{f"f{n}": 0x6F + n for n in range(1, 13)},
+    **{chr(c): c for c in range(ord("A"), ord("Z") + 1)},
+    **{chr(c).lower(): c for c in range(ord("A"), ord("Z") + 1)},
+    **{str(n): ord(str(n)) for n in range(10)},
+    "space": 0x20,
+    "enter": 0x0D,
+    "escape": 0x1B,
+    "tab": 0x09,
+    "backspace": 0x08,
+    "insert": 0x2D,
+    "delete": 0x2E,
+    "home": 0x24,
+    "end": 0x23,
+    "pageup": 0x21,
+    "pagedown": 0x22,
+    "ctrl": 0x11,
+    "shift": 0x10,
+    "alt": 0x12,
+}
+
+if _user32 is not None:
+    _user32.GetAsyncKeyState.restype = ctypes.c_short
+
+
+def is_key_held(key: str) -> bool:
+    """True si la tecla esta pulsada ahora mismo, segun el propio Windows.
+
+    No pasa por el hook de `keyboard`: pregunta directamente al sistema, asi
+    que sigue funcionando aunque el hook se haya caido o este saturado.
+    """
+    if _user32 is None:
+        return False
+    vk = _VK_CODES.get(key.strip().lower())
+    if vk is None:
+        return False
+    return bool(_user32.GetAsyncKeyState(vk) & 0x8000)
+
+
 def cursor_position() -> tuple[int, int]:
     """Devuelve la posicion actual del cursor en pixeles de pantalla."""
     if _user32 is None:

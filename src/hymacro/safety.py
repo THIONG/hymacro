@@ -15,7 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from .config import ConfigManager
-from .winput import cursor_position, foreground_window_title
+from .winput import cursor_position, foreground_window_title, is_key_held
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ class SafetyLimits:
     mouse_threshold_px: int
     max_session_seconds: float
     interval_seconds: float
+    stop_key: str = ""
 
     @classmethod
     def from_config(cls, config: ConfigManager) -> SafetyLimits:
@@ -44,6 +45,7 @@ class SafetyLimits:
             mouse_threshold_px=config.get_int("safety", "mouse_failsafe_px", default=100),
             max_session_seconds=config.get_float("safety", "max_session_minutes", default=0) * 60.0,
             interval_seconds=config.get_float("safety", "watchdog_interval_ms", default=100) / 1000.0,
+            stop_key=config.get_str("keybinds", "stop", default=""),
         )
 
 
@@ -100,6 +102,14 @@ class SafetyGuard:
 
     def _check(self) -> str | None:
         elapsed = time.monotonic() - self._started_at
+
+        # Segunda via para la tecla de parada, independiente del hook de
+        # `keyboard`: aqui se pregunta el estado al sistema en vez de esperar a
+        # que alguien nos entregue el evento. El hook puede dejar de entregar
+        # (Windows desengancha los hooks lentos), y quedarse sin forma de parar
+        # con una tecla mantenida 2 minutos es lo peor que puede pasar.
+        if self._limits.stop_key and is_key_held(self._limits.stop_key):
+            return f"parada manual ({self._limits.stop_key.upper()})"
 
         if self._limits.max_session_seconds > 0 and elapsed >= self._limits.max_session_seconds:
             minutes = self._limits.max_session_seconds / 60
