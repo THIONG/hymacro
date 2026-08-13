@@ -7,11 +7,11 @@
       "timing_ms": 93
     },
     "nether_wart": {
-      "keys": ["a", "w", "d", "w"],
+      "keys": ["d", "w", "a", "w"],
       "routes_per_warp": 4,
-      "forward_seconds": 10,
-      "return_seconds": 10,
-      "timing_ms": 119
+      "forward_seconds": 120,
+      "return_seconds": 120,
+      "step_seconds": 0.12
     },
     "cobblestone": {
       "key": "w",
@@ -38,6 +38,7 @@
     "command_input_mode": "unicode",
     "timing_jitter_ms": 8,
     "wait_jitter_percent": 5,
+    "wait_jitter_max_seconds": 0.5,
     "suppress_hotkeys": true
   },
   "safety": {

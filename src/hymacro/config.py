@@ -57,6 +57,7 @@ DEFAULTS: dict[str, Any] = {
         "command_input_mode": "unicode",
         "timing_jitter_ms": 8,
         "wait_jitter_percent": 5,
+        "wait_jitter_max_seconds": 0.5,
         "suppress_hotkeys": True,
     },
     "safety": {
@@ -213,8 +214,13 @@ class ConfigManager:
                     raise ConfigError(f"macros.{name}.keys: {exc}") from exc
             if int(macro.get("routes_per_warp", 0)) < 1:
                 raise ConfigError(f"macros.{name}.routes_per_warp debe ser >= 1")
-            if float(macro.get("timing_ms", 0)) <= 0:
-                raise ConfigError(f"macros.{name}.timing_ms debe ser > 0")
+            paso_ms = (
+                float(macro["step_seconds"]) * 1000
+                if "step_seconds" in macro
+                else float(macro.get("timing_ms", 0))
+            )
+            if paso_ms <= 0:
+                raise ConfigError(f"macros.{name}.step_seconds debe ser > 0")
             for campo in ("forward_seconds", "return_seconds"):
                 if float(macro.get(campo, 0)) < 0:
                     raise ConfigError(f"macros.{name}.{campo} no puede ser negativo")

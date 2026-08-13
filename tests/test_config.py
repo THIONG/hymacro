@@ -18,7 +18,12 @@ from hymacro.config import (
     ensure_config_exists,
     resolve_config_path,
 )
-from hymacro.controller import resolve_forward_hold, resolve_return_hold
+from hymacro.controller import (
+    MacroController,
+    resolve_forward_hold,
+    resolve_return_hold,
+    resolve_step_ms,
+)
 
 
 def write_config(tmp_path: Path, data: dict[str, Any]) -> Path:
@@ -232,3 +237,31 @@ def test_cocoa_del_repo_sigue_siendo_de_un_solo_sentido() -> None:
     repo_config = Path(__file__).resolve().parents[1] / "config.json"
     config = ConfigManager(repo_config, auto_create=False)
     assert resolve_return_hold(config.get("macros", "cocoa_beans")) == 0.0
+
+
+def test_step_en_segundos_gana_a_los_milisegundos() -> None:
+    assert resolve_step_ms({"step_seconds": 0.25, "timing_ms": 119}) == 250.0
+
+
+def test_step_lee_timing_ms_si_no_hay_step_seconds() -> None:
+    assert resolve_step_ms({"timing_ms": 119}) == 119.0
+
+
+def test_config_sin_step_valido_se_rechaza(tmp_path: Path) -> None:
+    data = json.loads(json.dumps(DEFAULTS))
+    data["macros"]["cocoa_beans"]["timing_ms"] = 0
+
+    with pytest.raises(ConfigError, match="step_seconds debe ser > 0"):
+        ConfigManager(write_config(tmp_path, data), auto_create=False)
+
+
+def test_la_fila_de_dos_minutos_no_se_desalinea_por_el_jitter(tmp_path: Path) -> None:
+    """Un 5% sobre 120 s serian 6 s de deriva; el tope absoluto lo impide."""
+    config = ConfigManager(write_config(tmp_path, DEFAULTS), auto_create=False)
+    ctrl = MacroController(config)
+
+    muestras = [ctrl._jittered_seconds(120.0) for _ in range(500)]
+    desviacion_max = max(abs(m - 120.0) for m in muestras)
+
+    assert desviacion_max <= 0.5, f"deriva de {desviacion_max:.2f} s"
+    assert len(set(muestras)) > 1, "deberia seguir habiendo variacion"

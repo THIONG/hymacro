@@ -108,10 +108,10 @@ claves nuevas se heredan automáticamente.
 | Clave | Descripción |
 |-------|-------------|
 | `keys` | Las 4 teclas del patrón: `[ida, paso, vuelta, paso]` |
-| `routes_per_warp` | Recorridos antes de hacer warp al garden |
+| `routes_per_warp` | **Idas y vueltas** antes del warp. `4` = 8 filas, no 4 |
 | **`forward_seconds`** | **Segundos del tramo de ida (tecla 1). Es lo que te desplaza** |
 | **`return_seconds`** | **Segundos del tramo de vuelta (tecla 3). `0` = un solo sentido** |
-| `timing_ms` | Milisegundos del paso entre filas (teclas 2 y 4) |
+| `step_seconds` | Segundos del paso entre filas (teclas 2 y 4) |
 | `mining_duration_seconds` | (cobblestone) Segundos de minado por ciclo |
 | `hub_wait_seconds` | (cobblestone) Espera en el hub antes de volver a la isla |
 
@@ -130,13 +130,14 @@ claves nuevas se heredan automáticamente.
 El tramo largo es lateral y el paso entre filas es hacia delante:
 
 ```json
-"keys": ["a", "w", "d", "w"],
-"forward_seconds": 10,
-"return_seconds": 10
+"keys": ["d", "w", "a", "w"],
+"forward_seconds": 120,
+"return_seconds": 120,
+"step_seconds": 0.12
 ```
 
-Recorre la fila hacia la izquierda → paso adelante → recorre la siguiente hacia
-la derecha → paso adelante → y vuelta a empezar.
+Recorre la fila hacia la derecha → paso adelante → recorre la siguiente hacia
+la izquierda → paso adelante → y vuelta a empezar.
 
 **Un solo sentido** (cocoa beans) — avanzas, corriges y repites. La vuelta no
 tiene tramo largo, así que `return_seconds` se queda en `0`:
@@ -169,8 +170,9 @@ exacto para pegar en `config.json`.
 | `chat_key` | `t` | Tecla que abre el chat |
 | `chat_open_delay_ms` | `120` | Espera antes de escribir el comando |
 | `command_input_mode` | `unicode` | `unicode` o `scancode` (ver abajo) |
-| `timing_jitter_ms` | `8` | Variación aleatoria de los timings, en ms |
+| `timing_jitter_ms` | `8` | Variación aleatoria de los pasos cortos, en ms |
 | `wait_jitter_percent` | `5` | Variación aleatoria de las esperas largas, en % |
+| `wait_jitter_max_seconds` | `0.5` | Tope de esa variación. Sin él, un 5% sobre una fila de 2 min serían ±6 s y te saltarías filas |
 | `suppress_hotkeys` | `true` | Impide que F8–F12 lleguen también al juego |
 | `loop_delay_ms` | `100` | Periodo del bucle inactivo |
 

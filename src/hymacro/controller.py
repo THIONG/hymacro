@@ -47,6 +47,18 @@ def resolve_return_hold(macro: dict[str, Any]) -> float:
     return max(0.0, float(macro.get("return_seconds", 0)))
 
 
+def resolve_step_ms(macro: dict[str, Any]) -> float:
+    """Duracion del paso entre filas, en milisegundos.
+
+    `step_seconds` es el nombre actual y va en segundos como el resto de
+    tiempos. `timing_ms` sigue funcionando para no romper los config.json
+    anteriores, pero mezclar unidades en el mismo bloque se presta a errores.
+    """
+    if "step_seconds" in macro:
+        return max(0.0, float(macro["step_seconds"])) * 1000.0
+    return max(0.0, float(macro.get("timing_ms", 0)))
+
+
 @dataclass
 class SessionStats:
     """Contadores de una sesion de macro."""
@@ -117,6 +129,7 @@ class MacroController:
         self._command_mode = config.get_str("general", "command_input_mode", default="unicode")
         self._timing_jitter_ms = config.get_float("general", "timing_jitter_ms", default=8)
         self._wait_jitter_percent = config.get_float("general", "wait_jitter_percent", default=5)
+        self._wait_jitter_max = config.get_float("general", "wait_jitter_max_seconds", default=0.5)
 
     # --- ciclo de vida ---
 
@@ -202,10 +215,17 @@ class MacroController:
         return max(0.0, milliseconds + delta) / 1000.0
 
     def _jittered_seconds(self, seconds: float) -> float:
-        """Aplica una variacion porcentual a una espera larga."""
+        """Aplica una variacion acotada a una espera larga.
+
+        El porcentaje solo no vale: un 5% sobre un tramo de 2 minutos son
+        6 segundos arriba o abajo, suficiente para pasarte de fila. El tope
+        absoluto mantiene la variacion sin desalinear el recorrido.
+        """
         if seconds <= 0 or self._wait_jitter_percent <= 0:
             return max(0.0, seconds)
         spread = seconds * (self._wait_jitter_percent / 100.0)
+        if self._wait_jitter_max > 0:
+            spread = min(spread, self._wait_jitter_max)
         return max(0.0, seconds + random.uniform(-spread, spread))
 
     # --- primitivas ---
@@ -259,15 +279,17 @@ class MacroController:
         macro = self.config.get("macros", macro_type)
         keys = [str(key) for key in macro["keys"]]
         routes_per_warp = int(macro["routes_per_warp"])
-        timing_ms = float(macro["timing_ms"])
+        timing_ms = resolve_step_ms(macro)
         forward = resolve_forward_hold(macro)
         back = resolve_return_hold(macro)
         warp_command = self.config.get_str("commands", "warp_garden")
 
+        # routes_per_warp cuenta parejas ida+vuelta, no tramos sueltos.
         self._emit(
             "info",
-            f"{macro_type}: {routes_per_warp} recorridos por warp, "
-            f"ida {forward:.1f} s, vuelta {back:.1f} s, paso {timing_ms:.0f} ms",
+            f"{macro_type}: {routes_per_warp} idas y vueltas por warp "
+            f"({routes_per_warp * 2} filas), ida {forward:.1f} s, "
+            f"vuelta {back:.1f} s, paso {timing_ms / 1000:.2f} s",
         )
         if forward <= 0:
             self._emit(
