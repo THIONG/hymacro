@@ -2,6 +2,7 @@ package io.github.thiong.hymacro;
 
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
@@ -58,6 +59,20 @@ public final class Chat {
 			.withStyle(current ? ChatFormatting.GOLD : ChatFormatting.DARK_GRAY)
 			.append(Component.literal(text)
 				.withStyle(current ? ChatFormatting.WHITE : ChatFormatting.GRAY)));
+	}
+
+	/**
+	 * Straight into the chat window, for things a key press caused rather than a
+	 * command. A command has a source to reply to; F9 has nowhere to answer.
+	 */
+	public static void client(String message, boolean bad) {
+		Minecraft.getInstance().gui.getChat()
+			.addClientSystemMessage(tagged(message, bad ? ChatFormatting.RED : ChatFormatting.GREEN));
+	}
+
+	public static void clientNote(String message) {
+		Minecraft.getInstance().gui.getChat()
+			.addClientSystemMessage(Component.literal(" " + message).withStyle(ChatFormatting.GRAY));
 	}
 
 	private static MutableComponent tagged(String message, ChatFormatting colour) {

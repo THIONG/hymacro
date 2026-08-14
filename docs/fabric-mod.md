@@ -101,6 +101,20 @@ same macro fits in a single message anywhere. The code is marked with its
 format, so one from a later version says where it came from instead of failing
 as corrupt.
 
+## Why a macro stays selected
+
+Creating one selects it, and the one you were on is restored when the game
+starts. Making you load a macro you just made is ceremony, and losing your place
+on every restart costs more than it protects.
+
+What that risks is playing the wrong macro after a restart, which deselecting
+would not really fix either: loading the wrong one has the same ending. So the
+check is where the damage would happen. F9 measures how far you are from point 1
+and refuses if you are somewhere else entirely, because a macro started away
+from its beginning holds keys towards a point it is not walking to and arrives
+nowhere until it times out. Pressing F9 again within five seconds starts it
+anyway, for when you meant it.
+
 ## Why sending is per leg
 
 Warping used to be a property of the whole route, fired at the end of a lap.

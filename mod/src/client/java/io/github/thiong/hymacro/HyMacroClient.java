@@ -21,8 +21,13 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	private static final int PLAY_KEY = GLFW.GLFW_KEY_F9;
 	private static final int STOP_KEY = GLFW.GLFW_KEY_F12;
 
+	/** How far from point 1 counts as being somewhere else entirely. */
+	private static final double START_TOLERANCE = 10.0;
+	private static final int CONFIRM_TICKS = 100;
+
 	private boolean playWasDown;
 	private boolean stopWasDown;
+	private int confirmTicks;
 
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
@@ -59,24 +64,51 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 
 		Route route = route();
 		if (route == null || route.isEmpty()) {
-			LOGGER.warn("No macro to play. Build one with /hymacro");
+			Chat.client("No macro to play. Build one with /hymacro", true);
 			return;
 		}
 		if (client.player == null) {
 			return;
 		}
+
+		double away = distanceToStart(client, route);
+		if (away > START_TOLERANCE && confirmTicks == 0) {
+			confirmTicks = CONFIRM_TICKS;
+			Chat.client("You are " + Math.round(away) + " blocks from point 1 of '"
+				+ book.activeName() + "'.", true);
+			Chat.clientNote("Walk there, or press F9 again to start anyway.");
+			return;
+		}
+
+		confirmTicks = 0;
 		player = new RoutePlayer(client, route);
-		LOGGER.info("Following '{}', {} points", book.activeName(), route.waypoints.size());
+		Chat.client("Following '" + book.activeName() + "', "
+			+ route.waypoints.size() + " points.", false);
 	}
 
 	@Override
 	public void stop() {
+		confirmTicks = 0;
 		if (player == null) {
 			return;
 		}
 		player.stop();
 		player = null;
-		LOGGER.info("Route stopped");
+		Chat.client("Stopped.", false);
+	}
+
+	/**
+	 * How far the player is from where the macro begins.
+	 *
+	 * <p>Starting anywhere else is almost always a macro left selected from
+	 * another plot: the first leg holds keys trying to reach a point it is not
+	 * walking towards, and arrives nowhere until it times out.
+	 */
+	private static double distanceToStart(Minecraft client, Route route) {
+		Route.Waypoint first = route.waypoints.get(0);
+		double dx = client.player.getX() - first.x;
+		double dz = client.player.getZ() - first.z;
+		return Math.sqrt(dx * dx + dz * dz);
 	}
 
 	private void onTick(Minecraft client) {
@@ -88,6 +120,9 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		}
 		playWasDown = Keys.isKeyDown(PLAY_KEY);
 		stopWasDown = Keys.isKeyDown(STOP_KEY);
+		if (confirmTicks > 0) {
+			confirmTicks--;
+		}
 
 		if (player != null) {
 			player.tick();
