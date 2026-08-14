@@ -1,6 +1,5 @@
 package io.github.thiong.hymacro;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
@@ -32,14 +31,14 @@ public final class HyMacroClient implements ClientModInitializer {
 	}
 
 	private void onTick(Minecraft client) {
-		if (pressed(client, START_KEY, startWasDown)) {
+		if (pressed(START_KEY, startWasDown)) {
 			toggle(client);
 		}
-		if (pressed(client, STOP_KEY, stopWasDown)) {
+		if (pressed(STOP_KEY, stopWasDown)) {
 			stop();
 		}
-		startWasDown = isDown(client, START_KEY);
-		stopWasDown = isDown(client, STOP_KEY);
+		startWasDown = isDown(START_KEY);
+		stopWasDown = isDown(STOP_KEY);
 
 		if (runner != null) {
 			runner.tick();
@@ -49,13 +48,22 @@ public final class HyMacroClient implements ClientModInitializer {
 		}
 	}
 
-	private boolean isDown(Minecraft client, int code) {
-		return InputConstants.isKeyDown(client.getWindow().getWindow(), code);
+	/**
+	 * Asks GLFW for the window rather than Minecraft.
+	 *
+	 * <p>The client tick runs on the render thread, which is the thread holding
+	 * the game's GL context, so this is the game window. Going through GLFW
+	 * keeps window handling out of the Minecraft API, whose accessor for the
+	 * handle is not named the same in this version.
+	 */
+	private boolean isDown(int code) {
+		long window = GLFW.glfwGetCurrentContext();
+		return window != 0L && GLFW.glfwGetKey(window, code) == GLFW.GLFW_PRESS;
 	}
 
 	/** True only on the tick the key goes down, so holding it does not repeat. */
-	private boolean pressed(Minecraft client, int code, boolean wasDown) {
-		return isDown(client, code) && !wasDown;
+	private boolean pressed(int code, boolean wasDown) {
+		return isDown(code) && !wasDown;
 	}
 
 	private void toggle(Minecraft client) {
