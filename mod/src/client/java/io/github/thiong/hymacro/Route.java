@@ -50,8 +50,11 @@ public final class Route {
 		/** Sent on arrival: a command with its slash, or a line of chat. */
 		public final String send;
 
+		/** Steer towards this point rather than holding a fixed direction. */
+		public final boolean walk;
+
 		public Waypoint(double x, double y, double z, float yaw, float pitch,
-				List<Action> actions, String send) {
+				List<Action> actions, String send, boolean walk) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
@@ -59,14 +62,31 @@ public final class Route {
 			this.pitch = pitch;
 			this.actions = actions;
 			this.send = send == null ? "" : send;
+			this.walk = walk;
 		}
 
 		public Waypoint(double x, double y, double z, float yaw, float pitch, List<Action> actions) {
-			this(x, y, z, yaw, pitch, actions, "");
+			this(x, y, z, yaw, pitch, actions, "", false);
 		}
 
 		public boolean sends() {
 			return !send.isBlank();
+		}
+
+		public Waypoint withActions(List<Action> replacement) {
+			return new Waypoint(x, y, z, yaw, pitch, replacement, send, walk);
+		}
+
+		public Waypoint withLook(float newYaw, float newPitch) {
+			return new Waypoint(x, y, z, newYaw, newPitch, actions, send, walk);
+		}
+
+		public Waypoint withSend(String text) {
+			return new Waypoint(x, y, z, yaw, pitch, actions, text, walk);
+		}
+
+		public Waypoint withWalk(boolean steering) {
+			return new Waypoint(x, y, z, yaw, pitch, actions, send, steering);
 		}
 	}
 
@@ -115,8 +135,7 @@ public final class Route {
 		}
 		int last = waypoints.size() - 1;
 		Waypoint point = waypoints.get(last);
-		waypoints.set(last, new Waypoint(point.x, point.y, point.z, point.yaw, point.pitch,
-			point.actions, command.startsWith("/") ? command : "/" + command));
+		waypoints.set(last, point.withSend(command.startsWith("/") ? command : "/" + command));
 	}
 
 	public JsonObject toJson() {
@@ -141,6 +160,9 @@ public final class Route {
 			point.addProperty("pitch", waypoint.pitch);
 			if (waypoint.sends()) {
 				point.addProperty("send", waypoint.send);
+			}
+			if (waypoint.walk) {
+				point.addProperty("walk", true);
 			}
 			point.add("actions", actions);
 			points.add(point);
@@ -174,7 +196,8 @@ public final class Route {
 			point.has("yaw") ? point.get("yaw").getAsFloat() : 0.0f,
 			point.has("pitch") ? point.get("pitch").getAsFloat() : 0.0f,
 			actions,
-			point.has("send") ? point.get("send").getAsString() : "");
+			point.has("send") ? point.get("send").getAsString() : "",
+			point.has("walk") && point.get("walk").getAsBoolean());
 	}
 
 }

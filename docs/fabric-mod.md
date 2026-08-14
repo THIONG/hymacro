@@ -139,6 +139,24 @@ Sending is followed by a short pause, because a warp needs a moment to land and
 starting the next leg mid teleport would hold keys wherever it came out. An old
 `warpCommand` is carried over onto the last point, which is where it fired.
 
+## Walking itself there
+
+`/hymacro walk` makes a leg steer towards its point instead of holding a fixed
+direction.
+
+Holding a key and hoping works until something knocks the player off line. From
+then on the key points somewhere the destination is not, and the leg arrives
+nowhere until it times out. Steering works the keys out every tick from where
+the point actually is, so a leg corrects itself.
+
+The look direction is deliberately left alone. On a wall of crops the player
+faces the wall and travels sideways, so turning to face the way they are walking
+would aim the tool at nothing. Everything else still applies: the leg keeps its
+yaw and pitch, and keeps spamming whatever it was told to.
+
+It is off by default. Holding a key is what the macro has always done, and a
+route built around it should not change under its author.
+
 ## Why legs end on arrival
 
 The first version of the mod, and the executable before it, ran on a stopwatch:

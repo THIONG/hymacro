@@ -147,7 +147,7 @@ public final class RouteView {
 	}
 
 	private static int colourFor(Route.Waypoint point) {
-		if (point.actions.isEmpty()) {
+		if (point.actions.isEmpty() && !point.walk) {
 			return GREY;
 		}
 		for (Route.Action action : point.actions) {
@@ -160,10 +160,15 @@ public final class RouteView {
 
 	private static String describe(Route.Waypoint point) {
 		StringBuilder text = new StringBuilder();
-		if (point.actions.isEmpty()) {
-			text.append("walk");
+		if (point.walk) {
+			text.append("walk here");
+		} else if (point.actions.isEmpty()) {
+			text.append("nothing set");
 		}
 		for (int i = 0; i < point.actions.size(); i++) {
+			if (i == 0 && text.length() > 0) {
+				text.append(" + ");
+			}
 			Route.Action action = point.actions.get(i);
 			if (i > 0) {
 				text.append(" + ");

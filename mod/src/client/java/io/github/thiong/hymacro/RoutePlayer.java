@@ -26,6 +26,10 @@ public final class RoutePlayer {
 
 	private static final int PAUSE_AFTER_SEND = 20;
 
+	/** Closer than this along an axis and the key would only judder. */
+	private static final double DEADZONE = 0.2;
+	private static final String[] MOVEMENT = {"w", "a", "s", "d"};
+
 	private int index;
 	private int ticksInLeg;
 	private int pausing;
@@ -65,6 +69,7 @@ public final class RoutePlayer {
 		}
 
 		ticksInLeg++;
+		steer();
 		spam();
 
 		if (arrived() || ticksInLeg >= timeoutTicks) {
@@ -89,6 +94,37 @@ public final class RoutePlayer {
 		double dx = client.player.getX() - target.x;
 		double dz = client.player.getZ() - target.z;
 		return dx * dx + dz * dz <= route.arrivalRadius * route.arrivalRadius;
+	}
+
+	/**
+	 * Presses whatever gets the player closer, without turning to face the way
+	 * they are going.
+	 *
+	 * <p>Holding a fixed key and hoping is fine until something knocks you off
+	 * line: from then on the key points somewhere the destination is not, and the
+	 * leg arrives nowhere until it times out. Working out the keys each tick from
+	 * where the point actually is makes a leg correct itself instead.
+	 *
+	 * <p>The look direction is left alone on purpose. On a wall of crops the
+	 * player faces the wall and travels sideways, so turning to face the way they
+	 * are walking would point the tool at nothing.
+	 */
+	private void steer() {
+		Route.Waypoint target = route.waypoints.get(index);
+		if (!target.walk) {
+			return;
+		}
+
+		double dx = target.x - client.player.getX();
+		double dz = target.z - client.player.getZ();
+		double facing = Math.toRadians(target.yaw);
+		double ahead = dx * -Math.sin(facing) + dz * Math.cos(facing);
+		double side = dx * -Math.cos(facing) + dz * -Math.sin(facing);
+
+		Keys.set("w", ahead > DEADZONE);
+		Keys.set("s", ahead < -DEADZONE);
+		Keys.set("d", side > DEADZONE);
+		Keys.set("a", side < -DEADZONE);
 	}
 
 	/** Toggles the keys that were recorded as repeated clicks rather than holds. */
@@ -140,6 +176,9 @@ public final class RoutePlayer {
 			if (!Keys.isKnown(action.key)) {
 				continue;
 			}
+			if (target.walk && isMovement(action.key)) {
+				continue;
+			}
 			if (action.isSpam()) {
 				held.add(action.key);
 			} else {
@@ -154,6 +193,18 @@ public final class RoutePlayer {
 			Keys.set(name, false);
 		}
 		held.clear();
+		for (String name : MOVEMENT) {
+			Keys.set(name, false);
+		}
+	}
+
+	private static boolean isMovement(String key) {
+		for (String name : MOVEMENT) {
+			if (name.equals(key)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** A leading slash means a command; anything else is said out loud. */

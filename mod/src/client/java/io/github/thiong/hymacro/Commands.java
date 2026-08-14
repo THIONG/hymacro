@@ -94,6 +94,11 @@ public final class Commands {
 						.then(literal("send")
 							.then(argument("text", StringArgumentType.greedyString())
 								.executes(context -> setSend(context, host, named(context)))))
+						.then(literal("walk")
+							.executes(context -> setWalk(context, host, named(context), true))
+							.then(argument("on", BoolArgumentType.bool())
+								.executes(context -> setWalk(context, host, named(context),
+									BoolArgumentType.getBool(context, "on")))))
 						.then(literal("clear")
 							.executes(context -> clearLeg(context, host)))))
 				.then(literal("undo")
@@ -109,6 +114,11 @@ public final class Commands {
 				.then(literal("send")
 					.then(argument("text", StringArgumentType.greedyString())
 						.executes(context -> setSend(context, host, LAST))))
+				.then(literal("walk")
+					.executes(context -> setWalk(context, host, LAST, true))
+					.then(argument("on", BoolArgumentType.bool())
+						.executes(context -> setWalk(context, host, LAST,
+							BoolArgumentType.getBool(context, "on")))))
 				.then(literal("list")
 					.executes(context -> listRoutes(context, host)))
 				.then(literal("new")
@@ -196,8 +206,11 @@ public final class Commands {
 		Chat.heading(context.getSource(), "Leg " + (index + 1));
 		Chat.note(context.getSource(), "point " + from + " to point " + (index + 1)
 			+ ", facing " + round(point.yaw) + " / " + round(point.pitch));
-		if (point.actions.isEmpty() && !point.sends()) {
+		if (point.actions.isEmpty() && !point.sends() && !point.walk) {
 			Chat.note(context.getSource(), "nothing set, it only walks");
+		}
+		if (point.walk) {
+			Chat.bullet(context.getSource(), "walks itself there", false);
 		}
 		if (point.sends()) {
 			Chat.bullet(context.getSource(), "on arrival, sends " + point.send, false);
@@ -221,8 +234,7 @@ public final class Commands {
 		}
 
 		Route.Waypoint point = route.waypoints.get(index);
-		route.waypoints.set(index, new Route.Waypoint(
-			point.x, point.y, point.z, point.yaw, point.pitch, new ArrayList<>(), ""));
+		route.waypoints.set(index, point.withActions(new ArrayList<>()).withSend("").withWalk(false));
 		host.book().save();
 		Chat.ok(context.getSource(), "Leg " + (index + 1) + " now only walks.");
 		return 1;
@@ -239,6 +251,7 @@ public final class Commands {
 		Chat.entry(source, "/hymacro new <name>", "start a macro");
 		Chat.entry(source, "/hymacro point", "mark where you stand and look");
 		Chat.entry(source, "/hymacro hold <key>", "hold it until that point");
+		Chat.entry(source, "/hymacro walk", "steer to that point on its own");
 		Chat.entry(source, "/hymacro spam <key> [ticks]", "click it repeatedly instead");
 		Chat.entry(source, "/hymacro look <yaw> <pitch>", "aim that leg by numbers");
 		Chat.entry(source, "/hymacro undo", "drop the last point");
@@ -320,8 +333,7 @@ public final class Commands {
 		float yaw = wrap(FloatArgumentType.getFloat(context, "yaw"));
 		float pitch = FloatArgumentType.getFloat(context, "pitch");
 		Route.Waypoint point = route.waypoints.get(index);
-		route.waypoints.set(index, new Route.Waypoint(
-			point.x, point.y, point.z, yaw, pitch, point.actions, point.send));
+		route.waypoints.set(index, point.withLook(yaw, pitch));
 		host.book().save();
 
 		Chat.ok(context.getSource(), "Leg " + (index + 1)
@@ -369,8 +381,7 @@ public final class Commands {
 		actions.removeIf(action -> action.key.equals(key));
 		actions.add(new Route.Action(key, mode, interval));
 
-		route.waypoints.set(index, new Route.Waypoint(
-			point.x, point.y, point.z, point.yaw, point.pitch, actions, point.send));
+		route.waypoints.set(index, point.withActions(actions));
 		host.book().save();
 
 		Chat.ok(context.getSource(), Route.SPAM.equals(mode)
@@ -456,8 +467,7 @@ public final class Commands {
 		String text = StringArgumentType.getString(context, "text").trim();
 		boolean clearing = "-".equals(text);
 		Route.Waypoint point = route.waypoints.get(index);
-		route.waypoints.set(index, new Route.Waypoint(point.x, point.y, point.z,
-			point.yaw, point.pitch, point.actions, clearing ? "" : text));
+		route.waypoints.set(index, point.withSend(clearing ? "" : text));
 		host.book().save();
 
 		if (clearing) {
@@ -467,6 +477,37 @@ public final class Commands {
 		Chat.ok(context.getSource(), "On reaching point " + (index + 1)
 			+ (text.startsWith("/") ? ", runs " : ", says ") + text);
 		Chat.note(context.getSource(), "It waits a second afterwards, so a warp has time to land.");
+		return 1;
+	}
+
+	/**
+	 * Steering towards the point instead of holding a fixed direction.
+	 *
+	 * <p>Holding a key and hoping works until something knocks the player off
+	 * line, after which the key points somewhere the destination is not. Steering
+	 * recomputes it every tick, so a leg corrects itself rather than timing out.
+	 * The look direction stays where it was put, since facing the way you walk
+	 * would aim the tool at nothing on a wall of crops.
+	 */
+	private static int setWalk(
+			CommandContext<FabricClientCommandSource> context, Host host, int requested, boolean on) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		int index = resolve(context, route, requested);
+		if (index == LAST) {
+			return 0;
+		}
+
+		route.waypoints.set(index, route.waypoints.get(index).withWalk(on));
+		host.book().save();
+		Chat.ok(context.getSource(), on
+			? "Leg " + (index + 1) + " now walks itself to point " + (index + 1) + "."
+			: "Leg " + (index + 1) + " now only holds what you told it to.");
+		if (on) {
+			Chat.note(context.getSource(), "It still faces where you set, and still spams what you set.");
+		}
 		return 1;
 	}
 
