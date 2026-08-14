@@ -97,12 +97,15 @@ def setup_logging(verbose: bool = False) -> None:
 class HyMacroApp:
     """Aplicacion principal que maneja la interfaz y los controles."""
 
-    def __init__(self, config_path: str | None = None) -> None:
+    def __init__(self, config_path: str | None = None, *, permitir_volver: bool = False) -> None:
         self.config = ConfigManager(config_path)
         self.controller = MacroController(self.config, on_event=self._handle_event)
         self._print_lock = threading.Lock()
         self._alive = True
         self._keyboard: Any = None
+        #: Lo consulta run_menu para saber si hay que volver a dibujarlo.
+        self.volver_al_menu = False
+        self._permitir_volver = permitir_volver and _consola_interactiva()
         init_colors(self.config.get_str("general", "colors", default="auto"))
         self._animar_banner = self.config.get_bool("general", "banner_animation", default=True)
         self._ola: BannerWave | None = None
@@ -116,6 +119,27 @@ class HyMacroApp:
         with self._print_lock:
             print(message, flush=True)
             self._lineas_bajo_banner += message.count("\n") + 1
+
+    def _se_pidio_volver(self) -> bool:
+        """True si se ha pulsado ESC en la ventana de la consola.
+
+        Se lee de la consola, no con un hook global, precisamente para que
+        pulsar ESC dentro de Minecraft (que es abrir el menu del juego) no
+        cierre el macro.
+        """
+        if not self._permitir_volver:
+            return False
+        import msvcrt
+
+        pedido = False
+        while msvcrt.kbhit():
+            tecla = msvcrt.getwch()
+            if tecla in ("\x00", "\xe0"):  # teclas extendidas: llegan en pares
+                msvcrt.getwch()
+                continue
+            if tecla == "\x1b":
+                pedido = True
+        return pedido
 
     def _tick_banner(self) -> None:
         """Avanza la ola. Coge el mismo lock que _say: si otro hilo imprime a
@@ -153,6 +177,8 @@ class HyMacroApp:
             key = str(binds[macro_type]).upper()
             self._say(f"    {key:<5} -> {_LABELS[macro_type]}")
         self._say(f"    {str(binds['stop']).upper():<5} -> DETENER macro")
+        if self._permitir_volver:
+            self._say("    ESC   -> volver al menu")
         self._say("    CTRL+C -> salir de HyMacro")
         self._say("")
 
@@ -235,6 +261,9 @@ class HyMacroApp:
 
         try:
             while self._alive:
+                if self._se_pidio_volver():
+                    self.volver_al_menu = True
+                    break
                 self._tick_banner()
                 time.sleep(loop_delay)
         except KeyboardInterrupt:
@@ -255,7 +284,8 @@ class HyMacroApp:
                 self._keyboard.unhook_all()
             except Exception:
                 logger.exception("Error liberando los hooks de teclado")
-        self._say("Hasta luego!")
+        if not self.volver_al_menu:
+            self._say("Hasta luego!")
 
 
 def check_config(config_path: str | None = None) -> int:
@@ -417,15 +447,20 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
             return 0
         if eleccion == "1":
             try:
-                return HyMacroApp(config_path).run()
+                app = HyMacroApp(config_path, permitir_volver=True)
+                codigo = app.run()
             except ConfigError as exc:
                 print(f"{paint('  [ERROR]', BOLD, RED)} {exc}")
                 return 1
+            if app.volver_al_menu:
+                continue
+            return codigo
         if eleccion == "2":
             macro_type = _elegir_macro()
-            if macro_type:
-                clear_screen()
-                calibrate(config_path, macro_type)
+            if macro_type is None:
+                continue  # "Volver" vuelve directo, sin pedir otra tecla
+            clear_screen()
+            calibrate(config_path, macro_type)
         elif eleccion == "3":
             test_move(config_path)
         elif eleccion == "4":

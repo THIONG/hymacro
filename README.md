@@ -63,6 +63,7 @@ cd hymacro && uv run hymacro
 | **F9** | Nether Wart — serpentina D→W→A→W, 4 idas y vueltas (8 filas) por warp |
 | **F10** | Cobblestone — minado continuo con ciclo hub → isla |
 | **F12** | **DETENER** el macro en marcha |
+| **ESC** | Volver al menú (en la ventana de HyMacro, no en el juego) |
 | **Ctrl+C** | Salir de HyMacro |
 
 Al detenerse (por hotkey, por failsafe o al salir), HyMacro suelta todas las

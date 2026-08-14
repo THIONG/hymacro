@@ -64,8 +64,9 @@ def test_enter_arranca_el_macro(monkeypatch: pytest.MonkeyPatch) -> None:
     llamadas: list[str] = []
 
     class AppFalsa:
-        def __init__(self, config_path: str | None) -> None:
+        def __init__(self, config_path: str | None, *, permitir_volver: bool = False) -> None:
             llamadas.append("construida")
+            self.volver_al_menu = False
 
         def run(self) -> int:
             llamadas.append("run")
@@ -92,11 +93,33 @@ def test_la_opcion_de_calibrar_pregunta_que_macro(monkeypatch: pytest.MonkeyPatc
     assert elegidos == ["cocoa_beans"]
 
 
-def test_se_puede_volver_del_submenu_sin_calibrar(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_volver_del_submenu_no_pide_otra_tecla(monkeypatch: pytest.MonkeyPatch) -> None:
+    """'Volver' vuelve directo: pedir un Enter extra ahi era una molestia."""
     monkeypatch.setattr(app, "calibrate", lambda cfg, macro: pytest.fail("no debia calibrar"))
-    _con_respuestas(monkeypatch, ["2", "0", "", "0"])
+    # 2 = calibrar, 0 = volver, 0 = salir. Sin Enter intermedio.
+    _con_respuestas(monkeypatch, ["2", "0", "0"])
 
     assert app.run_menu() == 0
+
+
+def test_esc_en_el_macro_devuelve_al_menu(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La pantalla del macro tenia como unica salida cerrar el programa."""
+    arranques: list[int] = []
+
+    class AppQueVuelve:
+        def __init__(self, config_path: str | None, *, permitir_volver: bool = False) -> None:
+            arranques.append(1)
+            # La primera vez simula que se pulso ESC; la segunda, salir.
+            self.volver_al_menu = len(arranques) == 1
+
+        def run(self) -> int:
+            return 0
+
+    monkeypatch.setattr(app, "HyMacroApp", AppQueVuelve)
+    _con_respuestas(monkeypatch, ["1", "1"])
+
+    assert app.run_menu() == 0
+    assert len(arranques) == 2, "tras volver al menu deberia poder arrancarse otra vez"
 
 
 def test_se_limpia_la_pantalla_al_volver_al_menu(
