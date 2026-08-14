@@ -90,7 +90,8 @@ Everything is written as it changes, in `config/hymacro-routes.json`. There is
 no save step.
 
 `/hymacro share` copies the current one to your clipboard as a single line to
-send to someone, and `/hymacro import <name>` reads one back.
+send to someone, `/hymacro share <name>` copies one you are not on, and
+`/hymacro import <name>` reads one back. Names complete with Tab.
 
 ## Development
 

@@ -14,6 +14,7 @@ import java.util.List;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.client.Minecraft;
+import net.minecraft.commands.SharedSuggestionProvider;
 
 /**
  * Building a macro by saying what happens, rather than by being watched doing it.
@@ -51,6 +52,13 @@ public final class Commands {
 	private static <T> RequiredArgumentBuilder<FabricClientCommandSource, T> argument(
 			String name, ArgumentType<T> type) {
 		return RequiredArgumentBuilder.argument(name, type);
+	}
+
+	/** A name argument that completes from the macros that exist. */
+	private static RequiredArgumentBuilder<FabricClientCommandSource, String> existing(Host host) {
+		return argument("name", StringArgumentType.word())
+			.suggests((context, builder) ->
+				SharedSuggestionProvider.suggest(host.book().names(), builder));
 	}
 
 	public static void register(Host host) {
@@ -131,16 +139,19 @@ public final class Commands {
 					.then(argument("name", StringArgumentType.word())
 						.executes(context -> newRoute(context, host))))
 				.then(literal("load")
-					.then(argument("name", StringArgumentType.word())
+					.then(existing(host)
 						.executes(context -> loadRoute(context, host))))
 				.then(literal("rename")
 					.then(argument("name", StringArgumentType.word())
 						.executes(context -> renameRoute(context, host))))
 				.then(literal("delete")
-					.then(argument("name", StringArgumentType.word())
+					.then(existing(host)
 						.executes(context -> deleteRoute(context, host))))
 				.then(literal("share")
-					.executes(context -> share(context, host)))
+					.executes(context -> share(context, host, null))
+					.then(existing(host)
+						.executes(context -> share(context, host,
+							StringArgumentType.getString(context, "name")))))
 				.then(literal("import")
 					.then(argument("name", StringArgumentType.word())
 						.executes(context -> importRoute(context, host))))
@@ -300,7 +311,7 @@ public final class Commands {
 		Chat.entry(source, "/hymacro load <name>", "switch to one");
 		Chat.entry(source, "/hymacro rename <name>", "rename this one");
 		Chat.entry(source, "/hymacro delete <name>", "remove one");
-		Chat.entry(source, "/hymacro share", "copy this one to your clipboard");
+		Chat.entry(source, "/hymacro share [name]", "copy one to your clipboard");
 		Chat.entry(source, "/hymacro import <name>", "paste one from your clipboard");
 		Chat.entry(source, "/hymacro show <true|false>", "draw it in the world");
 
@@ -623,13 +634,24 @@ public final class Commands {
 		return 1;
 	}
 
-	private static int share(CommandContext<FabricClientCommandSource> context, Host host) {
-		Route route = active(context, host);
+	/**
+	 * Copies a macro out as a code.
+	 *
+	 * <p>Without a name it takes the one in hand, which is what you mean straight
+	 * after working on it. Naming one saves loading it first only to send it, and
+	 * the name completes from those that exist so it need not be remembered.
+	 */
+	private static int share(
+			CommandContext<FabricClientCommandSource> context, Host host, String name) {
+		Route route = name == null ? active(context, host) : host.book().route(name);
 		if (route == null) {
+			if (name != null) {
+				Chat.error(context.getSource(), "No macro called '" + name + "'.");
+			}
 			return 0;
 		}
 		if (route.isEmpty()) {
-			Chat.error(context.getSource(), "Nothing to share, this macro has no points.");
+			Chat.error(context.getSource(), "Nothing to share, that macro has no points.");
 			return 0;
 		}
 
@@ -640,7 +662,9 @@ public final class Commands {
 			return 0;
 		}
 
-		Chat.ok(context.getSource(), "'" + host.book().activeName() + "' copied to your clipboard.");
+		String shared = name == null ? host.book().activeName() : name;
+		Chat.ok(context.getSource(), "'" + shared + "', "
+			+ route.waypoints.size() + " points, copied to your clipboard.");
 		Chat.note(context.getSource(),
 			"Send it to a friend. They run /hymacro import <name> with it copied.");
 		return 1;

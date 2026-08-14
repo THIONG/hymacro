@@ -113,7 +113,10 @@ left by an earlier version is carried over under the name `default`.
 ## Sending one to someone
 
 `/hymacro share` puts the current macro on the clipboard as one line, and
-`/hymacro import <name>` reads one back.
+`/hymacro import <name>` reads one back. `/hymacro share <name>` sends one you
+are not on, so it need not be loaded only to be sent. Wherever a command names
+an existing macro the name completes, since remembering exactly what you called
+something is a poor thing to ask.
 
 It travels as a code rather than as its own JSON because chat takes 256
 characters and a macro of ten points is thousands. Compressed and encoded, the
