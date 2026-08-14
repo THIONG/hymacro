@@ -22,6 +22,8 @@ from .console import (
     RED,
     WHITE,
     YELLOW,
+    BannerWave,
+    colors_enabled,
     init_colors,
     paint,
     print_rainbow,
@@ -273,6 +275,46 @@ def _pintar_menu() -> str:
     return "\n".join(lineas)
 
 
+def _consola_interactiva() -> bool:
+    """True si podemos leer teclas sueltas sin bloquear el repintado."""
+    if sys.platform != "win32" or not colors_enabled():
+        return False
+    entrada = sys.stdin
+    return bool(entrada is not None and getattr(entrada, "isatty", lambda: False)())
+
+
+def _leer_tecla_animando(
+    opciones: set[str],
+    por_defecto: str,
+    ola: BannerWave,
+    lineas_debajo: int,
+    fps: int = 15,
+) -> str:
+    """Espera una tecla mientras la ola del banner sigue corriendo.
+
+    input() bloquea y se queda con el control del hilo, asi que no se puede
+    animar nada mientras espera. Aqui se sondea el teclado y se repinta entre
+    sondeo y sondeo.
+    """
+    import msvcrt
+
+    espera = 1.0 / fps
+    while True:
+        while msvcrt.kbhit():
+            tecla = msvcrt.getwch()
+            if tecla in ("\x00", "\xe0"):  # teclas extendidas: se descarta el par
+                msvcrt.getwch()
+                continue
+            if tecla in ("\r", "\n"):
+                return por_defecto
+            if tecla == "\x03":  # Ctrl+C
+                raise KeyboardInterrupt
+            if tecla.lower() in opciones:
+                return tecla.lower()
+        ola.tick(lineas_debajo)
+        time.sleep(espera)
+
+
 def _preguntar(opciones: set[str], por_defecto: str) -> str:
     """Pide una opcion por teclado hasta que sea valida."""
     while True:
@@ -309,12 +351,30 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
     # El menu se dibuja antes de cargar la configuracion, asi que aqui se usa
     # 'auto'; HyMacroApp vuelve a inicializar con lo que diga el config.json.
     init_colors("auto")
-    print_rainbow(_BANNER)
-    print(paint(f"  HyMacro v{__version__}", BOLD, WHITE), "- Hypixel Garden Automation Tool")
+    opciones = {"0", "1", "2", "3", "4", "5"}
 
     while True:
-        print(_pintar_menu())
-        eleccion = _preguntar({"0", "1", "2", "3", "4", "5"}, "1")
+        ola = BannerWave(_BANNER)
+        ola.draw()
+        cabecera = f"{paint(f'  HyMacro v{__version__}', BOLD, WHITE)} - Hypixel Garden Automation Tool"
+        # Se escribe de una pieza y se cuentan los saltos de linea reales: es
+        # el numero de filas que baja el cursor, y contarlas a mano es como se
+        # cuelan los off-by-one que dejan el banner repintado una fila arriba.
+        bloque = f"{cabecera}\n{_pintar_menu()}\n"
+        sys.stdout.write(bloque)
+        debajo = bloque.count("\n")
+
+        if _consola_interactiva():
+            sys.stdout.write("  > ")
+            sys.stdout.flush()
+            try:
+                eleccion = _leer_tecla_animando(opciones, "1", ola, debajo)
+            except KeyboardInterrupt:
+                print("")
+                eleccion = "0"
+            print(eleccion)
+        else:
+            eleccion = _preguntar(opciones, "1")
 
         if eleccion == "0":
             print(paint("  Hasta luego!", GREY))

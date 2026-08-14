@@ -126,6 +126,61 @@ def _linea_ola(linea: str, fila: int, fase: float, paso_fila: float) -> str:
     return "".join(partes)
 
 
+class BannerWave:
+    """Repinta el banner en su sitio mientras el resto de la pantalla sigue.
+
+    Se guarda la posicion del cursor, se sube hasta el banner, se repintan sus
+    filas y se vuelve. Asi la ola sigue corriendo aunque debajo haya un menu y
+    el usuario este a punto de pulsar una tecla.
+    """
+
+    def __init__(
+        self,
+        texto: str,
+        *,
+        velocidad: float = 0.7,
+        paso_fila: float = 0.05,
+    ) -> None:
+        self._lineas = texto.splitlines()
+        self._velocidad = velocidad
+        self._paso_fila = paso_fila
+        self._inicio = time.monotonic()
+
+    @property
+    def alto(self) -> int:
+        return len(self._lineas)
+
+    def _fase(self) -> float:
+        return (time.monotonic() - self._inicio) * self._velocidad
+
+    def draw(self) -> None:
+        """Pinta el banner por primera vez, dejando el cursor debajo."""
+        if not _enabled:
+            print("\n".join(self._lineas), flush=True)
+            return
+        fase = self._fase()
+        for fila, linea in enumerate(self._lineas):
+            sys.stdout.write(f"{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")
+        sys.stdout.flush()
+
+    def tick(self, lineas_debajo: int) -> None:
+        """Repinta el banner sin mover el cursor de donde estaba.
+
+        `lineas_debajo` es cuantas filas hay entre el final del banner y el
+        cursor; sin ese dato repintariamos encima del menu.
+        """
+        if not _enabled:
+            return
+        fase = self._fase()
+        salto = self.alto + max(0, lineas_debajo)
+        partes = [f"\x1b[s\x1b[{salto}A"]
+        for fila, linea in enumerate(self._lineas):
+            partes.append(f"\r{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")
+        partes.append("\x1b[u")
+        sys.stdout.write("".join(partes))
+        sys.stdout.flush()
+
+
 def print_rainbow(
     texto: str,
     *,

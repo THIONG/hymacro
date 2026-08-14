@@ -97,7 +97,7 @@ Al abrir HyMacro (doble clic al `.exe` o `uv run hymacro`) sale un menú:
 Enter a secas arranca el macro, que es lo habitual. Las demás opciones son las
 herramientas de ajuste, que antes sólo existían como argumentos de terminal.
 
-El banner sale con una ola de arcoíris que se desplaza hacia la derecha, y los mensajes van en
+La ola de arcoíris del banner sigue corriendo mientras el menú está abierto, y los mensajes van en
 color: verde al arrancar, amarillo al parar, rojo en los errores. Si la salida
 está redirigida a un fichero o la terminal no admite ANSI, se imprime en texto
 plano — nunca se cuelan secuencias de escape. Se respeta la variable de entorno
