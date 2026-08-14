@@ -14,30 +14,55 @@ import java.util.List;
 import net.fabricmc.loader.api.FabricLoader;
 
 /**
- * A recorded path: where to go, and what to hold on the way there.
+ * A recorded path: where to go, where to look, and what to hold on the way.
  *
- * <p>Segments end on arrival rather than after a fixed time, so nothing has to
- * be calibrated and a route cannot drift. Speed, buffs, lag and being shoved by
- * a mob all stop mattering: if the player is not there yet, it keeps walking.
+ * <p>Legs end on arrival rather than after a fixed time, so nothing has to be
+ * calibrated and a route cannot drift. Falling short simply means holding the
+ * keys a moment longer, which makes speed, buffs, lag and being shoved by a mob
+ * all stop mattering.
  *
- * <p>The JSON is built by hand rather than through reflection. Each failed
- * compile costs a round trip through CI, and this keeps the serialiser out of
- * that loop.
+ * <p>The JSON is built by hand rather than through reflection, to keep the
+ * serialiser out of a compile loop that costs a round trip through CI.
  */
 public final class Route {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
+	public static final String HOLD = "hold";
+	public static final String SPAM = "spam";
+
+	/** One key and how it is worked: held down, or clicked repeatedly. */
+	public static final class Action {
+		public final String key;
+		public final String mode;
+		public final int intervalTicks;
+
+		public Action(String key, String mode, int intervalTicks) {
+			this.key = key;
+			this.mode = mode;
+			this.intervalTicks = Math.max(1, intervalTicks);
+		}
+
+		public boolean isSpam() {
+			return SPAM.equals(mode);
+		}
+	}
+
+	/** Somewhere to reach, facing a particular way, doing particular things. */
 	public static final class Waypoint {
 		public final double x;
 		public final double y;
 		public final double z;
-		public final List<String> keys;
+		public final float yaw;
+		public final float pitch;
+		public final List<Action> actions;
 
-		public Waypoint(double x, double y, double z, List<String> keys) {
+		public Waypoint(double x, double y, double z, float yaw, float pitch, List<Action> actions) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
-			this.keys = keys;
+			this.yaw = yaw;
+			this.pitch = pitch;
+			this.actions = actions;
 		}
 	}
 
@@ -46,6 +71,7 @@ public final class Route {
 	public int lapsPerWarp = 1;
 	public double arrivalRadius = 1.0;
 	public double segmentTimeoutSeconds = 90.0;
+	public boolean showMarkers = true;
 
 	public boolean isEmpty() {
 		return waypoints.isEmpty();
@@ -81,20 +107,12 @@ public final class Route {
 				route.segmentTimeoutSeconds =
 					Math.max(1.0, root.get("segmentTimeoutSeconds").getAsDouble());
 			}
+			if (root.has("showMarkers")) {
+				route.showMarkers = root.get("showMarkers").getAsBoolean();
+			}
 			if (root.has("waypoints")) {
 				for (JsonElement element : root.getAsJsonArray("waypoints")) {
-					JsonObject point = element.getAsJsonObject();
-					List<String> keys = new ArrayList<>();
-					if (point.has("keys")) {
-						for (JsonElement key : point.getAsJsonArray("keys")) {
-							keys.add(key.getAsString());
-						}
-					}
-					route.waypoints.add(new Waypoint(
-						point.get("x").getAsDouble(),
-						point.get("y").getAsDouble(),
-						point.get("z").getAsDouble(),
-						keys));
+					route.waypoints.add(readWaypoint(element.getAsJsonObject()));
 				}
 			}
 		} catch (IOException | RuntimeException exception) {
@@ -103,18 +121,47 @@ public final class Route {
 		return route;
 	}
 
+	private static Waypoint readWaypoint(JsonObject point) {
+		List<Action> actions = new ArrayList<>();
+		if (point.has("actions")) {
+			for (JsonElement element : point.getAsJsonArray("actions")) {
+				JsonObject action = element.getAsJsonObject();
+				actions.add(new Action(
+					action.get("key").getAsString(),
+					action.has("mode") ? action.get("mode").getAsString() : HOLD,
+					action.has("intervalTicks") ? action.get("intervalTicks").getAsInt() : 1));
+			}
+		}
+		return new Waypoint(
+			point.get("x").getAsDouble(),
+			point.get("y").getAsDouble(),
+			point.get("z").getAsDouble(),
+			point.has("yaw") ? point.get("yaw").getAsFloat() : 0.0f,
+			point.has("pitch") ? point.get("pitch").getAsFloat() : 0.0f,
+			actions);
+	}
+
 	public void save() {
 		JsonArray points = new JsonArray();
 		for (Waypoint waypoint : waypoints) {
+			JsonArray actions = new JsonArray();
+			for (Action action : waypoint.actions) {
+				JsonObject entry = new JsonObject();
+				entry.addProperty("key", action.key);
+				entry.addProperty("mode", action.mode);
+				if (action.isSpam()) {
+					entry.addProperty("intervalTicks", action.intervalTicks);
+				}
+				actions.add(entry);
+			}
+
 			JsonObject point = new JsonObject();
 			point.addProperty("x", waypoint.x);
 			point.addProperty("y", waypoint.y);
 			point.addProperty("z", waypoint.z);
-			JsonArray keys = new JsonArray();
-			for (String key : waypoint.keys) {
-				keys.add(key);
-			}
-			point.add("keys", keys);
+			point.addProperty("yaw", waypoint.yaw);
+			point.addProperty("pitch", waypoint.pitch);
+			point.add("actions", actions);
 			points.add(point);
 		}
 
@@ -123,6 +170,7 @@ public final class Route {
 		root.addProperty("lapsPerWarp", lapsPerWarp);
 		root.addProperty("arrivalRadius", arrivalRadius);
 		root.addProperty("segmentTimeoutSeconds", segmentTimeoutSeconds);
+		root.addProperty("showMarkers", showMarkers);
 		root.add("waypoints", points);
 
 		try {

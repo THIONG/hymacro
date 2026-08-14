@@ -8,8 +8,12 @@ import net.minecraft.client.Minecraft;
  * Walks a recorded route, one client tick at a time.
  *
  * <p>A leg ends on arrival, not after a fixed time. That is what removes the
- * calibration: a route cannot drift, because being short of the target simply
- * means keeping the keys held a little longer.
+ * calibration: a route cannot drift, because falling short simply means holding
+ * the keys a little longer.
+ *
+ * <p>The look direction is part of a leg, not decoration. On a wall of crops the
+ * player faces the wall while moving sideways, so a camera that wanders by a
+ * degree ruins the run just as surely as a mistimed key.
  *
  * <p>The timeout is the safety net. Something that never arrives, because the
  * player is stuck against a block or was teleported away, must not hold a key
@@ -23,7 +27,7 @@ public final class RoutePlayer {
 	private int index;
 	private int lapsDone;
 	private int ticksInLeg;
-	private int timeoutTicks;
+	private final int timeoutTicks;
 	private boolean finished;
 	private boolean warping;
 
@@ -62,6 +66,8 @@ public final class RoutePlayer {
 			return;
 		}
 
+		spam();
+
 		if (arrived() || ticksInLeg >= timeoutTicks) {
 			if (ticksInLeg >= timeoutTicks) {
 				HyMacroClient.LOGGER.warn(
@@ -83,6 +89,17 @@ public final class RoutePlayer {
 		double dx = client.player.getX() - target.x;
 		double dz = client.player.getZ() - target.z;
 		return dx * dx + dz * dz <= route.arrivalRadius * route.arrivalRadius;
+	}
+
+	/** Toggles the keys that were recorded as repeated clicks rather than holds. */
+	private void spam() {
+		for (Route.Action action : route.waypoints.get(index).actions) {
+			if (!action.isSpam()) {
+				continue;
+			}
+			boolean down = (ticksInLeg / action.intervalTicks) % 2 == 0;
+			Keys.set(action.key, down);
+		}
 	}
 
 	private void advance() {
@@ -111,10 +128,22 @@ public final class RoutePlayer {
 			stop();
 			return;
 		}
-		for (String name : route.waypoints.get(index).keys) {
-			if (Keys.isKnown(name)) {
-				Keys.set(name, true);
-				held.add(name);
+
+		Route.Waypoint target = route.waypoints.get(index);
+		if (client.player != null) {
+			client.player.setYRot(target.yaw);
+			client.player.setXRot(target.pitch);
+		}
+
+		for (Route.Action action : target.actions) {
+			if (!Keys.isKnown(action.key)) {
+				continue;
+			}
+			if (action.isSpam()) {
+				held.add(action.key);
+			} else {
+				Keys.set(action.key, true);
+				held.add(action.key);
 			}
 		}
 	}

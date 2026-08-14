@@ -30,6 +30,7 @@ public final class HyMacroClient implements ClientModInitializer {
 
 	private Route route = new Route();
 	private RoutePlayer player;
+	private int tick;
 
 	@Override
 	public void onInitializeClient() {
@@ -60,6 +61,10 @@ public final class HyMacroClient implements ClientModInitializer {
 		stopWasDown = Keys.isKeyDown(STOP_KEY);
 
 		recorder.tick(client);
+		tick++;
+		if (route.showMarkers) {
+			Markers.draw(client, recorder.isRecording() ? recorder.marked() : route.waypoints, tick);
+		}
 
 		if (player != null) {
 			player.tick();

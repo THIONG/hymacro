@@ -9,15 +9,20 @@ import net.minecraft.client.Minecraft;
 /**
  * Records a route by watching the player walk it.
  *
- * <p>Rather than being told what to do, it samples which keys are held while
- * travelling between the points that get marked. A key counts for a segment if
- * it was down for most of it, so a stray tap does not end up in the route.
+ * <p>Rather than being told what to do, it samples what is held while travelling
+ * between the points that get marked, and works out on its own whether a key was
+ * held down or clicked repeatedly. Counting the presses is what separates the
+ * two: one long press is a hold, many short ones are spam, and the average gap
+ * between them becomes the rate to replay it at.
  */
 public final class Recorder {
 	private static final double MOSTLY = 0.5;
+	private static final int SPAM_THRESHOLD = 3;
 
 	private final Route route = new Route();
 	private final Map<String, Integer> ticksHeld = new HashMap<>();
+	private final Map<String, Integer> presses = new HashMap<>();
+	private final Map<String, Boolean> wasHeld = new HashMap<>();
 	private int ticksInSegment;
 	private boolean started;
 
@@ -41,32 +46,48 @@ public final class Recorder {
 		}
 		ticksInSegment++;
 		for (String name : Keys.RECORDABLE) {
-			if (Keys.isHeld(name)) {
+			boolean held = Keys.isHeld(name);
+			if (held) {
 				ticksHeld.merge(name, 1, Integer::sum);
+				if (!wasHeld.getOrDefault(name, false)) {
+					presses.merge(name, 1, Integer::sum);
+				}
 			}
+			wasHeld.put(name, held);
 		}
 	}
 
-	/** Marks the point the player is standing on as the end of the current leg. */
+	/** Marks where the player is standing, and which way they are looking. */
 	public void mark(Minecraft client) {
 		if (!started || client.player == null) {
 			return;
 		}
 
-		List<String> keys = new ArrayList<>();
+		List<Route.Action> actions = new ArrayList<>();
 		for (String name : Keys.RECORDABLE) {
 			int held = ticksHeld.getOrDefault(name, 0);
-			if (ticksInSegment > 0 && held >= ticksInSegment * MOSTLY) {
-				keys.add(name);
+			int pressed = presses.getOrDefault(name, 0);
+			if (held == 0 || ticksInSegment == 0) {
+				continue;
+			}
+			if (pressed >= SPAM_THRESHOLD) {
+				actions.add(new Route.Action(name, Route.SPAM, Math.max(1, ticksInSegment / pressed)));
+			} else if (held >= ticksInSegment * MOSTLY) {
+				actions.add(new Route.Action(name, Route.HOLD, 1));
 			}
 		}
 
 		route.waypoints.add(new Route.Waypoint(
-			client.player.getX(), client.player.getY(), client.player.getZ(), keys));
+			client.player.getX(),
+			client.player.getY(),
+			client.player.getZ(),
+			client.player.getYRot(),
+			client.player.getXRot(),
+			actions));
 		resetSegment();
 	}
 
-	/** Ends the recording and returns the route, or null when nothing usable was captured. */
+	/** Ends the recording and returns the route, or null when too little was captured. */
 	public Route finish(Route previous) {
 		started = false;
 		if (route.waypoints.size() < 2) {
@@ -76,6 +97,7 @@ public final class Recorder {
 		route.lapsPerWarp = previous.lapsPerWarp;
 		route.arrivalRadius = previous.arrivalRadius;
 		route.segmentTimeoutSeconds = previous.segmentTimeoutSeconds;
+		route.showMarkers = previous.showMarkers;
 		route.save();
 		return route;
 	}
@@ -86,8 +108,15 @@ public final class Recorder {
 		resetSegment();
 	}
 
+	/** The points marked so far, so they can be drawn while recording. */
+	public List<Route.Waypoint> marked() {
+		return route.waypoints;
+	}
+
 	private void resetSegment() {
 		ticksHeld.clear();
+		presses.clear();
+		wasHeld.clear();
 		ticksInSegment = 0;
 	}
 }
