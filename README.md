@@ -79,7 +79,27 @@ El macro se detiene solo cuando:
 El watchdog los comprueba cada 100 ms, también durante los 4 minutos de minado
 de cobblestone.
 
+### El menú
+
+Al abrir HyMacro (doble clic al `.exe` o `uv run hymacro`) sale un menú:
+
+```
+    1) Arrancar el macro          teclas F8/F9/F10 para iniciar, F12 para parar
+    2) Calibrar los tiempos       cronometro manual sobre tu propio plot
+    3) Probar el movimiento       comprueba que el juego recibe las teclas
+    4) Probar el chat             escribe el comando de warp sin enviarlo
+    5) Ver la configuracion       ruta del config.json y teclas asignadas
+    0) Salir
+
+  (Enter = 1)
+```
+
+Enter a secas arranca el macro, que es lo habitual. Las demás opciones son las
+herramientas de ajuste, que antes sólo existían como argumentos de terminal.
+
 ### Línea de comandos
+
+Todo lo del menú está también como flag, para quien prefiera la terminal:
 
 ```bash
 uv run hymacro --check
@@ -92,6 +112,7 @@ uv run hymacro --check
 | `--calibrate [MACRO]` | Cronometra tu fila y te da el `forward_seconds` exacto |
 | `--test-move [TECLA]` | Mantiene una tecla unos segundos, para ver si el juego la registra |
 | `--test-chat` | Escribe el comando de warp en el chat sin enviarlo |
+| `--no-menu` | Va directo al modo hotkeys, sin menú |
 | `--verbose` | Muestra los logs de debug en consola |
 | `--version` | Muestra la versión |
 

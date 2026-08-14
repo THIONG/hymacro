@@ -12,6 +12,7 @@ from .app import (
     calibrate,
     check_config,
     enable_utf8_console,
+    run_menu,
     setup_logging,
     test_chat,
     test_move,
@@ -31,6 +32,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--check",
         action="store_true",
         help="Valida la configuracion y sale, sin registrar hotkeys",
+    )
+    parser.add_argument(
+        "--no-menu",
+        action="store_true",
+        help="Va directo al modo hotkeys, sin mostrar el menu interactivo",
     )
     parser.add_argument("--verbose", action="store_true", help="Muestra los logs de debug en consola")
     parser.add_argument("--version", action="version", version=f"HyMacro {__version__}")
@@ -86,6 +92,12 @@ def main(argv: list[str] | None = None) -> int:
     if sys.platform != "win32":
         print("[ERROR] HyMacro solo funciona en Windows.", file=sys.stderr)
         return 1
+
+    # Sin argumentos y con consola interactiva se muestra el menu: abrir el
+    # .exe con doble clic es la forma normal de usarlo, y ahi no hay manera de
+    # escribir --calibrate.
+    if not args.no_menu and sys.stdin is not None and sys.stdin.isatty():
+        return run_menu(args.config, verbose=args.verbose)
 
     try:
         app = HyMacroApp(args.config)

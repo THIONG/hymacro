@@ -231,6 +231,85 @@ def check_config(config_path: str | None = None) -> int:
     return 0
 
 
+_MENU = """
+  Que quieres hacer?
+
+    1) Arrancar el macro          teclas F8/F9/F10 para iniciar, F12 para parar
+    2) Calibrar los tiempos       cronometro manual sobre tu propio plot
+    3) Probar el movimiento       comprueba que el juego recibe las teclas
+    4) Probar el chat             escribe el comando de warp sin enviarlo
+    5) Ver la configuracion       ruta del config.json y teclas asignadas
+    0) Salir
+
+  (Enter = 1)
+"""
+
+
+def _preguntar(opciones: set[str], por_defecto: str) -> str:
+    """Pide una opcion por teclado hasta que sea valida."""
+    while True:
+        try:
+            respuesta = input("  > ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("")
+            return "0"
+        if not respuesta:
+            return por_defecto
+        if respuesta in opciones:
+            return respuesta
+        print(f"  Opcion no valida. Elige entre: {', '.join(sorted(opciones))}")
+
+
+def _elegir_macro() -> str | None:
+    """Pregunta que macro calibrar."""
+    print("\n  Que macro?")
+    print("    1) Nether Wart")
+    print("    2) Cocoa Beans")
+    print("    0) Volver")
+    return {"1": "nether_wart", "2": "cocoa_beans"}.get(_preguntar({"0", "1", "2"}, "1"))
+
+
+def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
+    """Menu interactivo, para cuando se abre el .exe con doble clic.
+
+    Sin esto los diagnosticos solo existian como argumentos de linea de
+    comandos, que es justo lo que no tienes al abrir el programa haciendo clic.
+    """
+    enable_utf8_console()
+    setup_logging(verbose=verbose)
+    print(_BANNER)
+    print(f"  HyMacro v{__version__} - Hypixel Garden Automation Tool")
+
+    while True:
+        print(_MENU)
+        eleccion = _preguntar({"0", "1", "2", "3", "4", "5"}, "1")
+
+        if eleccion == "0":
+            print("  Hasta luego!")
+            return 0
+        if eleccion == "1":
+            try:
+                return HyMacroApp(config_path).run()
+            except ConfigError as exc:
+                print(f"  [ERROR] {exc}")
+                return 1
+        if eleccion == "2":
+            macro_type = _elegir_macro()
+            if macro_type:
+                calibrate(config_path, macro_type)
+        elif eleccion == "3":
+            test_move(config_path)
+        elif eleccion == "4":
+            test_chat(config_path)
+        elif eleccion == "5":
+            check_config(config_path)
+
+        try:
+            input("\n  Pulsa Enter para volver al menu...")
+        except (EOFError, KeyboardInterrupt):
+            return 0
+
+
 def _load_for_diagnostic(config_path: str | None) -> ConfigManager | None:
     enable_utf8_console()
     if sys.platform != "win32":
