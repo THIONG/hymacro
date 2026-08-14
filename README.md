@@ -229,12 +229,15 @@ Loader 0.19.3 or newer for Minecraft 26.1.2.
 A route is built by standing somewhere and saying what happens on the way there:
 
 ```
+                           /hymacro new wart
 stand on the first block   /hymacro point
 stand on the second block  /hymacro point
                            /hymacro hold d
                            /hymacro spam attack 4
                            F9
 ```
+
+`/hymacro` on its own prints every command, in colour, in game.
 
 A leg ends when you reach its point, not after a measured time, so there is
 nothing to calibrate and nothing to drift.
@@ -249,9 +252,12 @@ last one:
 
 ```
 /hymacro new orchard
-/hymacro routes
+/hymacro list
 /hymacro load wart
 ```
+
+`/hymacro share` copies one to your clipboard as a single line to send to
+someone, and `/hymacro import <name>` reads one back.
 
 See [docs/fabric-mod.md](docs/fabric-mod.md).
 

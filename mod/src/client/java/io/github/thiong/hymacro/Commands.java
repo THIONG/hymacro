@@ -7,14 +7,15 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.Minecraft;
 
 /**
- * Building a route by saying what happens, rather than by being watched doing it.
+ * Building a macro by saying what happens, rather than by being watched doing it.
  *
  * <p>Declaring beats recording for this: a recording captures the hesitations
  * too, and a single leg cannot be changed without walking the whole thing again.
@@ -24,8 +25,8 @@ import net.minecraft.network.chat.Component;
  * <p>Chat commands rather than a screen of buttons. A Minecraft GUI is the part
  * of the API that shifts most between versions, and this one publishes no
  * mappings to check against; commands give the same authoring with far less of
- * it exposed, and tab completion for free. What the route looks like is answered
- * in the world by {@link Boxes} and {@link Labels} instead of by a wall of chat.
+ * it exposed, and tab completion for free. What a macro looks like is answered
+ * in the world by {@link RouteView} rather than by a wall of chat.
  */
 public final class Commands {
 	private Commands() {
@@ -33,8 +34,6 @@ public final class Commands {
 
 	public interface Host {
 		RouteBook book();
-
-		Route route();
 
 		void play();
 
@@ -53,6 +52,9 @@ public final class Commands {
 	public static void register(Host host) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) ->
 			dispatcher.register(literal("hymacro")
+				.executes(context -> help(context, host))
+				.then(literal("help")
+					.executes(context -> help(context, host)))
 				.then(literal("point")
 					.executes(context -> addPoint(context, host)))
 				.then(literal("hold")
@@ -77,7 +79,7 @@ public final class Commands {
 				.then(literal("warp")
 					.then(argument("command", StringArgumentType.greedyString())
 						.executes(context -> setWarp(context, host))))
-				.then(literal("routes")
+				.then(literal("list")
 					.executes(context -> listRoutes(context, host)))
 				.then(literal("new")
 					.then(argument("name", StringArgumentType.word())
@@ -91,6 +93,11 @@ public final class Commands {
 				.then(literal("delete")
 					.then(argument("name", StringArgumentType.word())
 						.executes(context -> deleteRoute(context, host))))
+				.then(literal("share")
+					.executes(context -> share(context, host)))
+				.then(literal("import")
+					.then(argument("name", StringArgumentType.word())
+						.executes(context -> importRoute(context, host))))
 				.then(literal("play")
 					.executes(context -> {
 						host.play();
@@ -103,13 +110,70 @@ public final class Commands {
 					}))));
 	}
 
-	private static void say(CommandContext<FabricClientCommandSource> context, String message) {
-		context.getSource().sendFeedback(Component.literal("[HyMacro] " + message));
+	/**
+	 * The macro in hand, complaining if there is none.
+	 *
+	 * <p>Marking a point before creating a macro used to quietly invent one. A
+	 * point only means something as part of a named macro, so it now says so.
+	 */
+	private static Route active(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = host.book().active();
+		if (route == null) {
+			Chat.error(context.getSource(), "No macro yet.");
+			Chat.entry(context.getSource(), "/hymacro new <name>", "creates one");
+		}
+		return route;
+	}
+
+	private static int help(CommandContext<FabricClientCommandSource> context, Host host) {
+		FabricClientCommandSource source = context.getSource();
+		RouteBook book = host.book();
+
+		Chat.heading(source, "HyMacro");
+		Chat.note(source, "A leg ends when you arrive, so nothing needs timing.");
+
+		Chat.heading(source, "Build");
+		Chat.entry(source, "/hymacro new <name>", "start a macro");
+		Chat.entry(source, "/hymacro point", "mark where you stand and look");
+		Chat.entry(source, "/hymacro hold <key>", "hold it until that point");
+		Chat.entry(source, "/hymacro spam <key> [ticks]", "click it repeatedly instead");
+		Chat.entry(source, "/hymacro undo", "drop the last point");
+		Chat.entry(source, "/hymacro clear", "start this macro over");
+		Chat.note(source, "Keys: w a s d space shift ctrl attack use");
+		Chat.note(source, "Mark the point first, then say what happens on the way to it.");
+
+		Chat.heading(source, "Run");
+		Chat.entry(source, "F9  /hymacro play", "start or stop");
+		Chat.entry(source, "F12 /hymacro stop", "stop");
+		Chat.entry(source, "/hymacro warp <command>", "sent at the end of a lap");
+		Chat.entry(source, "/hymacro radius <blocks>", "how close counts as arrived");
+
+		Chat.heading(source, "Macros");
+		Chat.entry(source, "/hymacro list", "every macro you have");
+		Chat.entry(source, "/hymacro load <name>", "switch to one");
+		Chat.entry(source, "/hymacro rename <name>", "rename this one");
+		Chat.entry(source, "/hymacro delete <name>", "remove one");
+		Chat.entry(source, "/hymacro share", "copy this one to your clipboard");
+		Chat.entry(source, "/hymacro import <name>", "paste one from your clipboard");
+		Chat.entry(source, "/hymacro show <true|false>", "draw it in the world");
+
+		Route route = book.active();
+		Chat.heading(source, "Now");
+		if (route == null) {
+			Chat.note(source, "No macro yet. Start with /hymacro new <name>");
+		} else {
+			Chat.bullet(source, book.activeName() + ", " + route.waypoints.size() + " points", true);
+		}
+		return 1;
 	}
 
 	private static int addPoint(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+
 		FabricClientCommandSource source = context.getSource();
-		Route route = host.route();
 		route.waypoints.add(new Route.Waypoint(
 			source.getPlayer().getX(),
 			source.getPlayer().getY(),
@@ -118,23 +182,28 @@ public final class Commands {
 			source.getPlayer().getXRot(),
 			new ArrayList<>()));
 		host.book().save();
-		say(context, "Point " + route.waypoints.size()
-			+ " set. Say what happens on the way to it with /hymacro hold or /hymacro spam.");
+
+		Chat.ok(source, "Point " + route.waypoints.size() + " set.");
+		Chat.note(source, "Now say what happens on the way to it: /hymacro hold or /hymacro spam");
 		return 1;
 	}
 
 	/** Attaches work to the leg that ends at the last point set. */
 	private static int addAction(
 			CommandContext<FabricClientCommandSource> context, Host host, String mode, int interval) {
-		Route route = host.route();
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
 		if (route.isEmpty()) {
-			say(context, "Set a point first with /hymacro point.");
+			Chat.error(context.getSource(), "Set a point first with /hymacro point.");
 			return 0;
 		}
 
 		String key = StringArgumentType.getString(context, "key").toLowerCase();
 		if (!Keys.isKnown(key)) {
-			say(context, "Unknown key " + key + ". Try one of " + String.join(", ", Keys.RECORDABLE));
+			Chat.error(context.getSource(), "Unknown key " + key + ".");
+			Chat.note(context.getSource(), "Try: w a s d space shift ctrl attack use");
 			return 0;
 		}
 
@@ -147,62 +216,89 @@ public final class Commands {
 			last.x, last.y, last.z, last.yaw, last.pitch, actions));
 		host.book().save();
 
-		say(context, Route.SPAM.equals(mode)
+		Chat.ok(context.getSource(), Route.SPAM.equals(mode)
 			? "Leg " + route.waypoints.size() + ": spam " + key + " every " + interval + " ticks."
 			: "Leg " + route.waypoints.size() + ": hold " + key + ".");
 		return 1;
 	}
 
 	private static int undo(CommandContext<FabricClientCommandSource> context, Host host) {
-		Route route = host.route();
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
 		if (route.isEmpty()) {
-			say(context, "Nothing to undo.");
+			Chat.error(context.getSource(), "Nothing to undo.");
 			return 0;
 		}
 		route.waypoints.remove(route.waypoints.size() - 1);
 		host.book().save();
-		say(context, "Removed the last point, " + route.waypoints.size() + " left.");
+		Chat.ok(context.getSource(),
+			"Removed the last point, " + route.waypoints.size() + " left.");
 		return 1;
 	}
 
 	private static int clear(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
 		host.stop();
-		Route route = host.route();
 		route.waypoints.clear();
 		host.book().save();
-		say(context, "Route '" + host.book().activeName() + "' cleared.");
+		Chat.ok(context.getSource(), "'" + host.book().activeName() + "' cleared.");
 		return 1;
 	}
 
 	private static int setVisible(CommandContext<FabricClientCommandSource> context, Host host) {
-		Route route = host.route();
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
 		route.visible = BoolArgumentType.getBool(context, "visible");
 		host.book().save();
-		say(context, route.visible ? "Route shown in the world." : "Route hidden.");
+		Chat.ok(context.getSource(),
+			route.visible ? "Drawn in the world." : "Hidden.");
 		return 1;
 	}
 
 	private static int setRadius(CommandContext<FabricClientCommandSource> context, Host host) {
-		Route route = host.route();
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
 		route.arrivalRadius = IntegerArgumentType.getInteger(context, "blocks");
 		host.book().save();
-		say(context, "A leg now ends within " + route.arrivalRadius + " blocks of its point.");
+		Chat.ok(context.getSource(),
+			"A leg now ends within " + (int) route.arrivalRadius + " blocks of its point.");
 		return 1;
 	}
 
 	private static int setWarp(CommandContext<FabricClientCommandSource> context, Host host) {
-		Route route = host.route();
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
 		route.warpCommand = StringArgumentType.getString(context, "command");
 		host.book().save();
-		say(context, "Warp set to /" + route.warpCommand + " after each lap.");
+		Chat.ok(context.getSource(), "Warp set to /" + route.warpCommand + " after each lap.");
 		return 1;
 	}
 
 	private static int listRoutes(CommandContext<FabricClientCommandSource> context, Host host) {
+		FabricClientCommandSource source = context.getSource();
 		RouteBook book = host.book();
-		say(context, book.names().size() + " saved:");
+		if (book.isEmpty()) {
+			Chat.error(source, "No macros yet.");
+			Chat.entry(source, "/hymacro new <name>", "creates one");
+			return 0;
+		}
+
+		Chat.heading(source, "Macros");
 		for (String name : book.names()) {
-			say(context, (name.equals(book.activeName()) ? "  > " : "    ") + name);
+			Route route = book.route(name);
+			Chat.bullet(source, name + "  " + route.waypoints.size() + " points",
+				name.equals(book.activeName()));
 		}
 		return 1;
 	}
@@ -211,13 +307,14 @@ public final class Commands {
 		String name = StringArgumentType.getString(context, "name");
 		RouteBook book = host.book();
 		if (book.has(name)) {
-			say(context, "'" + name + "' already exists. Load it, or pick another name.");
+			Chat.error(context.getSource(), "'" + name + "' already exists.");
 			return 0;
 		}
 		host.stop();
 		book.put(name, new Route());
 		book.save();
-		say(context, "Started '" + name + "'. Stand somewhere and use /hymacro point.");
+		Chat.ok(context.getSource(), "Started '" + name + "'.");
+		Chat.note(context.getSource(), "Stand where the first leg begins and use /hymacro point");
 		return 1;
 	}
 
@@ -225,25 +322,30 @@ public final class Commands {
 		String name = StringArgumentType.getString(context, "name");
 		RouteBook book = host.book();
 		if (!book.select(name)) {
-			say(context, "No route called '" + name + "'. /hymacro routes lists them.");
+			Chat.error(context.getSource(), "No macro called '" + name + "'.");
+			Chat.entry(context.getSource(), "/hymacro list", "shows them");
 			return 0;
 		}
 		host.stop();
 		book.save();
-		say(context, "Loaded '" + name + "', " + host.route().waypoints.size() + " points.");
+		Chat.ok(context.getSource(),
+			"Loaded '" + name + "', " + book.active().waypoints.size() + " points.");
 		return 1;
 	}
 
 	private static int renameRoute(CommandContext<FabricClientCommandSource> context, Host host) {
+		if (active(context, host) == null) {
+			return 0;
+		}
 		String name = StringArgumentType.getString(context, "name");
 		RouteBook book = host.book();
 		String was = book.activeName();
 		if (!book.rename(was, name)) {
-			say(context, "'" + name + "' is already taken.");
+			Chat.error(context.getSource(), "'" + name + "' is already taken.");
 			return 0;
 		}
 		book.save();
-		say(context, "'" + was + "' is now '" + name + "'.");
+		Chat.ok(context.getSource(), "'" + was + "' is now '" + name + "'.");
 		return 1;
 	}
 
@@ -254,11 +356,63 @@ public final class Commands {
 			host.stop();
 		}
 		if (!book.remove(name)) {
-			say(context, "No route called '" + name + "'.");
+			Chat.error(context.getSource(), "No macro called '" + name + "'.");
 			return 0;
 		}
 		book.save();
-		say(context, "Deleted '" + name + "'. Now on '" + book.activeName() + "'.");
+		Chat.ok(context.getSource(), "Deleted '" + name + "'.");
+		if (book.activeName() != null) {
+			Chat.note(context.getSource(), "Now on '" + book.activeName() + "'.");
+		}
+		return 1;
+	}
+
+	private static int share(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		if (route.isEmpty()) {
+			Chat.error(context.getSource(), "Nothing to share, this macro has no points.");
+			return 0;
+		}
+
+		try {
+			Minecraft.getInstance().keyboardHandler.setClipboard(Share.encode(route));
+		} catch (IOException failed) {
+			Chat.error(context.getSource(), "Could not pack the macro: " + failed.getMessage());
+			return 0;
+		}
+
+		Chat.ok(context.getSource(), "'" + host.book().activeName() + "' copied to your clipboard.");
+		Chat.note(context.getSource(),
+			"Send it to a friend. They run /hymacro import <name> with it copied.");
+		return 1;
+	}
+
+	private static int importRoute(CommandContext<FabricClientCommandSource> context, Host host) {
+		String name = StringArgumentType.getString(context, "name");
+		RouteBook book = host.book();
+		if (book.has(name)) {
+			Chat.error(context.getSource(), "'" + name + "' already exists, pick another name.");
+			return 0;
+		}
+
+		Route imported;
+		try {
+			imported = Share.decode(Minecraft.getInstance().keyboardHandler.getClipboard());
+		} catch (IOException failed) {
+			Chat.error(context.getSource(), "Nothing to import: " + failed.getMessage());
+			Chat.note(context.getSource(), "Copy the whole code first, then run this.");
+			return 0;
+		}
+
+		host.stop();
+		book.put(name, imported);
+		book.save();
+		Chat.ok(context.getSource(),
+			"Imported '" + name + "', " + imported.waypoints.size() + " points.");
+		Chat.note(context.getSource(), "It is drawn in the world. Check it fits your plot.");
 		return 1;
 	}
 }

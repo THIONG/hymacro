@@ -44,7 +44,7 @@ public final class RouteView {
 	}
 
 	private static void draw(Route route) {
-		if (!route.visible || route.isEmpty()) {
+		if (route == null || !route.visible || route.isEmpty()) {
 			return;
 		}
 

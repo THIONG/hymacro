@@ -25,22 +25,31 @@ public final class RouteBook {
 	private static final String DEFAULT = "default";
 
 	private final Map<String, Route> routes = new LinkedHashMap<>();
-	private String active = DEFAULT;
+	private String active;
 
 	public static Path path() {
 		return FabricLoader.getInstance().getConfigDir().resolve("hymacro-routes.json");
+	}
+
+	/** The macro in hand, or null when none has been created yet. */
+	public Route active() {
+		return active == null ? null : routes.get(active);
 	}
 
 	public String activeName() {
 		return active;
 	}
 
-	public Route active() {
-		return routes.computeIfAbsent(active, name -> new Route());
+	public boolean isEmpty() {
+		return routes.isEmpty();
 	}
 
 	public List<String> names() {
 		return new ArrayList<>(routes.keySet());
+	}
+
+	public Route route(String name) {
+		return routes.get(name);
 	}
 
 	public boolean has(String name) {
@@ -71,7 +80,7 @@ public final class RouteBook {
 		}
 		routes.clear();
 		routes.putAll(rebuilt);
-		if (active.equals(from)) {
+		if (from.equals(active)) {
 			active = to;
 		}
 		return true;
@@ -82,8 +91,8 @@ public final class RouteBook {
 			return false;
 		}
 		routes.remove(name);
-		if (active.equals(name)) {
-			active = routes.isEmpty() ? DEFAULT : routes.keySet().iterator().next();
+		if (name.equals(active)) {
+			active = routes.isEmpty() ? null : routes.keySet().iterator().next();
 		}
 		return true;
 	}
@@ -129,7 +138,7 @@ public final class RouteBook {
 			JsonObject root = GSON.fromJson(
 				Files.readString(old, StandardCharsets.UTF_8), JsonObject.class);
 			if (root != null) {
-				routes.put(DEFAULT, Route.fromJson(root));
+				put(DEFAULT, Route.fromJson(root));
 				save();
 				HyMacroClient.LOGGER.info("Carried the previous route over as '{}'", DEFAULT);
 			}
@@ -145,7 +154,9 @@ public final class RouteBook {
 		}
 
 		JsonObject root = new JsonObject();
-		root.addProperty("active", active);
+		if (active != null) {
+			root.addProperty("active", active);
+		}
 		root.add("routes", saved);
 
 		try {

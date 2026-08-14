@@ -28,14 +28,19 @@ stand on the second block  /hymacro point
 
 | Command | Effect |
 |---------|--------|
+| `/hymacro` | The whole list, in colour, in game |
+| `/hymacro new <name>` | Start a macro |
 | `/hymacro point` | Marks where you stand, facing where you face |
 | `/hymacro hold <key>` | Hold a key on the way to the last point |
 | `/hymacro spam <key> [ticks]` | Click it repeatedly instead of holding |
 | `/hymacro undo`, `clear` | Drop the last point, or start over |
 | `/hymacro radius <blocks>` | How close counts as arrived |
 | `/hymacro warp <command>` | What to send at the end of a lap |
-| `/hymacro show <true\|false>` | Draw the route in the world |
+| `/hymacro show <true\|false>` | Draw the macro in the world |
 | `/hymacro play`, `stop` | Also on F9 and F12 |
+
+A point can only be marked once a macro exists. A point outside one means
+nothing, and inventing an unnamed macro to hold it just hides the mistake.
 
 ## Seeing it rather than reading it
 
@@ -62,14 +67,24 @@ kept by name in `config/hymacro-routes.json`, one of them current at a time.
 
 | Command | Effect |
 |---------|--------|
-| `/hymacro routes` | List them, marking the current one |
-| `/hymacro new <name>` | Start an empty route and switch to it |
+| `/hymacro list` | List them, marking the current one |
 | `/hymacro load <name>` | Switch to a saved one |
 | `/hymacro rename <name>` | Rename the current one |
 | `/hymacro delete <name>` | Remove one |
 
 Everything is written as it changes, so there is no save step. A single route
 left by an earlier version is carried over under the name `default`.
+
+## Sending one to someone
+
+`/hymacro share` puts the current macro on the clipboard as one line, and
+`/hymacro import <name>` reads one back.
+
+It travels as a code rather than as its own JSON because chat takes 256
+characters and a macro of ten points is thousands. Compressed and encoded, the
+same macro fits in a single message anywhere. The code is marked with its
+format, so one from a later version says where it came from instead of failing
+as corrupt.
 
 ## Why legs end on arrival
 

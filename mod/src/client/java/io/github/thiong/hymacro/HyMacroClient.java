@@ -34,8 +34,10 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		RouteView.register(this::route);
 		ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
 
-		LOGGER.info("HyMacro ready. Build a route with /hymacro, F9 plays it, F12 stops.");
-		LOGGER.info("Route '{}' has {} points", book.activeName(), route().waypoints.size());
+		LOGGER.info("HyMacro ready. Run /hymacro for the commands, F9 plays, F12 stops.");
+		if (route() != null) {
+			LOGGER.info("Macro '{}' has {} points", book.activeName(), route().waypoints.size());
+		}
 	}
 
 	@Override
@@ -43,8 +45,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		return book;
 	}
 
-	@Override
-	public Route route() {
+	private Route route() {
 		return book.active();
 	}
 
@@ -55,15 +56,17 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			stop();
 			return;
 		}
-		if (route().isEmpty()) {
-			LOGGER.warn("No route yet. Stand somewhere and use /hymacro point");
+
+		Route route = route();
+		if (route == null || route.isEmpty()) {
+			LOGGER.warn("No macro to play. Build one with /hymacro");
 			return;
 		}
 		if (client.player == null) {
 			return;
 		}
-		player = new RoutePlayer(client, route());
-		LOGGER.info("Following '{}', {} points", book.activeName(), route().waypoints.size());
+		player = new RoutePlayer(client, route);
+		LOGGER.info("Following '{}', {} points", book.activeName(), route.waypoints.size());
 	}
 
 	@Override
