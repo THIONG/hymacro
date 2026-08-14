@@ -64,8 +64,8 @@ jobs:
       - name: Probe the API
         if: steps.build.outcome != 'success'
         env:
-          PROBE_LIST: "client/.*[Gg]izmo[A-Za-z]*[.]class$"
-          PROBE_JAVAP: "rendering/v1/level/LevelRenderEvents[.]class$ rendering/v1/level/LevelRenderContext[.]class$ rendering/v1/level/AbstractLevelRenderContext[.]class$"
+          PROBE_LIST: "^net/minecraft/client/renderer/gizmos/.*[.]class$"
+          PROBE_JAVAP: "level/LevelRenderEvents[$]AfterTranslucentFeatures[.]class$ level/LevelTerrainRenderContext[.]class$ renderer/gizmos/DrawableGizmoPrimitives[.]class$"
         run: |
           jars=$(find ~/.gradle -name '*.jar' 2>/dev/null)
           {
