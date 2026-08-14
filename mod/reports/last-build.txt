@@ -1,5 +1,5 @@
 outcome: failure
-commit: 952c5fe9f273357104967c1b8937690ca7c61548
+commit: c15188df0ac3975a0cc9c6170f73afa4a906ac70
 ----
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
@@ -11,35 +11,25 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
                                                   ^
   symbol:   class WorldRenderEvents
   location: package net.fabricmc.fabric.api.client.rendering.v1
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:10: error: cannot find symbol
-import net.minecraft.client.renderer.RenderType;
-                                    ^
-  symbol:   class RenderType
-  location: package net.minecraft.client.renderer
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:34: error: package WorldRenderEvents does not exist
 		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
 		                 ^
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:35: error: package WorldRenderEvents does not exist
 		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
 		                 ^
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:48: error: cannot find symbol
-			VertexConsumer lines = consumers.getBuffer(RenderType.lines());
-			                                           ^
-  symbol:   variable RenderType
-  location: class Boxes
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:56: error: cannot find symbol
-				LevelRenderer.renderLineBox(
+				ShapeRenderer.renderLineBox(
 				             ^
   symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
-  location: class LevelRenderer
+  location: class ShapeRenderer
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:91: error: cannot find symbol
-			LevelRenderer.renderLineBox(
+			ShapeRenderer.renderLineBox(
 			             ^
   symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
-  location: class LevelRenderer
+  location: class ShapeRenderer
 --
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724007477.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724111969.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -58,43 +48,43 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
                                                     ^
     symbol:   class WorldRenderEvents
     location: package net.fabricmc.fabric.api.client.rendering.v1
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:10: error: cannot find symbol
-  import net.minecraft.client.renderer.RenderType;
-                                      ^
-    symbol:   class RenderType
-    location: package net.minecraft.client.renderer
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:48: error: cannot find symbol
-  			VertexConsumer lines = consumers.getBuffer(RenderType.lines());
-  			                                           ^
-    symbol:   variable RenderType
-    location: class Boxes
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:56: error: cannot find symbol
-  				LevelRenderer.renderLineBox(
+  				ShapeRenderer.renderLineBox(
   				             ^
     symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
-    location: class LevelRenderer
+    location: class ShapeRenderer
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:91: error: cannot find symbol
-  			LevelRenderer.renderLineBox(
+  			ShapeRenderer.renderLineBox(
   			             ^
     symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
-    location: class LevelRenderer
+    location: class ShapeRenderer
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:34: error: package WorldRenderEvents does not exist
   		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
   		                 ^
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:35: error: package WorldRenderEvents does not exist
   		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
   		                 ^
-  8 errors
+  6 errors
 
 ----
-			LevelRenderer.renderLineBox(
+		                 ^
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:35: error: package WorldRenderEvents does not exist
+		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+		                 ^
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:56: error: cannot find symbol
+				ShapeRenderer.renderLineBox(
+				             ^
+  symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+  location: class ShapeRenderer
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:91: error: cannot find symbol
+			ShapeRenderer.renderLineBox(
 			             ^
   symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
-  location: class LevelRenderer
-8 errors
+  location: class ShapeRenderer
+6 errors
 
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724007477.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724111969.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -113,39 +103,29 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
                                                     ^
     symbol:   class WorldRenderEvents
     location: package net.fabricmc.fabric.api.client.rendering.v1
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:10: error: cannot find symbol
-  import net.minecraft.client.renderer.RenderType;
-                                      ^
-    symbol:   class RenderType
-    location: package net.minecraft.client.renderer
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:48: error: cannot find symbol
-  			VertexConsumer lines = consumers.getBuffer(RenderType.lines());
-  			                                           ^
-    symbol:   variable RenderType
-    location: class Boxes
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:56: error: cannot find symbol
-  				LevelRenderer.renderLineBox(
+  				ShapeRenderer.renderLineBox(
   				             ^
     symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
-    location: class LevelRenderer
+    location: class ShapeRenderer
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:91: error: cannot find symbol
-  			LevelRenderer.renderLineBox(
+  			ShapeRenderer.renderLineBox(
   			             ^
     symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
-    location: class LevelRenderer
+    location: class ShapeRenderer
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:34: error: package WorldRenderEvents does not exist
   		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
   		                 ^
   /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:35: error: package WorldRenderEvents does not exist
   		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
   		                 ^
-  8 errors
+  6 errors
 
 * Try:
 > Check your code and dependencies to fix the compilation error(s)
 > Run with --scan to get full insights from a Build Scan (powered by Develocity).
 
-BUILD FAILED in 48s
+BUILD FAILED in 27s
 2 actionable tasks: 2 executed
 
 ==== probe ====
@@ -153,14 +133,8 @@ BUILD FAILED in 48s
 -- ShapeRenderer
    [minecraft-clientonly-deobf-26.1.2.jar]
      net/minecraft/client/renderer/ShapeRenderer.class
--- RenderType
-   [minecraft-clientonly-deobf-26.1.2.jar]
-     net/minecraft/client/renderer/rendertype/RenderTypes.class
-         public static final net.minecraft.client.renderer.rendertype.RenderType LINES;
-         public static final net.minecraft.client.renderer.rendertype.RenderType LINES_TRANSLUCENT;
-         public static final net.minecraft.client.renderer.rendertype.RenderType SECONDARY_BLOCK_OUTLINE;
-         public static net.minecraft.client.renderer.rendertype.RenderType lines();
-     net/minecraft/client/renderer/rendertype/RenderType.class
-         public static final int BIG_BUFFER_SIZE;
-         public static final int SMALL_BUFFER_SIZE;
-         public static final int TRANSIENT_BUFFER_SIZE;
+       Compiled from "ShapeRenderer.java"
+       public class net.minecraft.client.renderer.ShapeRenderer {
+         public net.minecraft.client.renderer.ShapeRenderer();
+         public static void renderShape(com.mojang.blaze3d.vertex.PoseStack, com.mojang.blaze3d.vertex.VertexConsumer, net.minecraft.world.phys.shapes.VoxelShape, double, double, double, int, float);
+       }
