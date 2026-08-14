@@ -101,6 +101,9 @@ def leer_opcion(opciones: set[str], por_defecto: str) -> str:
             if tecla in ("\r", "\n"):
                 print(por_defecto)
                 return por_defecto
+            if tecla in ("\x1b", "\x03") and VOLVER in opciones:  # ESC o Ctrl+C
+                print(VOLVER)
+                return VOLVER
             if tecla == "\x03":
                 print("")
                 return "0"

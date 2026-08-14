@@ -16,7 +16,6 @@ from .config import (
     MACRO_TYPES,
     ConfigError,
     ConfigManager,
-    app_dir,
     ensure_config_exists,
     resolve_config_path,
 )
@@ -84,28 +83,17 @@ def enable_utf8_console() -> None:
 
 
 def setup_logging(verbose: bool = False) -> None:
-    """Log detallado al fichero, solo avisos por consola.
+    """Solo avisos por consola; no se escribe ningun fichero.
 
-    El flujo normal ya se imprime bonito, asi que duplicarlo en el log de
-    consola solo ensuciaba la pantalla en la v2.
+    El log en disco no aportaba nada: los errores que importan ya salen en
+    pantalla, y el fichero solo iba creciendo al lado del ejecutable.
     """
-    log_path = app_dir() / "hymacro.log"
-    handlers: list[logging.Handler] = []
-    try:
-        file_handler = logging.FileHandler(log_path, encoding="utf-8")
-        file_handler.setLevel(logging.DEBUG)
-        handlers.append(file_handler)
-    except OSError:  # pragma: no cover - carpeta de solo lectura
-        pass
-
     console = logging.StreamHandler()
     console.setLevel(logging.DEBUG if verbose else logging.WARNING)
-    handlers.append(console)
-
     logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-        handlers=handlers,
+        level=logging.DEBUG if verbose else logging.WARNING,
+        format="%(levelname)s: %(message)s",
+        handlers=[console],
         force=True,
     )
 

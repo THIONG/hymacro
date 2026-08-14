@@ -63,7 +63,7 @@ cd hymacro && uv run hymacro
 | **F9** | Nether Wart — serpentina D→W→A→W, 4 idas y vueltas (8 filas) por warp |
 | **F10** | Cobblestone — minado continuo con ciclo hub → isla |
 | **F12** | **DETENER** el macro en marcha |
-| **ESC** | Volver al menú (en la ventana de HyMacro, no en el juego) |
+| **ESC** | Volver atrás: cierra menús y devuelve al menú desde el macro |
 | **Ctrl+C** | Salir de HyMacro |
 
 Al detenerse (por hotkey, por failsafe o al salir), HyMacro suelta todas las
@@ -291,7 +291,7 @@ Sube `safety.mouse_failsafe_px` o ponlo en `false`.
 **Los movimientos se desincronizan** — ajusta `timing_ms` para tu ping y
 recalibra la posición inicial en el garden.
 
-Los logs completos están en `hymacro.log`, junto al ejecutable.
+Para ver los detalles de un fallo, arranca con `--verbose`.
 
 ## Consideraciones
 
