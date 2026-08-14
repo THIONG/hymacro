@@ -6,7 +6,9 @@ coincide con lo que hay debajo, el banner se repinta encima del menu.
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 
 import pytest
 
@@ -95,8 +97,11 @@ def test_el_salto_del_menu_coincide_con_las_filas_escritas(
     repintado sube justo esa cantidad mas el alto del banner. Si no cuadra, la
     ola se dibuja encima de otra cosa.
     """
+
     import hymacro.app as app
 
+    # Terminal alta: si no, salta el guardia de scroll y no se repinta nada.
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((200, 200)))
     monkeypatch.setattr(app, "_consola_interactiva", lambda: False)
     monkeypatch.setattr(app, "_preguntar", lambda opciones, defecto: "0")
 
@@ -119,3 +124,29 @@ def test_el_salto_del_menu_coincide_con_las_filas_escritas(
     assert int(subida.group(1)) == filas_totales, (
         "el salto no coincide con las filas realmente escritas: el banner se repintaria fuera de su sitio"
     )
+
+
+def test_no_repinta_si_el_banner_se_ha_ido_por_scroll(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Si el banner ya no cabe en pantalla, subir el cursor caeria en medio de
+    otra cosa y la repintariamos con el banner."""
+
+    init_colors("always")
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((80, 10)))
+
+    BannerWave(BANNER).tick(lineas_debajo=20)  # 3 + 20 no cabe en 10 filas
+
+    assert capsys.readouterr().out == ""
+
+
+def test_repinta_si_cabe_de_sobra(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+
+    init_colors("always")
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((80, 50)))
+
+    BannerWave(BANNER).tick(lineas_debajo=20)
+
+    assert "\x1b[23A" in capsys.readouterr().out

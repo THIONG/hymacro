@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import shutil
 import sys
 import time
 
@@ -126,6 +127,19 @@ def _linea_ola(linea: str, fila: int, fase: float, paso_fila: float) -> str:
     return "".join(partes)
 
 
+def clear_screen() -> None:
+    """Limpia la pantalla y el scrollback, y sube el cursor arriba del todo.
+
+    Sin ANSI no se hace nada: es preferible dejar la consola con historial a
+    escupir secuencias de escape por la salida.
+    """
+    if not _enabled:
+        return
+    # 2J borra lo visible, 3J el historial de scroll, H lleva el cursor al origen.
+    sys.stdout.write("\x1b[H\x1b[2J\x1b[3J")
+    sys.stdout.flush()
+
+
 class BannerWave:
     """Repinta el banner en su sitio mientras el resto de la pantalla sigue.
 
@@ -171,8 +185,14 @@ class BannerWave:
         """
         if not _enabled:
             return
-        fase = self._fase()
         salto = self.alto + max(0, lineas_debajo)
+
+        # Si el banner ya se ha ido por arriba al hacer scroll, subir el cursor
+        # aterrizaria en medio de otra cosa y la repintariamos con el banner.
+        if salto >= shutil.get_terminal_size(fallback=(80, 24)).lines:
+            return
+
+        fase = self._fase()
         partes = [f"\x1b[s\x1b[{salto}A"]
         for fila, linea in enumerate(self._lineas):
             partes.append(f"\r{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")

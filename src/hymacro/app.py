@@ -23,6 +23,7 @@ from .console import (
     WHITE,
     YELLOW,
     BannerWave,
+    clear_screen,
     colors_enabled,
     init_colors,
     paint,
@@ -104,12 +105,25 @@ class HyMacroApp:
         self._keyboard: Any = None
         init_colors(self.config.get_str("general", "colors", default="auto"))
         self._animar_banner = self.config.get_bool("general", "banner_animation", default=True)
+        self._ola: BannerWave | None = None
+        # Filas impresas desde que acaba el banner: es lo que necesita el
+        # repintado para saber cuanto subir el cursor.
+        self._lineas_bajo_banner = 0
 
     # --- salida por consola ---
 
     def _say(self, message: str) -> None:
         with self._print_lock:
             print(message, flush=True)
+            self._lineas_bajo_banner += message.count("\n") + 1
+
+    def _tick_banner(self) -> None:
+        """Avanza la ola. Coge el mismo lock que _say: si otro hilo imprime a
+        la vez que movemos el cursor, la pantalla se descuadra."""
+        if self._ola is None:
+            return
+        with self._print_lock:
+            self._ola.tick(self._lineas_bajo_banner)
 
     def _handle_event(self, event: MacroEvent) -> None:
         prefijo, color = {
@@ -121,7 +135,13 @@ class HyMacroApp:
         self._say(f"{paint(prefijo, BOLD, color)} {event.message}")
 
     def display_banner(self) -> None:
-        print_rainbow(_BANNER, animate=self._animar_banner)
+        clear_screen()
+        if colors_enabled() and self._animar_banner:
+            self._ola = BannerWave(_BANNER)
+            self._ola.draw()
+        else:
+            print_rainbow(_BANNER, animate=False)
+        self._lineas_bajo_banner = 0
         self._say(f"  HyMacro v{__version__} - Hypixel Garden Automation Tool")
         self._say(f"  Config: {self.config.config_path}")
         if self.config.created_default:
@@ -209,9 +229,13 @@ class HyMacroApp:
 
         loop_delay = self.config.get_float("general", "loop_delay_ms", default=100) / 1000.0
         loop_delay = max(0.01, loop_delay)
+        if self._ola is not None:
+            # A 100 ms la ola se ve a saltos; el bucle en reposo no cuesta nada.
+            loop_delay = min(loop_delay, 1 / 15)
 
         try:
             while self._alive:
+                self._tick_banner()
                 time.sleep(loop_delay)
         except KeyboardInterrupt:
             self._say("")
@@ -339,6 +363,19 @@ def _elegir_macro() -> str | None:
     return {"1": "nether_wart", "2": "cocoa_beans"}.get(_preguntar({"0", "1", "2"}, "1"))
 
 
+def _modo_color(config_path: str | None) -> str:
+    """Lee general.colors del config para que el menu lo respete.
+
+    El menu se dibuja antes de construir HyMacroApp, asi que si no se mira aqui
+    el ajuste del usuario solo tendria efecto a partir de la pantalla del macro.
+    Un config roto no debe impedir que salga el menu: se cae a 'auto'.
+    """
+    try:
+        return ConfigManager(config_path, auto_create=False).get_str("general", "colors", default="auto")
+    except ConfigError:
+        return "auto"
+
+
 def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
     """Menu interactivo, para cuando se abre el .exe con doble clic.
 
@@ -348,12 +385,11 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
     enable_utf8_console()
     setup_logging(verbose=verbose)
 
-    # El menu se dibuja antes de cargar la configuracion, asi que aqui se usa
-    # 'auto'; HyMacroApp vuelve a inicializar con lo que diga el config.json.
-    init_colors("auto")
+    init_colors(_modo_color(config_path))
     opciones = {"0", "1", "2", "3", "4", "5"}
 
     while True:
+        clear_screen()
         ola = BannerWave(_BANNER)
         ola.draw()
         cabecera = f"{paint(f'  HyMacro v{__version__}', BOLD, WHITE)} - Hypixel Garden Automation Tool"
@@ -388,6 +424,7 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
         if eleccion == "2":
             macro_type = _elegir_macro()
             if macro_type:
+                clear_screen()
                 calibrate(config_path, macro_type)
         elif eleccion == "3":
             test_move(config_path)
