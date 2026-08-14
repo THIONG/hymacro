@@ -119,7 +119,7 @@ public final class RouteView {
 	private static String describe(int leg, Route.Waypoint point) {
 		StringBuilder text = new StringBuilder().append(leg).append("  ");
 		if (point.actions.isEmpty()) {
-			return text.append("walk").toString();
+			text.append("walk");
 		}
 		for (int i = 0; i < point.actions.size(); i++) {
 			Route.Action action = point.actions.get(i);
@@ -129,6 +129,9 @@ public final class RouteView {
 			text.append(action.isSpam()
 				? "spam " + action.key + " /" + action.intervalTicks + "t"
 				: "hold " + action.key);
+		}
+		if (point.sends()) {
+			text.append("  >> ").append(point.send);
 		}
 		return text.toString();
 	}

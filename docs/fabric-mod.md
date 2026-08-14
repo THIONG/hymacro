@@ -36,7 +36,7 @@ stand on the second block  /hymacro point
 | `/hymacro look <yaw> <pitch>` | Aim that leg by numbers instead of by standing |
 | `/hymacro undo`, `clear` | Drop the last point, or start over |
 | `/hymacro radius <blocks>` | How close counts as arrived |
-| `/hymacro warp <command>` | What to send at the end of a lap |
+| `/hymacro send <text>` | Put in chat on arriving at that point |
 | `/hymacro show <true\|false>` | Draw the macro in the world |
 | `/hymacro play`, `stop` | Also on F9 and F12 |
 
@@ -100,6 +100,20 @@ characters and a macro of ten points is thousands. Compressed and encoded, the
 same macro fits in a single message anywhere. The code is marked with its
 format, so one from a later version says where it came from instead of failing
 as corrupt.
+
+## Why sending is per leg
+
+Warping used to be a property of the whole route, fired at the end of a lap.
+That was one use of a general thing dressed up as its own feature, and being
+tied to the end of a lap meant it could not happen anywhere else.
+
+A point can now send a line of chat on arrival: `/hymacro send /warp garden`
+does what the warp setting did, and `/hymacro leg 3 send hello` does what it
+could not. A leading slash makes it a command, anything else is said out loud.
+
+Sending is followed by a short pause, because a warp needs a moment to land and
+starting the next leg mid teleport would hold keys wherever it came out. An old
+`warpCommand` is carried over onto the last point, which is where it fired.
 
 ## Why legs end on arrival
 

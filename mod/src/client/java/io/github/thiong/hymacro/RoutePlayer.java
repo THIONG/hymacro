@@ -24,12 +24,13 @@ public final class RoutePlayer {
 	private final Route route;
 	private final List<String> held = new ArrayList<>();
 
+	private static final int PAUSE_AFTER_SEND = 20;
+
 	private int index;
-	private int lapsDone;
 	private int ticksInLeg;
+	private int pausing;
 	private final int timeoutTicks;
 	private boolean finished;
-	private boolean warping;
 
 	public RoutePlayer(Minecraft client, Route route) {
 		this.client = client;
@@ -55,17 +56,15 @@ public final class RoutePlayer {
 			return;
 		}
 
-		ticksInLeg++;
-
-		if (warping) {
-			if (ticksInLeg >= 20) {
-				warping = false;
-				index = 0;
+		if (pausing > 0) {
+			pausing--;
+			if (pausing == 0) {
 				beginLeg();
 			}
 			return;
 		}
 
+		ticksInLeg++;
 		spam();
 
 		if (arrived() || ticksInLeg >= timeoutTicks) {
@@ -80,6 +79,7 @@ public final class RoutePlayer {
 
 	/** Releases everything. A stop must never leave a key held down. */
 	public void stop() {
+		pausing = 0;
 		release();
 		finished = true;
 	}
@@ -102,23 +102,24 @@ public final class RoutePlayer {
 		}
 	}
 
+	/**
+	 * Leaves the point just reached and starts for the next one, wrapping round
+	 * at the end.
+	 *
+	 * <p>Anything the point sends goes out here, followed by a pause. A warp
+	 * needs a moment to land, and starting the next leg mid teleport would hold
+	 * keys wherever it came out.
+	 */
 	private void advance() {
 		release();
-		index++;
-		if (index < route.waypoints.size()) {
-			beginLeg();
-			return;
-		}
+		Route.Waypoint reached = route.waypoints.get(index);
+		index = (index + 1) % route.waypoints.size();
 
-		lapsDone++;
-		if (lapsDone >= route.lapsPerWarp && !route.warpCommand.isBlank()) {
-			lapsDone = 0;
-			sendWarp();
-			warping = true;
-			ticksInLeg = 0;
+		if (reached.sends()) {
+			send(reached.send);
+			pausing = PAUSE_AFTER_SEND;
 			return;
 		}
-		index = 0;
 		beginLeg();
 	}
 
@@ -155,13 +156,15 @@ public final class RoutePlayer {
 		held.clear();
 	}
 
-	private void sendWarp() {
+	/** A leading slash means a command; anything else is said out loud. */
+	private void send(String text) {
 		if (client.player == null) {
 			return;
 		}
-		String command = route.warpCommand.startsWith("/")
-			? route.warpCommand.substring(1)
-			: route.warpCommand;
-		client.player.connection.sendCommand(command);
+		if (text.startsWith("/")) {
+			client.player.connection.sendCommand(text.substring(1));
+		} else {
+			client.player.connection.sendChat(text);
+		}
 	}
 }

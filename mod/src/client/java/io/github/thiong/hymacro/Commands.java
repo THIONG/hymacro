@@ -91,6 +91,9 @@ public final class Commands {
 							.then(argument("yaw", FloatArgumentType.floatArg(-180.0f, 180.0f))
 								.then(argument("pitch", FloatArgumentType.floatArg(-90.0f, 90.0f))
 									.executes(context -> setLook(context, host, named(context))))))
+						.then(literal("send")
+							.then(argument("text", StringArgumentType.greedyString())
+								.executes(context -> setSend(context, host, named(context)))))
 						.then(literal("clear")
 							.executes(context -> clearLeg(context, host)))))
 				.then(literal("undo")
@@ -103,9 +106,9 @@ public final class Commands {
 				.then(literal("radius")
 					.then(argument("blocks", IntegerArgumentType.integer(1, 10))
 						.executes(context -> setRadius(context, host))))
-				.then(literal("warp")
-					.then(argument("command", StringArgumentType.greedyString())
-						.executes(context -> setWarp(context, host))))
+				.then(literal("send")
+					.then(argument("text", StringArgumentType.greedyString())
+						.executes(context -> setSend(context, host, LAST))))
 				.then(literal("list")
 					.executes(context -> listRoutes(context, host)))
 				.then(literal("new")
@@ -193,8 +196,11 @@ public final class Commands {
 		Chat.heading(context.getSource(), "Leg " + (index + 1));
 		Chat.note(context.getSource(), "point " + from + " to point " + (index + 1)
 			+ ", facing " + round(point.yaw) + " / " + round(point.pitch));
-		if (point.actions.isEmpty()) {
+		if (point.actions.isEmpty() && !point.sends()) {
 			Chat.note(context.getSource(), "nothing set, it only walks");
+		}
+		if (point.sends()) {
+			Chat.bullet(context.getSource(), "on arrival, sends " + point.send, false);
 		}
 		for (Route.Action action : point.actions) {
 			Chat.bullet(context.getSource(), action.isSpam()
@@ -216,7 +222,7 @@ public final class Commands {
 
 		Route.Waypoint point = route.waypoints.get(index);
 		route.waypoints.set(index, new Route.Waypoint(
-			point.x, point.y, point.z, point.yaw, point.pitch, new ArrayList<>()));
+			point.x, point.y, point.z, point.yaw, point.pitch, new ArrayList<>(), ""));
 		host.book().save();
 		Chat.ok(context.getSource(), "Leg " + (index + 1) + " now only walks.");
 		return 1;
@@ -246,7 +252,8 @@ public final class Commands {
 		Chat.heading(source, "Run");
 		Chat.entry(source, "F9  /hymacro play", "start or stop");
 		Chat.entry(source, "F12 /hymacro stop", "stop");
-		Chat.entry(source, "/hymacro warp <command>", "sent at the end of a lap");
+		Chat.entry(source, "/hymacro send <text>", "put in chat on arriving there");
+		Chat.note(source, "A slash makes it a command: /hymacro send /warp garden");
 		Chat.entry(source, "/hymacro radius <blocks>", "how close counts as arrived");
 
 		Chat.heading(source, "Macros");
@@ -314,7 +321,7 @@ public final class Commands {
 		float pitch = FloatArgumentType.getFloat(context, "pitch");
 		Route.Waypoint point = route.waypoints.get(index);
 		route.waypoints.set(index, new Route.Waypoint(
-			point.x, point.y, point.z, yaw, pitch, point.actions));
+			point.x, point.y, point.z, yaw, pitch, point.actions, point.send));
 		host.book().save();
 
 		Chat.ok(context.getSource(), "Leg " + (index + 1)
@@ -363,7 +370,7 @@ public final class Commands {
 		actions.add(new Route.Action(key, mode, interval));
 
 		route.waypoints.set(index, new Route.Waypoint(
-			point.x, point.y, point.z, point.yaw, point.pitch, actions));
+			point.x, point.y, point.z, point.yaw, point.pitch, actions, point.send));
 		host.book().save();
 
 		Chat.ok(context.getSource(), Route.SPAM.equals(mode)
@@ -424,14 +431,42 @@ public final class Commands {
 		return 1;
 	}
 
-	private static int setWarp(CommandContext<FabricClientCommandSource> context, Host host) {
+	/**
+	 * What to put in chat on arriving at a leg's end.
+	 *
+	 * <p>This replaced a warp setting that belonged to the whole route and fired
+	 * at the end of a lap. Warping was only ever one use of it, and tying it to
+	 * the end of a lap meant it could not happen anywhere else. Saying it plainly
+	 * costs nothing and covers the rest: a warp, a party message, a reply.
+	 *
+	 * <p>A leading slash makes it a command, anything else is said out loud. Use
+	 * a dash on its own to take it away.
+	 */
+	private static int setSend(
+			CommandContext<FabricClientCommandSource> context, Host host, int requested) {
 		Route route = active(context, host);
 		if (route == null) {
 			return 0;
 		}
-		route.warpCommand = StringArgumentType.getString(context, "command");
+		int index = resolve(context, route, requested);
+		if (index == LAST) {
+			return 0;
+		}
+
+		String text = StringArgumentType.getString(context, "text").trim();
+		boolean clearing = "-".equals(text);
+		Route.Waypoint point = route.waypoints.get(index);
+		route.waypoints.set(index, new Route.Waypoint(point.x, point.y, point.z,
+			point.yaw, point.pitch, point.actions, clearing ? "" : text));
 		host.book().save();
-		Chat.ok(context.getSource(), "Warp set to /" + route.warpCommand + " after each lap.");
+
+		if (clearing) {
+			Chat.ok(context.getSource(), "Leg " + (index + 1) + " sends nothing now.");
+			return 1;
+		}
+		Chat.ok(context.getSource(), "On reaching point " + (index + 1)
+			+ (text.startsWith("/") ? ", runs " : ", says ") + text);
+		Chat.note(context.getSource(), "It waits a second afterwards, so a warp has time to land.");
 		return 1;
 	}
 

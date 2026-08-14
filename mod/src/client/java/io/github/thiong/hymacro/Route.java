@@ -47,19 +47,30 @@ public final class Route {
 		public final float pitch;
 		public final List<Action> actions;
 
-		public Waypoint(double x, double y, double z, float yaw, float pitch, List<Action> actions) {
+		/** Sent on arrival: a command with its slash, or a line of chat. */
+		public final String send;
+
+		public Waypoint(double x, double y, double z, float yaw, float pitch,
+				List<Action> actions, String send) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
 			this.yaw = yaw;
 			this.pitch = pitch;
 			this.actions = actions;
+			this.send = send == null ? "" : send;
+		}
+
+		public Waypoint(double x, double y, double z, float yaw, float pitch, List<Action> actions) {
+			this(x, y, z, yaw, pitch, actions, "");
+		}
+
+		public boolean sends() {
+			return !send.isBlank();
 		}
 	}
 
 	public final List<Waypoint> waypoints = new ArrayList<>();
-	public String warpCommand = "";
-	public int lapsPerWarp = 1;
 	public double arrivalRadius = 1.0;
 	public double segmentTimeoutSeconds = 90.0;
 	public boolean visible = true;
@@ -70,12 +81,6 @@ public final class Route {
 
 	public static Route fromJson(JsonObject root) {
 		Route route = new Route();
-		if (root.has("warpCommand")) {
-			route.warpCommand = root.get("warpCommand").getAsString();
-		}
-		if (root.has("lapsPerWarp")) {
-			route.lapsPerWarp = Math.max(1, root.get("lapsPerWarp").getAsInt());
-		}
 		if (root.has("arrivalRadius")) {
 			route.arrivalRadius = Math.max(0.2, root.get("arrivalRadius").getAsDouble());
 		}
@@ -93,7 +98,25 @@ public final class Route {
 				route.waypoints.add(readWaypoint(element.getAsJsonObject()));
 			}
 		}
+		if (root.has("warpCommand")) {
+			route.carryOverWarp(root.get("warpCommand").getAsString());
+		}
 		return route;
+	}
+
+	/**
+	 * A warp used to be a property of the whole route, fired at the end of a lap.
+	 * It is now just something sent on arriving somewhere, so an old one becomes
+	 * a send on the last point, which is where it used to happen.
+	 */
+	private void carryOverWarp(String command) {
+		if (command.isBlank() || waypoints.isEmpty()) {
+			return;
+		}
+		int last = waypoints.size() - 1;
+		Waypoint point = waypoints.get(last);
+		waypoints.set(last, new Waypoint(point.x, point.y, point.z, point.yaw, point.pitch,
+			point.actions, command.startsWith("/") ? command : "/" + command));
 	}
 
 	public JsonObject toJson() {
@@ -116,13 +139,14 @@ public final class Route {
 			point.addProperty("z", waypoint.z);
 			point.addProperty("yaw", waypoint.yaw);
 			point.addProperty("pitch", waypoint.pitch);
+			if (waypoint.sends()) {
+				point.addProperty("send", waypoint.send);
+			}
 			point.add("actions", actions);
 			points.add(point);
 		}
 
 		JsonObject root = new JsonObject();
-		root.addProperty("warpCommand", warpCommand);
-		root.addProperty("lapsPerWarp", lapsPerWarp);
 		root.addProperty("arrivalRadius", arrivalRadius);
 		root.addProperty("segmentTimeoutSeconds", segmentTimeoutSeconds);
 		root.addProperty("visible", visible);
@@ -149,7 +173,8 @@ public final class Route {
 			point.get("z").getAsDouble(),
 			point.has("yaw") ? point.get("yaw").getAsFloat() : 0.0f,
 			point.has("pitch") ? point.get("pitch").getAsFloat() : 0.0f,
-			actions);
+			actions,
+			point.has("send") ? point.get("send").getAsString() : "");
 	}
 
 }
