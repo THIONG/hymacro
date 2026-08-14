@@ -26,12 +26,21 @@ public final class RoutePlayer {
 
 	private static final int PAUSE_AFTER_SEND = 20;
 
-	/** Closer than this along an axis and the key would only judder. */
-	private static final double DEADZONE = 0.2;
+	/** How far off the line before it is worth steering back. */
+	private static final double DRIFT_ALLOWED = 0.35;
+
+	/** Wandering further than this earns the full sideways correction. */
+	private static final double DRIFT_FULL = 1.2;
+
+	/** Rounds a wanted heading to the eight a keyboard can express. */
+	private static final double PRESS_ABOVE = 0.38;
+
 	private static final String[] MOVEMENT = {"w", "a", "s", "d"};
 
 	private int index;
 	private int ticksInLeg;
+	private double startX;
+	private double startZ;
 	private int pausing;
 	private final int timeoutTicks;
 	private boolean finished;
@@ -102,8 +111,15 @@ public final class RoutePlayer {
 	 *
 	 * <p>Holding a fixed key and hoping is fine until something knocks you off
 	 * line: from then on the key points somewhere the destination is not, and the
-	 * leg arrives nowhere until it times out. Working out the keys each tick from
-	 * where the point actually is makes a leg correct itself instead.
+	 * leg arrives nowhere until it times out. Working out the keys each tick makes
+	 * a leg correct itself instead.
+	 *
+	 * <p>It steers by how far it has strayed from the line between the two points,
+	 * not by where the point is from here. A keyboard can only express eight
+	 * directions, so aiming straight at a point that is mostly sideways presses
+	 * forward as well and leaves at forty five degrees, wandering off and coming
+	 * back. Holding the line means that only happens by the width of the drift it
+	 * allows.
 	 *
 	 * <p>The look direction is left alone on purpose. On a wall of crops the
 	 * player faces the wall and travels sideways, so turning to face the way they
@@ -115,16 +131,39 @@ public final class RoutePlayer {
 			return;
 		}
 
-		double dx = target.x - client.player.getX();
-		double dz = target.z - client.player.getZ();
-		double facing = Math.toRadians(target.yaw);
-		double ahead = dx * -Math.sin(facing) + dz * Math.cos(facing);
-		double side = dx * -Math.cos(facing) + dz * -Math.sin(facing);
+		double lineX = target.x - startX;
+		double lineZ = target.z - startZ;
+		double span = Math.sqrt(lineX * lineX + lineZ * lineZ);
+		if (span < 0.001) {
+			return;
+		}
+		lineX /= span;
+		lineZ /= span;
 
-		Keys.set("w", ahead > DEADZONE);
-		Keys.set("s", ahead < -DEADZONE);
-		Keys.set("d", side > DEADZONE);
-		Keys.set("a", side < -DEADZONE);
+		// Signed distance from the line, measured across it.
+		double offX = client.player.getX() - startX;
+		double offZ = client.player.getZ() - startZ;
+		double drift = offX * lineZ - offZ * lineX;
+
+		// Along the line, plus as much of a sideways nudge as the drift earns.
+		double correction = 0.0;
+		if (Math.abs(drift) > DRIFT_ALLOWED) {
+			correction = -Math.max(-1.0, Math.min(1.0, drift / DRIFT_FULL));
+		}
+		double wantX = lineX + lineZ * correction;
+		double wantZ = lineZ - lineX * correction;
+		double magnitude = Math.sqrt(wantX * wantX + wantZ * wantZ);
+		wantX /= magnitude;
+		wantZ /= magnitude;
+
+		double facing = Math.toRadians(target.yaw);
+		double ahead = wantX * -Math.sin(facing) + wantZ * Math.cos(facing);
+		double side = wantX * -Math.cos(facing) + wantZ * -Math.sin(facing);
+
+		Keys.set("w", ahead > PRESS_ABOVE);
+		Keys.set("s", ahead < -PRESS_ABOVE);
+		Keys.set("d", side > PRESS_ABOVE);
+		Keys.set("a", side < -PRESS_ABOVE);
 	}
 
 	/** Toggles the keys that were recorded as repeated clicks rather than holds. */
@@ -170,6 +209,8 @@ public final class RoutePlayer {
 		if (client.player != null) {
 			client.player.setYRot(target.yaw);
 			client.player.setXRot(target.pitch);
+			startX = client.player.getX();
+			startZ = client.player.getZ();
 		}
 
 		for (Route.Action action : target.actions) {

@@ -146,8 +146,15 @@ direction.
 
 Holding a key and hoping works until something knocks the player off line. From
 then on the key points somewhere the destination is not, and the leg arrives
-nowhere until it times out. Steering works the keys out every tick from where
-the point actually is, so a leg corrects itself.
+nowhere until it times out. Steering works the keys out every tick, so a leg
+corrects itself.
+
+It steers by how far it has strayed from the line between the two points,
+rather than by where the point lies from here. A keyboard expresses eight
+directions and no more, so aiming straight at a point that is mostly sideways
+presses forward as well and leaves at forty five degrees, wandering off the line
+and curving back onto it. Holding the line keeps that to the width of the drift
+it tolerates, about a third of a block.
 
 The look direction is deliberately left alone. On a wall of crops the player
 faces the wall and travels sideways, so turning to face the way they are walking
