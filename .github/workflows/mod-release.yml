@@ -1,0 +1,112 @@
+name: Mod release
+
+on:
+  push:
+    tags: ["mod-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build, for example mod-v0.1.0. Without one only the artifact is produced."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and publish the Fabric jar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve the version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+          else
+            tag="${{ inputs.tag }}"
+          fi
+          [ -n "$tag" ] || tag="mod-v0.0.0-dev"
+          version="${tag#mod-v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches mod_version
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: mod
+        run: |
+          declared=$(grep '^mod_version=' gradle.properties | cut -d= -f2 | tr -d ' \r')
+          expected="${{ steps.version.outputs.version }}"
+          if [ "$declared" != "$expected" ]; then
+            echo "The tag says $expected but gradle.properties says $declared."
+            exit 1
+          fi
+          echo "Version verified: $declared"
+
+      - name: Build
+        working-directory: mod
+        run: gradle --no-daemon build
+
+      - name: Collect the jar
+        id: package
+        run: |
+          jar=$(find mod/build/libs -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -n 1)
+          [ -n "$jar" ] || { echo "no jar was produced"; exit 1; }
+          name="HyMacro-Fabric-${{ steps.version.outputs.tag }}.jar"
+          cp "$jar" "$name"
+          sha256sum "$name" > "$name.sha256"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          cat "$name.sha256"
+
+      - name: Upload the build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hymacro-fabric
+          path: |
+            ${{ steps.package.outputs.name }}
+            ${{ steps.package.outputs.name }}.sha256
+          retention-days: 30
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: HyMacro Fabric ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.package.outputs.name }}
+            ${{ steps.package.outputs.name }}.sha256
+          body: |
+            Fabric mod for Minecraft 26.1.2. It runs the farming route from inside
+            the game, so the route keeps going while the computer is used for
+            something else. The Windows executable in the other releases cannot do
+            that, because it drives the global input queue.
+
+            ## Install
+
+            1. Install Fabric Loader 0.19.3 or newer for Minecraft 26.1.2.
+            2. Put [Fabric API](https://modrinth.com/mod/fabric-api) `0.155.2+26.1.2`
+               in your `mods` folder.
+            3. Put `${{ steps.package.outputs.name }}` in the same folder.
+
+            ## Use
+
+            **F9** starts and stops the route, **F12** stops it. Settings live in
+            `config/hymacro.json` inside your Minecraft folder, created on first
+            run, and use the same field names as the standalone tool so calibrated
+            timings can be copied straight across.
+
+            Verify the download with the attached `.sha256`.
+
+            Automating gameplay may go against the Hypixel rules. Use at your own risk.
