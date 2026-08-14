@@ -2,15 +2,17 @@ package io.github.thiong.hymacro;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
 /**
- * The serpentine route, driven one client tick at a time.
+ * The serpentine route, advanced one client tick at a time.
  *
- * <p>Nothing here simulates operating system input. It sets the state of the key
- * mappings the game already reads every tick, so the packets leaving the client
- * are the ones a player produces, and window focus never enters into it.
+ * <p>Nothing here simulates operating system input. It sets the state of keys
+ * the game already reads every tick, so the packets leaving the client are the
+ * ones a player produces and window focus never enters into it.
+ *
+ * <p>Ticks run at a fixed twenty per second regardless of frame rate, so a two
+ * minute leg is exactly 2400 ticks and cannot drift with performance.
  */
 public final class RouteRunner {
 	private enum Phase { OUTWARD, STEP_AFTER_OUTWARD, RETURN, STEP_AFTER_RETURN, WARP }
@@ -18,8 +20,8 @@ public final class RouteRunner {
 	private final Minecraft client;
 	private final MacroConfig config;
 
-	private final List<KeyMapping> held = new ArrayList<>();
-	private Phase phase = Phase.OUTWARD;
+	private final List<Integer> held = new ArrayList<>();
+	private Phase phase;
 	private int ticksLeft;
 	private int lapsDone;
 	private boolean finished;
@@ -69,6 +71,7 @@ public final class RouteRunner {
 		}
 	}
 
+	/** Releases everything. A stop must never leave a key stuck down. */
 	public void stop() {
 		release();
 		finished = true;
@@ -80,53 +83,40 @@ public final class RouteRunner {
 			case OUTWARD -> {
 				ticksLeft = MacroConfig.toTicks(config.forwardSeconds);
 				hold(config.keys.get(0));
-				attack();
 			}
-			case STEP_AFTER_OUTWARD, STEP_AFTER_RETURN -> {
+			case STEP_AFTER_OUTWARD -> {
 				ticksLeft = MacroConfig.toTicks(config.stepSeconds);
-				hold(config.keys.get(next == Phase.STEP_AFTER_OUTWARD ? 1 : 3));
-				attack();
+				hold(config.keys.get(1));
 			}
 			case RETURN -> {
 				ticksLeft = MacroConfig.toTicks(config.returnSeconds);
 				hold(config.keys.get(2));
-				attack();
+			}
+			case STEP_AFTER_RETURN -> {
+				ticksLeft = MacroConfig.toTicks(config.stepSeconds);
+				hold(config.keys.get(3));
 			}
 			case WARP -> ticksLeft = MacroConfig.toTicks(1.0);
 		}
 	}
 
 	private void hold(String name) {
-		KeyMapping mapping = mappingFor(name);
-		if (mapping == null) {
+		int code = Keys.codeFor(name);
+		if (code == org.lwjgl.glfw.GLFW.GLFW_KEY_UNKNOWN) {
 			HyMacroClient.LOGGER.warn("Unknown movement key {}", name);
-			return;
+		} else {
+			Keys.set(code, true);
+			held.add(code);
 		}
-		KeyMapping.set(mapping.getKey(), true);
-		held.add(mapping);
-	}
-
-	private void attack() {
-		KeyMapping attack = client.options.keyAttack;
-		KeyMapping.set(attack.getKey(), true);
-		held.add(attack);
+		Keys.set(Keys.ATTACK, true);
+		held.add(Keys.ATTACK);
 	}
 
 	private void release() {
-		for (KeyMapping mapping : held) {
-			KeyMapping.set(mapping.getKey(), false);
+		for (int code : held) {
+			Keys.set(code, false);
 		}
 		held.clear();
-	}
-
-	private KeyMapping mappingFor(String name) {
-		return switch (name.toLowerCase()) {
-			case "w" -> client.options.keyUp;
-			case "s" -> client.options.keyDown;
-			case "a" -> client.options.keyLeft;
-			case "d" -> client.options.keyRight;
-			default -> null;
-		};
 	}
 
 	private void sendWarp() {
