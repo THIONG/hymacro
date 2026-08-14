@@ -30,6 +30,9 @@ import net.minecraft.client.Minecraft;
  * in the world by {@link RouteView} rather than by a wall of chat.
  */
 public final class Commands {
+	/** Stands for "the leg you just made", which is what most edits mean. */
+	private static final int LAST = -1;
+
 	private Commands() {
 	}
 
@@ -60,17 +63,36 @@ public final class Commands {
 					.executes(context -> addPoint(context, host)))
 				.then(literal("hold")
 					.then(argument("key", StringArgumentType.word())
-						.executes(context -> addAction(context, host, Route.HOLD, 1))))
+						.executes(context -> addAction(context, host, Route.HOLD, 1, LAST))))
 				.then(literal("spam")
 					.then(argument("key", StringArgumentType.word())
-						.executes(context -> addAction(context, host, Route.SPAM, 4))
+						.executes(context -> addAction(context, host, Route.SPAM, 4, LAST))
 						.then(argument("everyTicks", IntegerArgumentType.integer(1, 100))
 							.executes(context -> addAction(context, host, Route.SPAM,
-								IntegerArgumentType.getInteger(context, "everyTicks"))))))
+								IntegerArgumentType.getInteger(context, "everyTicks"), LAST)))))
 				.then(literal("look")
 					.then(argument("yaw", FloatArgumentType.floatArg(-180.0f, 180.0f))
 						.then(argument("pitch", FloatArgumentType.floatArg(-90.0f, 90.0f))
-							.executes(context -> setLook(context, host)))))
+							.executes(context -> setLook(context, host, LAST)))))
+				.then(literal("leg")
+					.then(argument("leg", IntegerArgumentType.integer(1, 999))
+						.executes(context -> describeLeg(context, host))
+						.then(literal("hold")
+							.then(argument("key", StringArgumentType.word())
+								.executes(context -> addAction(context, host, Route.HOLD, 1, named(context)))))
+						.then(literal("spam")
+							.then(argument("key", StringArgumentType.word())
+								.executes(context -> addAction(context, host, Route.SPAM, 4, named(context)))
+								.then(argument("everyTicks", IntegerArgumentType.integer(1, 100))
+									.executes(context -> addAction(context, host, Route.SPAM,
+										IntegerArgumentType.getInteger(context, "everyTicks"),
+										named(context))))))
+						.then(literal("look")
+							.then(argument("yaw", FloatArgumentType.floatArg(-180.0f, 180.0f))
+								.then(argument("pitch", FloatArgumentType.floatArg(-90.0f, 90.0f))
+									.executes(context -> setLook(context, host, named(context))))))
+						.then(literal("clear")
+							.executes(context -> clearLeg(context, host)))))
 				.then(literal("undo")
 					.executes(context -> undo(context, host)))
 				.then(literal("clear")
@@ -130,6 +152,76 @@ public final class Commands {
 		return route;
 	}
 
+	private static int named(CommandContext<FabricClientCommandSource> context) {
+		return IntegerArgumentType.getInteger(context, "leg") - 1;
+	}
+
+	/**
+	 * Which leg an edit lands on, complaining if there is no such thing.
+	 *
+	 * <p>Edits used to reach only the leg just created, which meant a mistake on
+	 * leg two could not be fixed once leg six existed without undoing back to it.
+	 */
+	private static int resolve(
+			CommandContext<FabricClientCommandSource> context, Route route, int requested) {
+		if (route.isEmpty()) {
+			Chat.error(context.getSource(), "No points yet. Mark one with /hymacro point.");
+			return LAST;
+		}
+		int index = requested == LAST ? route.waypoints.size() - 1 : requested;
+		if (index < 0 || index >= route.waypoints.size()) {
+			Chat.error(context.getSource(), "There is no leg " + (index + 1)
+				+ ". This macro has " + route.waypoints.size() + ".");
+			return LAST;
+		}
+		return index;
+	}
+
+	/** What a leg does, in words, for when the world label is not enough. */
+	private static int describeLeg(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		int index = resolve(context, route, named(context));
+		if (index == LAST) {
+			return 0;
+		}
+
+		Route.Waypoint point = route.waypoints.get(index);
+		int from = (index + route.waypoints.size() - 1) % route.waypoints.size() + 1;
+		Chat.heading(context.getSource(), "Leg " + (index + 1));
+		Chat.note(context.getSource(), "point " + from + " to point " + (index + 1)
+			+ ", facing " + round(point.yaw) + " / " + round(point.pitch));
+		if (point.actions.isEmpty()) {
+			Chat.note(context.getSource(), "nothing set, it only walks");
+		}
+		for (Route.Action action : point.actions) {
+			Chat.bullet(context.getSource(), action.isSpam()
+				? "spam " + action.key + " every " + action.intervalTicks + " ticks"
+				: "hold " + action.key, false);
+		}
+		return 1;
+	}
+
+	private static int clearLeg(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		int index = resolve(context, route, named(context));
+		if (index == LAST) {
+			return 0;
+		}
+
+		Route.Waypoint point = route.waypoints.get(index);
+		route.waypoints.set(index, new Route.Waypoint(
+			point.x, point.y, point.z, point.yaw, point.pitch, new ArrayList<>()));
+		host.book().save();
+		Chat.ok(context.getSource(), "Leg " + (index + 1) + " now only walks.");
+		return 1;
+	}
+
 	private static int help(CommandContext<FabricClientCommandSource> context, Host host) {
 		FabricClientCommandSource source = context.getSource();
 		RouteBook book = host.book();
@@ -145,6 +237,9 @@ public final class Commands {
 		Chat.entry(source, "/hymacro look <yaw> <pitch>", "aim that leg by numbers");
 		Chat.entry(source, "/hymacro undo", "drop the last point");
 		Chat.entry(source, "/hymacro clear", "start this macro over");
+		Chat.note(source, "Any of those take a leg: /hymacro leg 3 hold w");
+		Chat.entry(source, "/hymacro leg <n>", "what that leg does");
+		Chat.entry(source, "/hymacro leg <n> clear", "make it only walk");
 		Chat.note(source, "Keys: w a s d space shift ctrl attack use");
 		Chat.note(source, "Mark the point first, then say what happens on the way to it.");
 
@@ -204,24 +299,25 @@ public final class Commands {
 	 * degree off ruins a run, and a degree is finer than a person can hold a
 	 * mouse. Typing the number the game itself shows is exact.
 	 */
-	private static int setLook(CommandContext<FabricClientCommandSource> context, Host host) {
+	private static int setLook(
+			CommandContext<FabricClientCommandSource> context, Host host, int requested) {
 		Route route = active(context, host);
 		if (route == null) {
 			return 0;
 		}
-		if (route.isEmpty()) {
-			Chat.error(context.getSource(), "Set a point first with /hymacro point.");
+		int index = resolve(context, route, requested);
+		if (index == LAST) {
 			return 0;
 		}
 
 		float yaw = wrap(FloatArgumentType.getFloat(context, "yaw"));
 		float pitch = FloatArgumentType.getFloat(context, "pitch");
-		Route.Waypoint last = route.waypoints.get(route.waypoints.size() - 1);
-		route.waypoints.set(route.waypoints.size() - 1, new Route.Waypoint(
-			last.x, last.y, last.z, yaw, pitch, last.actions));
+		Route.Waypoint point = route.waypoints.get(index);
+		route.waypoints.set(index, new Route.Waypoint(
+			point.x, point.y, point.z, yaw, pitch, point.actions));
 		host.book().save();
 
-		Chat.ok(context.getSource(), "Leg " + route.waypoints.size()
+		Chat.ok(context.getSource(), "Leg " + (index + 1)
 			+ " now faces " + round(yaw) + " / " + round(pitch) + ".");
 		return 1;
 	}
@@ -243,14 +339,14 @@ public final class Commands {
 	}
 
 	/** Attaches work to the leg that ends at the last point set. */
-	private static int addAction(
-			CommandContext<FabricClientCommandSource> context, Host host, String mode, int interval) {
+	private static int addAction(CommandContext<FabricClientCommandSource> context, Host host,
+			String mode, int interval, int requested) {
 		Route route = active(context, host);
 		if (route == null) {
 			return 0;
 		}
-		if (route.isEmpty()) {
-			Chat.error(context.getSource(), "Set a point first with /hymacro point.");
+		int index = resolve(context, route, requested);
+		if (index == LAST) {
 			return 0;
 		}
 
@@ -261,18 +357,18 @@ public final class Commands {
 			return 0;
 		}
 
-		Route.Waypoint last = route.waypoints.get(route.waypoints.size() - 1);
-		List<Route.Action> actions = new ArrayList<>(last.actions);
+		Route.Waypoint point = route.waypoints.get(index);
+		List<Route.Action> actions = new ArrayList<>(point.actions);
 		actions.removeIf(action -> action.key.equals(key));
 		actions.add(new Route.Action(key, mode, interval));
 
-		route.waypoints.set(route.waypoints.size() - 1, new Route.Waypoint(
-			last.x, last.y, last.z, last.yaw, last.pitch, actions));
+		route.waypoints.set(index, new Route.Waypoint(
+			point.x, point.y, point.z, point.yaw, point.pitch, actions));
 		host.book().save();
 
 		Chat.ok(context.getSource(), Route.SPAM.equals(mode)
-			? "Leg " + route.waypoints.size() + ": spam " + key + " every " + interval + " ticks."
-			: "Leg " + route.waypoints.size() + ": hold " + key + ".");
+			? "Leg " + (index + 1) + ": spam " + key + " every " + interval + " ticks."
+			: "Leg " + (index + 1) + ": hold " + key + ".");
 		return 1;
 	}
 

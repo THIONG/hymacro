@@ -40,6 +40,20 @@ stand on the second block  /hymacro point
 | `/hymacro show <true\|false>` | Draw the macro in the world |
 | `/hymacro play`, `stop` | Also on F9 and F12 |
 
+Actions land on the leg you just made, which is what you mean while walking a
+macro out. Any of them can name a leg instead, because a mistake on leg two
+should not need undoing back from leg six:
+
+```
+/hymacro leg 3               what leg 3 does
+/hymacro leg 3 hold w        change it
+/hymacro leg 3 clear         make it only walk
+```
+
+A leg's number is its end point's: leg 3 runs from point 2 to point 3. Leg 1 is
+the one that closes the loop, from the last point back to the first, which is
+also the leg a warp lands in.
+
 A point can only be marked once a macro exists. A point outside one means
 nothing, and inventing an unnamed macro to hold it just hides the mistake.
 
