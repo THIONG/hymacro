@@ -66,14 +66,14 @@ jobs:
         env:
           # Class names to hunt for, edited alongside whatever the build could
           # not resolve.
-          PROBE: WorldRender ShapeRenderer RenderType
+          PROBE: WorldRender ShapeRenderer
         run: |
           {
             echo ""
             echo "==== probe ===="
             for pattern in $PROBE; do
               echo "-- $pattern"
-              for jar in $(find ~/.gradle -name '*.jar' -size +40k 2>/dev/null); do
+              for jar in $(find ~/.gradle -name '*.jar' 2>/dev/null); do
                 hits=$(unzip -Z1 "$jar" 2>/dev/null \
                   | grep -E "/${pattern}[A-Za-z]*\.class$" | head -n 8 || true)
                 [ -n "$hits" ] || continue
@@ -81,8 +81,7 @@ jobs:
                 for entry in $hits; do
                   echo "     $entry"
                   javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#\.class$##')" \
-                    2>/dev/null | grep -E "renderLineBox|AFTER_|BEFORE_|END_|public static final|lines\(" \
-                    | head -n 12 | sed 's/^/       /' || true
+                    2>/dev/null | head -n 40 | sed 's/^/       /' || true
                 done
                 break
               done

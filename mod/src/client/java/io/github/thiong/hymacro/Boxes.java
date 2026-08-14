@@ -5,9 +5,9 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import java.util.List;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.ShapeRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -45,7 +45,7 @@ public final class Boxes {
 			}
 
 			Vec3 camera = context.camera().getPosition();
-			VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+			VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
 			List<Route.Waypoint> points = route.waypoints;
 
 			pose.pushPose();
@@ -53,7 +53,7 @@ public final class Boxes {
 			for (int i = 0; i < points.size(); i++) {
 				Route.Waypoint to = points.get(i);
 				float[] colour = colourFor(to);
-				LevelRenderer.renderLineBox(
+				ShapeRenderer.renderLineBox(
 					pose, lines, stand(to), colour[0], colour[1], colour[2], 1.0f);
 				if (points.size() > 1) {
 					trail(pose, lines, points.get((i + points.size() - 1) % points.size()), to, colour);
@@ -88,7 +88,7 @@ public final class Boxes {
 			double y = from.y + dy * t;
 			double z = from.z + dz * t;
 			AABB flat = new AABB(x - 0.35, y + 0.02, z - 0.35, x + 0.35, y + 0.06, z + 0.35);
-			LevelRenderer.renderLineBox(
+			ShapeRenderer.renderLineBox(
 				pose, lines, flat, colour[0], colour[1], colour[2], TRAIL_ALPHA);
 		}
 	}
