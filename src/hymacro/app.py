@@ -90,10 +90,11 @@ class MacroApp:
         return requested
 
     def display(self) -> None:
-        banner = new_screen(animate=False)
+        banner = new_screen(animate=False, with_header=False)
         set_banner(None)
         self._banner = banner if self._animate else None
         self._lines_below = 0
+        self._say(header())
 
         if self.config.created_default:
             self._say(paint("  A new configuration was created with the defaults.", GREY))

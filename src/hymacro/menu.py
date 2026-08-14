@@ -69,7 +69,7 @@ def _loop(config_path: str | None, animate: bool) -> int:
 
     while True:
         new_screen(animate)
-        print(render_options("HyMacro", MAIN_OPTIONS))
+        print(render_options("Home", MAIN_OPTIONS))
         print("")
 
         choice = read_option(options, "1")

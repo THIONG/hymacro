@@ -31,11 +31,16 @@ def header() -> str:
     return f"{name} {paint('- ' + TAGLINE, GREY)}"
 
 
-def new_screen(animate: bool = True) -> Banner:
-    """Clear the screen, draw the banner and register it for animation."""
+def new_screen(animate: bool = True, *, with_header: bool = True) -> Banner:
+    """Clear the screen, draw the banner and register it for animation.
+
+    Screens that track how much they print below the banner ask for no header
+    and write it themselves, so it is counted like every other line.
+    """
     clear_screen()
     banner = Banner(BANNER)
     banner.draw()
-    print(header())
+    if with_header:
+        print(header())
     set_banner(banner if animate else None)
     return banner
