@@ -169,6 +169,7 @@ uv sync --all-groups
 ### Layout
 
 ```
+mod/              Fabric client mod, for running unattended
 src/hymacro/
   winput.py       SendInput via ctypes: scancodes, mouse, window focus
   config.py       Loading, validation and persistence
@@ -212,10 +213,13 @@ Run with `--verbose` to see the details of a failure.
 
 ## Running unattended
 
-The macro drives the global Windows input queue, so Minecraft has to stay in
-the foreground while it runs. Making it work in the background needs a mod
-running inside the game; [docs/fabric-mod.md](docs/fabric-mod.md) records what
-was investigated, including the verified toolchain versions for 26.1.2.
+The executable drives the global Windows input queue, so Minecraft has to stay
+in the foreground while it runs.
+
+The Fabric mod in [`mod/`](mod) removes that limitation. It runs inside the
+game and sets the key state directly, so the route keeps going while the
+computer is used for something else. See
+[docs/fabric-mod.md](docs/fabric-mod.md).
 
 ## Notes
 
