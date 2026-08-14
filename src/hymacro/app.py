@@ -109,20 +109,24 @@ class MacroApp:
         self._say(render_options("Hotkeys", hotkeys))
         self._say("")
 
-        safety = self.config.get("safety")
+        limits = self.controller.limits
         active = []
-        if safety.get("require_window_focus"):
-            active.append(f"window focus on {safety.get('window_title_contains')!r}")
-        if safety.get("mouse_failsafe"):
-            active.append(f"mouse failsafe ({safety.get('mouse_failsafe_px')} px)")
-        if float(safety.get("max_session_seconds") or 0) > 0:
-            active.append(f"session limit {float(safety['max_session_seconds']) / 60:.0f} min")
-        detail = ", ".join(active) if active else "none enabled"
+        if limits.require_focus:
+            active.append(f"window focus on {limits.title_contains!r}")
+        if limits.mouse_failsafe:
+            active.append(f"mouse failsafe ({limits.mouse_threshold_px} px)")
+        if limits.max_session_seconds > 0:
+            active.append(f"session limit {limits.max_session_seconds / 60:.0f} min")
+        detail = ", ".join(active) if active else "none active"
         self._say(f"  {paint('Failsafes:', BOLD, GREEN if active else RED)} {paint(detail, GREY)}")
 
         if self.controller.input_mode == "background":
             self._say(
                 f"  {paint('Input:', BOLD, YELLOW)} " + paint("background, posted to the game window", GREY)
+            )
+            self._say(
+                f"  {paint('Note:', BOLD, YELLOW)} "
+                + paint("leave Minecraft with Alt+Tab, not Escape: the game menu eats the input", GREY)
             )
         self._say("")
 

@@ -133,6 +133,12 @@ through raw input and ignores some events while unfocused. If mining or movement
 do not register, the mode does not work for your setup and a virtual machine is
 the dependable alternative.
 
+**Leave Minecraft with Alt+Tab, never with Escape.** Escape opens the game menu,
+and the menu swallows every key and click that arrives afterwards, so the macro
+appears to stop. Alt+Tab releases the mouse cursor on its own and leaves the
+game running. If your client opens the menu whenever the window loses focus,
+look for an option to stop it doing that; without one this mode cannot work.
+
 Background mode turns off the focus and mouse failsafes, because both would fire
 immediately by design. The stop key keeps working: it is read from Windows
 directly, so it responds whatever window is in front.

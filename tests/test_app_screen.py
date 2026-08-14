@@ -68,3 +68,36 @@ def test_failsafes_are_reported(app: MacroApp, capsys: pytest.CaptureFixture[str
 
     assert "Failsafes:" in text
     assert "window focus" in text
+
+
+def _screen_text(config_path: Path, capsys: pytest.CaptureFixture[str]) -> str:
+    MacroApp(Config(config_path, auto_create=False)).display()
+    return ANSI.sub("", capsys.readouterr().out)
+
+
+def test_background_mode_reports_the_failsafes_it_actually_has(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The screen used to read the raw config and claim checks that were off."""
+    data = json.loads(json.dumps(DEFAULTS))
+    data["general"]["input_mode"] = "background"
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    text = _screen_text(path, capsys)
+
+    assert "none active" in text
+    assert "window focus" not in text
+    assert "mouse failsafe" not in text
+    assert "Alt+Tab" in text
+
+
+def test_foreground_mode_still_lists_them(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(DEFAULTS), encoding="utf-8")
+
+    text = _screen_text(path, capsys)
+
+    assert "window focus" in text
+    assert "mouse failsafe" in text
+    assert "Alt+Tab" not in text

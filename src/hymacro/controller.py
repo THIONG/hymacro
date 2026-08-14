@@ -73,7 +73,8 @@ class MacroController:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._stop_reason: str | None = None
-        self._guard = SafetyGuard(SafetyLimits.from_config(config), self._on_guard_violation)
+        self.limits = SafetyLimits.from_config(config)
+        self._guard = SafetyGuard(self.limits, self._on_guard_violation)
 
         self._mouse_button = config.text("general", "mouse_button", default="left")
         self._chat_key = config.text("general", "chat_key", default="t")
