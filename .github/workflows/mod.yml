@@ -49,8 +49,8 @@ jobs:
             echo "commit: ${{ github.sha }}"
             echo "----"
             if [ -f mod-build.log ]; then
-              grep -E "error:|FAILURE|Caused by|Could not|Unresolved|cannot find symbol|^> " mod-build.log \
-                | head -n 120 || true
+              grep -E -A 4 "error:|FAILURE|Caused by|Could not|Unresolved|^> Task .* FAILED" \
+                mod-build.log | head -n 200 || true
               echo "----"
               tail -n 60 mod-build.log
             else

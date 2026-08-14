@@ -237,8 +237,23 @@ stand on the second block  /hymacro point
 ```
 
 A leg ends when you reach its point, not after a measured time, so there is
-nothing to calibrate and nothing to drift. See
-[docs/fabric-mod.md](docs/fabric-mod.md).
+nothing to calibrate and nothing to drift.
+
+The route is drawn in the world as you build it: a box on every point, a trail
+along the ground between them, and the work of each leg written above it. Green
+means a key is held, orange means something is clicked repeatedly, grey means
+nothing is set yet.
+
+Routes are kept by name, so a plot of a different shape does not cost you the
+last one:
+
+```
+/hymacro new orchard
+/hymacro routes
+/hymacro load wart
+```
+
+See [docs/fabric-mod.md](docs/fabric-mod.md).
 
 ## Notes
 

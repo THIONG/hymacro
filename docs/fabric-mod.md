@@ -31,14 +31,45 @@ stand on the second block  /hymacro point
 | `/hymacro point` | Marks where you stand, facing where you face |
 | `/hymacro hold <key>` | Hold a key on the way to the last point |
 | `/hymacro spam <key> [ticks]` | Click it repeatedly instead of holding |
-| `/hymacro list` | Read the route back |
 | `/hymacro undo`, `clear` | Drop the last point, or start over |
 | `/hymacro radius <blocks>` | How close counts as arrived |
 | `/hymacro warp <command>` | What to send at the end of a lap |
+| `/hymacro show <true\|false>` | Draw the route in the world |
 | `/hymacro play`, `stop` | Also on F9 and F12 |
 
-Points are drawn in the world with particles, with a trail between them, so the
-route can be seen as it is built.
+## Seeing it rather than reading it
+
+The route is drawn where it happens. A box stands on every point, flat boxes run
+along the ground between them, and the leg number and its work float over the
+middle of each stretch.
+
+Colour carries the same answer at a distance the text cannot be read from:
+
+| Colour | Meaning |
+|--------|---------|
+| Green | A key is held for the whole leg |
+| Orange | Something is clicked repeatedly |
+| Grey | Nothing set yet, just walking |
+
+There is no command to print the route, because a list of coordinates is a poor
+way to answer *where does this go*. Standing on the plot and looking at it is
+the better one.
+
+## Several routes
+
+Plots differ, and a route built for one shape is wrong for another. Routes are
+kept by name in `config/hymacro-routes.json`, one of them current at a time.
+
+| Command | Effect |
+|---------|--------|
+| `/hymacro routes` | List them, marking the current one |
+| `/hymacro new <name>` | Start an empty route and switch to it |
+| `/hymacro load <name>` | Switch to a saved one |
+| `/hymacro rename <name>` | Rename the current one |
+| `/hymacro delete <name>` | Remove one |
+
+Everything is written as it changes, so there is no save step. A single route
+left by an earlier version is carried over under the name `default`.
 
 ## Why legs end on arrival
 
@@ -100,9 +131,11 @@ Both were dropped to get the mod compiling at all: the first build had nine
 errors, and cutting the Minecraft API surface down to what the compiler had
 already confirmed took it to one.
 
-Markers are particles rather than translucent boxes for the same reason. A box
-needs the render pipeline, which changes more between versions than anything
-else and is the part this version publishes nothing to check against.
+Markers were particles at first for the same reason, since a box needs the
+render pipeline, which changes more between versions than anything else and is
+the part this version publishes nothing to check against. That one was worth
+paying for: seeing the route is most of the point, so the boxes went in and the
+particles came out.
 
 ## Reading a failed build
 

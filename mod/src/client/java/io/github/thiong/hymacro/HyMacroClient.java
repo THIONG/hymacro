@@ -8,7 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Entry point: a route is built with commands and driven from the tick loop.
+ * Entry point: routes are built with commands, drawn in the world, and driven
+ * from the tick loop.
  *
  * <p>The play and stop keys are polled from the window rather than registered as
  * bindings. A binding needs a category type whose shape changed in this
@@ -22,31 +23,30 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 
 	private boolean playWasDown;
 	private boolean stopWasDown;
-	private int tick;
 
-	private Route route = new Route();
+	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
 
 	@Override
 	public void onInitializeClient() {
-		route = Route.load();
+		book = RouteBook.load();
 		Commands.register(this);
+		Boxes.register(this::route);
+		Labels.register(this::route);
 		ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
 
 		LOGGER.info("HyMacro ready. Build a route with /hymacro, F9 plays it, F12 stops.");
-		if (!route.isEmpty()) {
-			LOGGER.info("Loaded a route of {} points", route.waypoints.size());
-		}
+		LOGGER.info("Route '{}' has {} points", book.activeName(), route().waypoints.size());
+	}
+
+	@Override
+	public RouteBook book() {
+		return book;
 	}
 
 	@Override
 	public Route route() {
-		return route;
-	}
-
-	@Override
-	public void replaceRoute(Route replacement) {
-		route = replacement;
+		return book.active();
 	}
 
 	@Override
@@ -56,15 +56,15 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			stop();
 			return;
 		}
-		if (route.isEmpty()) {
+		if (route().isEmpty()) {
 			LOGGER.warn("No route yet. Stand somewhere and use /hymacro point");
 			return;
 		}
 		if (client.player == null) {
 			return;
 		}
-		player = new RoutePlayer(client, route);
-		LOGGER.info("Following a route of {} points", route.waypoints.size());
+		player = new RoutePlayer(client, route());
+		LOGGER.info("Following '{}', {} points", book.activeName(), route().waypoints.size());
 	}
 
 	@Override
@@ -86,11 +86,6 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		}
 		playWasDown = Keys.isKeyDown(PLAY_KEY);
 		stopWasDown = Keys.isKeyDown(STOP_KEY);
-
-		tick++;
-		if (route.showMarkers) {
-			Markers.draw(client, route.waypoints, tick);
-		}
 
 		if (player != null) {
 			player.tick();

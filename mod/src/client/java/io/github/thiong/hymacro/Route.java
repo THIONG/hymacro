@@ -1,17 +1,10 @@
 package io.github.thiong.hymacro;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import net.fabricmc.loader.api.FabricLoader;
 
 /**
  * A recorded path: where to go, where to look, and what to hold on the way.
@@ -25,8 +18,6 @@ import net.fabricmc.loader.api.FabricLoader;
  * serialiser out of a compile loop that costs a round trip through CI.
  */
 public final class Route {
-	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
 	public static final String HOLD = "hold";
 	public static final String SPAM = "spam";
 
@@ -71,77 +62,41 @@ public final class Route {
 	public int lapsPerWarp = 1;
 	public double arrivalRadius = 1.0;
 	public double segmentTimeoutSeconds = 90.0;
-	public boolean showMarkers = true;
+	public boolean visible = true;
 
 	public boolean isEmpty() {
 		return waypoints.isEmpty();
 	}
 
-	public static Path path() {
-		return FabricLoader.getInstance().getConfigDir().resolve("hymacro-route.json");
-	}
-
-	public static Route load() {
+	public static Route fromJson(JsonObject root) {
 		Route route = new Route();
-		Path file = path();
-		if (!Files.exists(file)) {
-			return route;
+		if (root.has("warpCommand")) {
+			route.warpCommand = root.get("warpCommand").getAsString();
 		}
-
-		try {
-			JsonObject root = GSON.fromJson(
-				Files.readString(file, StandardCharsets.UTF_8), JsonObject.class);
-			if (root == null) {
-				return route;
+		if (root.has("lapsPerWarp")) {
+			route.lapsPerWarp = Math.max(1, root.get("lapsPerWarp").getAsInt());
+		}
+		if (root.has("arrivalRadius")) {
+			route.arrivalRadius = Math.max(0.2, root.get("arrivalRadius").getAsDouble());
+		}
+		if (root.has("segmentTimeoutSeconds")) {
+			route.segmentTimeoutSeconds =
+				Math.max(1.0, root.get("segmentTimeoutSeconds").getAsDouble());
+		}
+		if (root.has("visible")) {
+			route.visible = root.get("visible").getAsBoolean();
+		} else if (root.has("showMarkers")) {
+			route.visible = root.get("showMarkers").getAsBoolean();
+		}
+		if (root.has("waypoints")) {
+			for (JsonElement element : root.getAsJsonArray("waypoints")) {
+				route.waypoints.add(readWaypoint(element.getAsJsonObject()));
 			}
-			if (root.has("warpCommand")) {
-				route.warpCommand = root.get("warpCommand").getAsString();
-			}
-			if (root.has("lapsPerWarp")) {
-				route.lapsPerWarp = Math.max(1, root.get("lapsPerWarp").getAsInt());
-			}
-			if (root.has("arrivalRadius")) {
-				route.arrivalRadius = Math.max(0.2, root.get("arrivalRadius").getAsDouble());
-			}
-			if (root.has("segmentTimeoutSeconds")) {
-				route.segmentTimeoutSeconds =
-					Math.max(1.0, root.get("segmentTimeoutSeconds").getAsDouble());
-			}
-			if (root.has("showMarkers")) {
-				route.showMarkers = root.get("showMarkers").getAsBoolean();
-			}
-			if (root.has("waypoints")) {
-				for (JsonElement element : root.getAsJsonArray("waypoints")) {
-					route.waypoints.add(readWaypoint(element.getAsJsonObject()));
-				}
-			}
-		} catch (IOException | RuntimeException exception) {
-			HyMacroClient.LOGGER.warn("Could not read {}", file, exception);
 		}
 		return route;
 	}
 
-	private static Waypoint readWaypoint(JsonObject point) {
-		List<Action> actions = new ArrayList<>();
-		if (point.has("actions")) {
-			for (JsonElement element : point.getAsJsonArray("actions")) {
-				JsonObject action = element.getAsJsonObject();
-				actions.add(new Action(
-					action.get("key").getAsString(),
-					action.has("mode") ? action.get("mode").getAsString() : HOLD,
-					action.has("intervalTicks") ? action.get("intervalTicks").getAsInt() : 1));
-			}
-		}
-		return new Waypoint(
-			point.get("x").getAsDouble(),
-			point.get("y").getAsDouble(),
-			point.get("z").getAsDouble(),
-			point.has("yaw") ? point.get("yaw").getAsFloat() : 0.0f,
-			point.has("pitch") ? point.get("pitch").getAsFloat() : 0.0f,
-			actions);
-	}
-
-	public void save() {
+	public JsonObject toJson() {
 		JsonArray points = new JsonArray();
 		for (Waypoint waypoint : waypoints) {
 			JsonArray actions = new JsonArray();
@@ -170,14 +125,31 @@ public final class Route {
 		root.addProperty("lapsPerWarp", lapsPerWarp);
 		root.addProperty("arrivalRadius", arrivalRadius);
 		root.addProperty("segmentTimeoutSeconds", segmentTimeoutSeconds);
-		root.addProperty("showMarkers", showMarkers);
+		root.addProperty("visible", visible);
 		root.add("waypoints", points);
-
-		try {
-			Files.createDirectories(path().getParent());
-			Files.writeString(path(), GSON.toJson(root) + "\n", StandardCharsets.UTF_8);
-		} catch (IOException exception) {
-			HyMacroClient.LOGGER.warn("Could not write {}", path(), exception);
-		}
+		return root;
 	}
+
+
+
+	static Waypoint readWaypoint(JsonObject point) {
+		List<Action> actions = new ArrayList<>();
+		if (point.has("actions")) {
+			for (JsonElement element : point.getAsJsonArray("actions")) {
+				JsonObject action = element.getAsJsonObject();
+				actions.add(new Action(
+					action.get("key").getAsString(),
+					action.has("mode") ? action.get("mode").getAsString() : HOLD,
+					action.has("intervalTicks") ? action.get("intervalTicks").getAsInt() : 1));
+			}
+		}
+		return new Waypoint(
+			point.get("x").getAsDouble(),
+			point.get("y").getAsDouble(),
+			point.get("z").getAsDouble(),
+			point.has("yaw") ? point.get("yaw").getAsFloat() : 0.0f,
+			point.has("pitch") ? point.get("pitch").getAsFloat() : 0.0f,
+			actions);
+	}
+
 }
