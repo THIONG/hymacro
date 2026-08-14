@@ -110,6 +110,9 @@ public final class Commands {
 							.then(argument("on", BoolArgumentType.bool())
 								.executes(context -> setWalk(context, host, named(context),
 									BoolArgumentType.getBool(context, "on")))))
+						.then(literal("radius")
+							.then(argument("blocks", FloatArgumentType.floatArg(0.15f, 10.0f))
+								.executes(context -> setLegRadius(context, host))))
 						.then(literal("clear")
 							.executes(context -> clearLeg(context, host)))))
 				.then(literal("move")
@@ -128,7 +131,7 @@ public final class Commands {
 					.then(argument("visible", BoolArgumentType.bool())
 						.executes(context -> setVisible(context, host))))
 				.then(literal("radius")
-					.then(argument("blocks", IntegerArgumentType.integer(1, 10))
+					.then(argument("blocks", FloatArgumentType.floatArg(0.15f, 10.0f))
 						.executes(context -> setRadius(context, host))))
 				.then(literal("stall")
 					.then(argument("seconds", IntegerArgumentType.integer(2, 300))
@@ -337,6 +340,10 @@ public final class Commands {
 		if (point.walk) {
 			Chat.bullet(context.getSource(), "walks itself there", false);
 		}
+		if (point.radius > 0.0) {
+			Chat.bullet(context.getSource(),
+				"arrives within " + round((float) point.radius) + " blocks", false);
+		}
 		if (point.sends()) {
 			Chat.bullet(context.getSource(), "on arrival, sends " + point.send, false);
 		}
@@ -400,6 +407,7 @@ public final class Commands {
 		Chat.entry(source, "/hymacro send <text>", "put in chat on arriving there");
 		Chat.note(source, "A slash makes it a command: /hymacro send /warp garden");
 		Chat.entry(source, "/hymacro radius <blocks>", "how close counts as arrived");
+		Chat.note(source, "Takes decimals, and /hymacro leg <n> radius sets just one.");
 		Chat.entry(source, "/hymacro stall <seconds>", "how long stuck before it gives up");
 
 		Chat.heading(source, "Macros");
@@ -572,10 +580,37 @@ public final class Commands {
 		if (route == null) {
 			return 0;
 		}
-		route.arrivalRadius = IntegerArgumentType.getInteger(context, "blocks");
+		route.arrivalRadius = FloatArgumentType.getFloat(context, "blocks");
 		host.book().save();
 		Chat.ok(context.getSource(),
-			"A leg now ends within " + (int) route.arrivalRadius + " blocks of its point.");
+			"A leg now ends within " + round((float) route.arrivalRadius) + " blocks of its point.");
+		return 1;
+	}
+
+	/**
+	 * How close counts as arrived, for one point rather than all of them.
+	 *
+	 * <p>Precision is not wanted evenly. Most of a row can end a block out
+	 * without anyone noticing; the corner where the direction changes cannot,
+	 * because stopping short there puts every swing of the next leg one column
+	 * off. A single figure for the whole macro has to be as tight as its
+	 * fussiest point, which makes every other point fussy for nothing.
+	 */
+	private static int setLegRadius(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		int index = resolve(context, route, named(context));
+		if (index == LAST) {
+			return 0;
+		}
+
+		float blocks = FloatArgumentType.getFloat(context, "blocks");
+		route.waypoints.set(index, route.waypoints.get(index).withRadius(blocks));
+		host.book().save();
+		Chat.ok(context.getSource(), "Leg " + legName(route, index)
+			+ " ends within " + round(blocks) + " blocks of its point.");
 		return 1;
 	}
 

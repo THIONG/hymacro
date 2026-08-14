@@ -117,7 +117,8 @@ public final class RoutePlayer {
 	}
 
 	private boolean arrived() {
-		return distanceToTarget() <= route.arrivalRadius;
+		return distanceToTarget()
+			<= route.waypoints.get(index).radiusOr(route.arrivalRadius);
 	}
 
 	private double distanceToTarget() {

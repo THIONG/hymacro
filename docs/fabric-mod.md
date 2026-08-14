@@ -183,6 +183,23 @@ Sending is followed by a short pause, because a warp needs a moment to land and
 starting the next leg mid teleport would hold keys wherever it came out. An old
 `warpCommand` is carried over onto the last point, which is where it fired.
 
+## How close is arrived
+
+A leg ends within a radius of its point, and that radius used to be a whole
+number of blocks for the whole macro, the smallest being one.
+
+One block is far too loose where the direction changes. Stopping a block short
+of a corner and turning puts every swing of the next leg one column off, which
+looks like the mining being wrong rather than the stopping being early.
+
+Precision is also not wanted evenly. Most of a row can end a block out without
+anyone noticing, so a single figure for the whole macro has to be as tight as
+its fussiest point and makes every other point fussy for nothing.
+
+The radius now takes decimals, and `/hymacro leg <n> radius 0.3` sets one leg
+alone. The steering is left exactly as it was: biasing it towards the facing
+would fix a corner and break every macro that turns the other way.
+
 ## Walking itself there
 
 `/hymacro walk` makes a leg steer towards its point instead of holding a fixed
