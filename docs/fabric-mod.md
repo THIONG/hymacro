@@ -131,11 +131,32 @@ Both were dropped to get the mod compiling at all: the first build had nine
 errors, and cutting the Minecraft API surface down to what the compiler had
 already confirmed took it to one.
 
-Markers were particles at first for the same reason, since a box needs the
-render pipeline, which changes more between versions than anything else and is
-the part this version publishes nothing to check against. That one was worth
-paying for: seeing the route is most of the point, so the boxes went in and the
-particles came out.
+Markers were particles at first for the same reason, since drawing a box used to
+mean driving the render pipeline, which changes more between versions than
+anything else and is the part this version publishes nothing to check against.
+
+That turned out not to be the trade any more. 26.1.2 ships a gizmo system,
+`net.minecraft.gizmos.Gizmos`, meant for exactly this: `cuboid` takes a box and
+a style, `billboardTextOverBlock` writes in the world, and `setAlwaysOnTop`
+draws through terrain. A point is two calls rather than twelve lines of matrix
+arithmetic, and it rests on the API the game maintains for drawing debug shapes
+instead of on the renderer's internals.
+
+## Finding an API with no mappings
+
+Three classes the drawing needed had moved, and there is nothing to look them up
+in. Guessing a name costs a full round trip through CI, so the build was turned
+into an instrument instead: it searches the jars it has already downloaded,
+lists whole packages, and prints the members of a named class into the report.
+
+That answered every question in four rounds:
+
+| Was | Is |
+|-----|----|
+| `rendering.v1.WorldRenderEvents` | `rendering.v1.level.LevelRenderEvents` |
+| `WorldRenderContext` | `level.LevelRenderContext` |
+| `client.renderer.RenderType.lines()` | `client.renderer.rendertype.RenderTypes.lines()` |
+| `LevelRenderer.renderLineBox` | gone; `Gizmos.cuboid` replaces it |
 
 ## Reading a failed build
 

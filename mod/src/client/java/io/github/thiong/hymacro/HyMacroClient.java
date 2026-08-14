@@ -31,8 +31,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	public void onInitializeClient() {
 		book = RouteBook.load();
 		Commands.register(this);
-		Boxes.register(this::route);
-		Labels.register(this::route);
+		RouteView.register(this::route);
 		ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
 
 		LOGGER.info("HyMacro ready. Build a route with /hymacro, F9 plays it, F12 stops.");
