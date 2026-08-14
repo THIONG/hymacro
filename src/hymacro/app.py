@@ -38,7 +38,7 @@ from .console import (
 )
 from .controller import MacroController, MacroEvent
 from .editor import editar_configuracion
-from .ui import consola_interactiva, leer_opcion, pintar_opciones, preguntar
+from .ui import consola_interactiva, fijar_ola, leer_opcion, pintar_opciones, preguntar
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ class HyMacroApp:
             print_rainbow(_BANNER, animate=False)
         self._lineas_bajo_banner = 0
         self._say(f"  HyMacro v{__version__} - Hypixel Garden Automation Tool")
-        self._say(f"  Config: {self.config.config_path}")
+        self._say(paint(f"  Config: {self.config.config_path}", GREY))
         if self.config.created_default:
             self._say("  (se genero una configuracion nueva con los valores por defecto)")
         self._say("")
@@ -183,11 +183,15 @@ class HyMacroApp:
         binds = self.config.get("keybinds")
         for macro_type in MACRO_TYPES:
             key = str(binds[macro_type]).upper()
-            self._say(f"    {key:<5} -> {_LABELS[macro_type]}")
-        self._say(f"    {str(binds['stop']).upper():<5} -> DETENER macro")
+            self._say(
+                f"    {paint(key.ljust(5), BOLD, YELLOW)}{paint('->', GREY)} "
+                f"{paint(_LABELS[macro_type], WHITE)}"
+            )
+        parada = str(binds["stop"]).upper().ljust(5)
+        self._say(f"    {paint(parada, BOLD, RED)}{paint('->', GREY)} {paint('DETENER macro', WHITE)}")
         if self._permitir_volver:
-            self._say("    ESC   -> volver al menu")
-        self._say("    CTRL+C -> salir de HyMacro")
+            self._say(f"    {paint('ESC  ', BOLD, CYAN)}{paint('->', GREY)} volver al menu")
+        self._say(f"    {paint('CTRL+C', BOLD, GREY)} {paint('->', GREY)} salir de HyMacro")
         self._say("")
 
         safety = self.config.get("safety")
@@ -198,7 +202,9 @@ class HyMacroApp:
             active.append(f"failsafe de raton ({safety.get('mouse_failsafe_px')} px)")
         if float(safety.get("max_session_minutes") or 0) > 0:
             active.append(f"limite de sesion {safety.get('max_session_minutes')} min")
-        self._say(f"  Failsafes: {', '.join(active) if active else 'ninguno (!)'}")
+        detalle = ", ".join(active) if active else "ninguno (!)"
+        color_fs = GREEN if active else RED
+        self._say(f"  {paint('Failsafes:', BOLD, color_fs)} {paint(detalle, GREY)}")
         self._say("")
 
     # --- hotkeys ---
@@ -305,11 +311,12 @@ def check_config(config_path: str | None = None) -> int:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1
 
-    print(f"Configuracion valida: {config.config_path}")
+    print(f"{paint('  Configuracion valida:', BOLD, GREEN)} {paint(str(config.config_path), GREY)}")
     for macro_type in MACRO_TYPES:
-        bind = str(config.get("keybinds", macro_type)).upper()
-        print(f"  {bind:<5} -> {macro_type}")
-    print(f"  {str(config.get('keybinds', 'stop')).upper():<5} -> stop")
+        bind = str(config.get("keybinds", macro_type)).upper().ljust(5)
+        print(f"    {paint(bind, BOLD, YELLOW)}{paint('->', GREY)} {paint(_LABELS[macro_type], WHITE)}")
+    parada = str(config.get("keybinds", "stop")).upper().ljust(5)
+    print(f"    {paint(parada, BOLD, RED)}{paint('->', GREY)} {paint('DETENER', WHITE)}")
     return 0
 
 
@@ -371,11 +378,14 @@ def _elegir_macro() -> str | None:
     return {"1": "nether_wart", "2": "cocoa_beans"}.get(eleccion)
 
 
-def _nueva_pantalla() -> None:
-    """Limpia y vuelve a dibujar el banner: cada pantalla empieza de cero."""
+def _nueva_pantalla() -> BannerWave:
+    """Limpia, redibuja el banner y lo deja registrado para que se anime."""
     clear_screen()
-    BannerWave(_BANNER).draw()
+    ola = BannerWave(_BANNER)
+    ola.draw()
     print(paint(f"  HyMacro v{__version__}", BOLD, WHITE), "- Hypixel Garden Automation Tool")
+    fijar_ola(ola)
+    return ola
 
 
 def _ruta_config(config_path: str | None) -> Path:
@@ -438,6 +448,7 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
             print(paint("  Hasta luego!", GREY))
             return 0
         if eleccion == "1":
+            fijar_ola(None)  # la pantalla del macro anima por su cuenta
             try:
                 app = HyMacroApp(config_path, permitir_volver=True)
                 codigo = app.run()

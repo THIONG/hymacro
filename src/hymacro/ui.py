@@ -7,10 +7,25 @@ igual sin que uno tenga que importar al otro.
 from __future__ import annotations
 
 import sys
+import time
 
-from .console import BOLD, CYAN, DIM, GREY, WHITE, colors_enabled, paint
+from .console import BOLD, CYAN, DIM, GREY, WHITE, BannerAnimator, BannerWave, colors_enabled, paint
 
 Opcion = tuple[str, str, str]
+
+#: Banner de la pantalla actual. Lo fija quien la dibuja, y cualquier lectura
+#: de teclado lo anima mientras espera, sin tener que ir pasandolo por todas
+#: las funciones intermedias.
+_ola_actual: BannerWave | None = None
+
+
+def fijar_ola(ola: BannerWave | None) -> None:
+    global _ola_actual
+    _ola_actual = ola
+
+
+def _animando() -> BannerAnimator:
+    return BannerAnimator(_ola_actual)
 
 
 def consola_interactiva() -> bool:
@@ -42,7 +57,8 @@ def preguntar(opciones: set[str], por_defecto: str) -> str:
     """Pide una opcion por linea, para cuando no hay consola interactiva."""
     while True:
         try:
-            respuesta = input("  > ").strip().lower()
+            with _animando():
+                respuesta = input("  > ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print("")
             return "0"
@@ -62,26 +78,33 @@ def leer_opcion(opciones: set[str], por_defecto: str) -> str:
 
     sys.stdout.write("  > ")
     sys.stdout.flush()
-    while True:
-        tecla = msvcrt.getwch()
-        if tecla in ("\x00", "\xe0"):  # teclas extendidas: llegan en pares
-            msvcrt.getwch()
-            continue
-        if tecla in ("\r", "\n"):
-            print(por_defecto)
-            return por_defecto
-        if tecla == "\x03":
-            print("")
-            return "0"
-        if tecla.lower() in opciones:
-            print(tecla.lower())
-            return tecla.lower()
+    with _animando():
+        while True:
+            # kbhit + espera corta en vez de getwch a secas: getwch bloquea el
+            # hilo entero y con el la ola.
+            if not msvcrt.kbhit():
+                time.sleep(0.02)
+                continue
+            tecla = msvcrt.getwch()
+            if tecla in ("\x00", "\xe0"):  # teclas extendidas: llegan en pares
+                msvcrt.getwch()
+                continue
+            if tecla in ("\r", "\n"):
+                print(por_defecto)
+                return por_defecto
+            if tecla == "\x03":
+                print("")
+                return "0"
+            if tecla.lower() in opciones:
+                print(tecla.lower())
+                return tecla.lower()
 
 
 def leer_texto(mensaje: str) -> str | None:
     """Pide un valor escrito. None si se cancela con Enter vacio o Ctrl+C."""
     try:
-        respuesta = input(mensaje).strip()
+        with _animando():
+            respuesta = input(mensaje).strip()
     except (EOFError, KeyboardInterrupt):
         print("")
         return None

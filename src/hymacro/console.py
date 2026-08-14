@@ -12,6 +12,7 @@ import ctypes
 import os
 import shutil
 import sys
+import threading
 import time
 
 _STD_OUTPUT_HANDLE = -11
@@ -177,6 +178,23 @@ class BannerWave:
             sys.stdout.write(f"{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")
         sys.stdout.flush()
 
+    def tick_top(self) -> None:
+        """Repinta el banner dando por hecho que empieza en la fila 1.
+
+        Vale para las pantallas que se dibujan tras limpiar: ahi el banner esta
+        siempre arriba del todo, asi que no hace falta contar lo que hay debajo
+        ni acertar cuanto subir el cursor.
+        """
+        if not _enabled:
+            return
+        fase = self._fase()
+        partes = ["\x1b[s\x1b[1;1H"]
+        for fila, linea in enumerate(self._lineas):
+            partes.append(f"\r{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")
+        partes.append("\x1b[u")
+        sys.stdout.write("".join(partes))
+        sys.stdout.flush()
+
     def tick(self, lineas_debajo: int) -> None:
         """Repinta el banner sin mover el cursor de donde estaba.
 
@@ -199,6 +217,39 @@ class BannerWave:
         partes.append("\x1b[u")
         sys.stdout.write("".join(partes))
         sys.stdout.flush()
+
+
+class BannerAnimator:
+    """Mantiene la ola corriendo mientras el hilo principal espera una tecla.
+
+    Se usa como contexto y solo debe estar activo mientras nadie mas escribe:
+    si otro hilo imprime a la vez que movemos el cursor, la pantalla se
+    descuadra. Por eso se arranca justo antes de leer y se para al volver.
+    """
+
+    def __init__(self, ola: BannerWave | None, fps: int = 15) -> None:
+        self._ola = ola if _enabled else None
+        self._espera = 1.0 / max(1, fps)
+        self._parar = threading.Event()
+        self._hilo: threading.Thread | None = None
+
+    def __enter__(self) -> BannerAnimator:
+        if self._ola is not None:
+            self._parar.clear()
+            self._hilo = threading.Thread(target=self._bucle, daemon=True, name="hymacro-ola")
+            self._hilo.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._parar.set()
+        if self._hilo is not None:
+            self._hilo.join(timeout=1.0)
+            self._hilo = None
+
+    def _bucle(self) -> None:
+        assert self._ola is not None
+        while not self._parar.wait(self._espera):
+            self._ola.tick_top()
 
 
 def print_rainbow(

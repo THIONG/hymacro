@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import DEFAULTS, ConfigError, _deep_merge, validate_config
-from .console import BOLD, GREEN, GREY, RED, WHITE, paint
+from .console import BOLD, CYAN, GREEN, GREY, RED, WHITE, paint
 from .ui import Opcion, leer_opcion, leer_texto, pintar_opciones
 
 
@@ -165,7 +165,7 @@ def _editar_campo(ruta_config: Path, crudo: dict[str, Any], campo: Campo) -> boo
         print(paint(f"  valores: {', '.join(campo.valores)}", GREY))
     print(paint("  (Enter sin escribir nada para dejarlo como esta)", GREY))
 
-    texto = leer_texto("  nuevo valor > ")
+    texto = leer_texto(paint("  nuevo valor > ", BOLD, CYAN))
     if texto is None:
         return False
 

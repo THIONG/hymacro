@@ -150,3 +150,50 @@ def test_repinta_si_cabe_de_sobra(
     BannerWave(BANNER).tick(lineas_debajo=20)
 
     assert "\x1b[23A" in capsys.readouterr().out
+
+
+def test_la_ola_corre_mientras_se_espera_una_tecla(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Las pantallas de calibrar y ajustes se quedaban con el banner congelado."""
+    import builtins
+    import time as _time
+
+    from hymacro import ui
+
+    init_colors("always")
+    ola = BannerWave(BANNER, velocidad=2.0)
+    ui.fijar_ola(ola)
+
+    def input_lento(prompt: str = "") -> str:
+        _time.sleep(0.4)
+        return "0"
+
+    monkeypatch.setattr(builtins, "input", input_lento)
+    try:
+        ui.preguntar({"0"}, "0")
+    finally:
+        ui.fijar_ola(None)
+
+    salida = capsys.readouterr().out
+    repintados = salida.count("\x1b[1;1H")
+
+    assert repintados >= 3, f"solo {repintados} repintados en 0.4 s: la ola esta parada"
+    tonos = set(re.findall(r"\x1b\[38;2;[\d;]+m", salida))
+    assert len(tonos) > 5, "repinta siempre con el mismo color"
+
+
+def test_sin_banner_registrado_no_se_toca_la_pantalla(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import builtins
+
+    from hymacro import ui
+
+    init_colors("always")
+    ui.fijar_ola(None)
+    monkeypatch.setattr(builtins, "input", lambda prompt="": "0")
+
+    ui.preguntar({"0"}, "0")
+
+    assert "\x1b[1;1H" not in capsys.readouterr().out
