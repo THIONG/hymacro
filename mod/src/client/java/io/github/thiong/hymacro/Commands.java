@@ -1,11 +1,13 @@
 package io.github.thiong.hymacro;
 
+import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import java.util.ArrayList;
 import java.util.List;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.network.chat.Component;
@@ -37,38 +39,47 @@ public final class Commands {
 		void stop();
 	}
 
+	private static LiteralArgumentBuilder<FabricClientCommandSource> literal(String name) {
+		return LiteralArgumentBuilder.literal(name);
+	}
+
+	private static <T> RequiredArgumentBuilder<FabricClientCommandSource, T> argument(
+			String name, ArgumentType<T> type) {
+		return RequiredArgumentBuilder.argument(name, type);
+	}
+
 	public static void register(Host host) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, access) ->
-			dispatcher.register(ClientCommandManager.literal("hymacro")
-				.then(ClientCommandManager.literal("point")
+			dispatcher.register(literal("hymacro")
+				.then(literal("point")
 					.executes(context -> addPoint(context, host)))
-				.then(ClientCommandManager.literal("hold")
-					.then(ClientCommandManager.argument("key", StringArgumentType.word())
+				.then(literal("hold")
+					.then(argument("key", StringArgumentType.word())
 						.executes(context -> addAction(context, host, Route.HOLD, 1))))
-				.then(ClientCommandManager.literal("spam")
-					.then(ClientCommandManager.argument("key", StringArgumentType.word())
+				.then(literal("spam")
+					.then(argument("key", StringArgumentType.word())
 						.executes(context -> addAction(context, host, Route.SPAM, 4))
-						.then(ClientCommandManager.argument("everyTicks", IntegerArgumentType.integer(1, 100))
+						.then(argument("everyTicks", IntegerArgumentType.integer(1, 100))
 							.executes(context -> addAction(context, host, Route.SPAM,
 								IntegerArgumentType.getInteger(context, "everyTicks"))))))
-				.then(ClientCommandManager.literal("list")
+				.then(literal("list")
 					.executes(context -> list(context, host)))
-				.then(ClientCommandManager.literal("undo")
+				.then(literal("undo")
 					.executes(context -> undo(context, host)))
-				.then(ClientCommandManager.literal("clear")
+				.then(literal("clear")
 					.executes(context -> clear(context, host)))
-				.then(ClientCommandManager.literal("radius")
-					.then(ClientCommandManager.argument("blocks", IntegerArgumentType.integer(1, 10))
+				.then(literal("radius")
+					.then(argument("blocks", IntegerArgumentType.integer(1, 10))
 						.executes(context -> setRadius(context, host))))
-				.then(ClientCommandManager.literal("warp")
-					.then(ClientCommandManager.argument("command", StringArgumentType.greedyString())
+				.then(literal("warp")
+					.then(argument("command", StringArgumentType.greedyString())
 						.executes(context -> setWarp(context, host))))
-				.then(ClientCommandManager.literal("play")
+				.then(literal("play")
 					.executes(context -> {
 						host.play();
 						return 1;
 					}))
-				.then(ClientCommandManager.literal("stop")
+				.then(literal("stop")
 					.executes(context -> {
 						host.stop();
 						return 1;
