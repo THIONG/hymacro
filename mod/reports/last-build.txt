@@ -1,5 +1,5 @@
 outcome: failure
-commit: 5072616d8cb386cd4e8346f8ae5f78717e83f777
+commit: eee848b597c53266f78368e9c855a1de93af25b4
 ----
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
@@ -29,7 +29,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
   location: class ShapeRenderer
 --
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724385048.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724480557.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -84,7 +84,7 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 6 errors
 
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724385048.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724480557.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -125,51 +125,57 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 > Check your code and dependencies to fix the compilation error(s)
 > Run with --scan to get full insights from a Build Scan (powered by Develocity).
 
-BUILD FAILED in 16s
+BUILD FAILED in 47s
 2 actionable tasks: 2 executed
 
 ==== probe ====
--- list client/.*[Gg]izmo[A-Za-z]*[.]class$
-   [fabric-rendering-v1-23.3.1+e9207d814c.jar]
-     net/fabricmc/fabric/api/client/rendering/v1/level/LevelRenderEvents$BeforeGizmos.class
+-- list ^net/minecraft/client/renderer/gizmos/.*[.]class$
    [minecraft-clientonly-deobf-26.1.2.jar]
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Group.class
      net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives.class
-     net/minecraft/client/renderer/LevelRenderer$FinalizedGizmos.class
+     net/minecraft/client/renderer/gizmos/package-info.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Text.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$TriangleFan.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Point.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Quad.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Line.class
    [minecraft-client-only.jar]
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Group.class
      net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives.class
-     net/minecraft/client/renderer/LevelRenderer$FinalizedGizmos.class
+     net/minecraft/client/renderer/gizmos/package-info.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Text.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$TriangleFan.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Point.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Quad.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Line.class
    [minecraft-client.jar]
-     net/minecraft/client/renderer/LevelRenderer$FinalizedGizmos.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Group.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Line.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Point.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Quad.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$Text.class
+     net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives$TriangleFan.class
      net/minecraft/client/renderer/gizmos/DrawableGizmoPrimitives.class
--- javap rendering/v1/level/LevelRenderEvents[.]class$
+     net/minecraft/client/renderer/gizmos/package-info.class
+-- javap level/LevelRenderEvents[$]AfterTranslucentFeatures[.]class$
      Compiled from "LevelRenderEvents.java"
-     public final class net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents {
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$AfterBlockOutlineExtraction> AFTER_BLOCK_OUTLINE_EXTRACTION;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$EndExtraction> END_EXTRACTION;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$StartMain> START_MAIN;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$AfterOpaqueTerrain> AFTER_OPAQUE_TERRAIN;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$CollectSubmits> COLLECT_SUBMITS;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$AfterSolidFeatures> AFTER_SOLID_FEATURES;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$AfterTranslucentFeatures> AFTER_TRANSLUCENT_FEATURES;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$BeforeBlockOutline> BEFORE_BLOCK_OUTLINE;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$BeforeGizmos> BEFORE_GIZMOS;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$BeforeTranslucentTerrain> BEFORE_TRANSLUCENT_TERRAIN;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$AfterTranslucentTerrain> AFTER_TRANSLUCENT_TERRAIN;
-       public static final net.fabricmc.fabric.api.event.Event<net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$EndMain> END_MAIN;
-       static {};
+     public interface net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$AfterTranslucentFeatures {
+       public abstract void afterTranslucentFeatures(net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext);
      }
--- javap rendering/v1/level/LevelRenderContext[.]class$
-     Compiled from "LevelRenderContext.java"
-     public interface net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext extends net.fabricmc.fabric.api.client.rendering.v1.level.LevelTerrainRenderContext,net.fabricmc.fabric.impl.client.rendering.LevelRenderContextBackwardsCompatHack {
-       public abstract net.minecraft.client.renderer.SubmitNodeCollector submitNodeCollector();
-       public abstract com.mojang.blaze3d.vertex.PoseStack poseStack();
-       public abstract net.minecraft.client.renderer.MultiBufferSource$BufferSource bufferSource();
-       public default net.minecraft.client.renderer.MultiBufferSource bufferSource();
+-- javap level/LevelTerrainRenderContext[.]class$
+     Compiled from "LevelTerrainRenderContext.java"
+     public interface net.fabricmc.fabric.api.client.rendering.v1.level.LevelTerrainRenderContext extends net.fabricmc.fabric.api.client.rendering.v1.level.AbstractLevelRenderContext {
+       public abstract net.minecraft.client.renderer.chunk.ChunkSectionsToRender sectionsToRender();
      }
--- javap rendering/v1/level/AbstractLevelRenderContext[.]class$
-     Compiled from "AbstractLevelRenderContext.java"
-     public interface net.fabricmc.fabric.api.client.rendering.v1.level.AbstractLevelRenderContext {
-       public abstract net.minecraft.client.renderer.GameRenderer gameRenderer();
-       public abstract net.minecraft.client.renderer.LevelRenderer levelRenderer();
-       public abstract net.minecraft.client.renderer.state.level.LevelRenderState levelState();
+-- javap renderer/gizmos/DrawableGizmoPrimitives[.]class$
+     Compiled from "DrawableGizmoPrimitives.java"
+     public class net.minecraft.client.renderer.gizmos.DrawableGizmoPrimitives implements net.minecraft.gizmos.GizmoPrimitives {
+       public net.minecraft.client.renderer.gizmos.DrawableGizmoPrimitives();
+       public void addPoint(net.minecraft.world.phys.Vec3, int, float);
+       public void addLine(net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3, int, float);
+       public void addTriangleFan(net.minecraft.world.phys.Vec3[], int);
+       public void addQuad(net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3, net.minecraft.world.phys.Vec3, int);
+       public void addText(net.minecraft.world.phys.Vec3, java.lang.String, net.minecraft.gizmos.TextGizmo$Style);
+       public void render(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.MultiBufferSource, net.minecraft.client.renderer.state.level.CameraRenderState, org.joml.Matrix4fc);
+       public boolean isEmpty();
      }
