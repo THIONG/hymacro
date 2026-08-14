@@ -1,108 +1,149 @@
 outcome: failure
-commit: 17b3c38a452c2dfffa100020dbd76b2bd5ba2319
+commit: a60c3a678a361698ac8cbec380fc1730fb6131cf
 ----
-> Configure project :
-> Task :compileJava NO-SOURCE
-> Task :processResources
-> Task :classes
-> Task :compileClientJava
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:8: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:42: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:43: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:45: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:46: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:48: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:49: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:51: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:54: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:56: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:58: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:60: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:61: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:63: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:64: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:66: error: cannot find symbol
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:71: error: cannot find symbol
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+                                                  ^
+  symbol:   class WorldRenderEvents
+  location: package net.fabricmc.fabric.api.client.rendering.v1
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:7: error: cannot find symbol
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+                                                  ^
+  symbol:   class WorldRenderEvents
+  location: package net.fabricmc.fabric.api.client.rendering.v1
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:10: error: cannot find symbol
+import net.minecraft.client.renderer.RenderType;
+                                    ^
+  symbol:   class RenderType
+  location: package net.minecraft.client.renderer
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:34: error: package WorldRenderEvents does not exist
+		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+		                 ^
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:35: error: package WorldRenderEvents does not exist
+		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+		                 ^
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:48: error: cannot find symbol
+			VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+			                                           ^
+  symbol:   variable RenderType
+  location: class Boxes
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:56: error: cannot find symbol
+				LevelRenderer.renderLineBox(
+				             ^
+  symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+  location: class LevelRenderer
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:91: error: cannot find symbol
+			LevelRenderer.renderLineBox(
+			             ^
+  symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+  location: class LevelRenderer
+--
 > Task :compileClientJava FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786723876131.json
+
+[Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
+
 FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileClientJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
 > Compilation failed; see the compiler output below.
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:8: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:42: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:43: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:45: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:46: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:48: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:49: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:51: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:54: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:56: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:58: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:60: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:61: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:63: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:64: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:66: error: cannot find symbol
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:71: error: cannot find symbol
-> Check your code and dependencies to fix the compilation error(s)
-> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
+  import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+                                                    ^
+    symbol:   class WorldRenderEvents
+    location: package net.fabricmc.fabric.api.client.rendering.v1
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:7: error: cannot find symbol
+  import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+                                                    ^
+    symbol:   class WorldRenderEvents
+    location: package net.fabricmc.fabric.api.client.rendering.v1
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:10: error: cannot find symbol
+  import net.minecraft.client.renderer.RenderType;
+                                      ^
+    symbol:   class RenderType
+    location: package net.minecraft.client.renderer
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:48: error: cannot find symbol
+  			VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+  			                                           ^
+    symbol:   variable RenderType
+    location: class Boxes
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:56: error: cannot find symbol
+  				LevelRenderer.renderLineBox(
+  				             ^
+    symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+    location: class LevelRenderer
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:91: error: cannot find symbol
+  			LevelRenderer.renderLineBox(
+  			             ^
+    symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+    location: class LevelRenderer
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:34: error: package WorldRenderEvents does not exist
+  		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+  		                 ^
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:35: error: package WorldRenderEvents does not exist
+  		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+  		                 ^
+  8 errors
+
 ----
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:51: error: cannot find symbol
-  						.then(ClientCommandManager.argument("everyTicks", IntegerArgumentType.integer(1, 100))
-  						      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:54: error: cannot find symbol
-  				.then(ClientCommandManager.literal("list")
-  				      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:56: error: cannot find symbol
-  				.then(ClientCommandManager.literal("undo")
-  				      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:58: error: cannot find symbol
-  				.then(ClientCommandManager.literal("clear")
-  				      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:60: error: cannot find symbol
-  				.then(ClientCommandManager.literal("radius")
-  				      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:61: error: cannot find symbol
-  					.then(ClientCommandManager.argument("blocks", IntegerArgumentType.integer(1, 10))
-  					      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:63: error: cannot find symbol
-  				.then(ClientCommandManager.literal("warp")
-  				      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:64: error: cannot find symbol
-  					.then(ClientCommandManager.argument("command", StringArgumentType.greedyString())
-  					      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:66: error: cannot find symbol
-  				.then(ClientCommandManager.literal("play")
-  				      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Commands.java:71: error: cannot find symbol
-  				.then(ClientCommandManager.literal("stop")
-  				      ^
-    symbol:   variable ClientCommandManager
-    location: class Commands
-  17 errors
+			LevelRenderer.renderLineBox(
+			             ^
+  symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+  location: class LevelRenderer
+8 errors
+
+> Task :compileClientJava FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786723876131.json
+
+[Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileClientJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
+  import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+                                                    ^
+    symbol:   class WorldRenderEvents
+    location: package net.fabricmc.fabric.api.client.rendering.v1
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:7: error: cannot find symbol
+  import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+                                                    ^
+    symbol:   class WorldRenderEvents
+    location: package net.fabricmc.fabric.api.client.rendering.v1
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:10: error: cannot find symbol
+  import net.minecraft.client.renderer.RenderType;
+                                      ^
+    symbol:   class RenderType
+    location: package net.minecraft.client.renderer
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:48: error: cannot find symbol
+  			VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+  			                                           ^
+    symbol:   variable RenderType
+    location: class Boxes
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:56: error: cannot find symbol
+  				LevelRenderer.renderLineBox(
+  				             ^
+    symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+    location: class LevelRenderer
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:91: error: cannot find symbol
+  			LevelRenderer.renderLineBox(
+  			             ^
+    symbol:   method renderLineBox(PoseStack,VertexConsumer,AABB,float,float,float,float)
+    location: class LevelRenderer
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:34: error: package WorldRenderEvents does not exist
+  		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+  		                 ^
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Boxes.java:35: error: package WorldRenderEvents does not exist
+  		WorldRenderEvents.AFTER_TRANSLUCENT.register(context -> {
+  		                 ^
+  8 errors
 
 * Try:
 > Check your code and dependencies to fix the compilation error(s)
 > Run with --scan to get full insights from a Build Scan (powered by Develocity).
 
-BUILD FAILED in 32s
+BUILD FAILED in 35s
 2 actionable tasks: 2 executed
