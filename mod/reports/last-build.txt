@@ -1,5 +1,5 @@
 outcome: failure
-commit: a9722f2bcd4f3d0258b7b69a3c25eab3b99d363f
+commit: 911255e81e407a1857e0fc2b7f3e31654f45af97
 ----
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
@@ -29,7 +29,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
   location: class ShapeRenderer
 --
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724582387.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724675918.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -84,7 +84,7 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 6 errors
 
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724582387.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724675918.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -125,76 +125,10 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 > Check your code and dependencies to fix the compilation error(s)
 > Run with --scan to get full insights from a Build Scan (powered by Develocity).
 
-BUILD FAILED in 30s
+BUILD FAILED in 33s
 2 actionable tasks: 2 executed
 
 ==== probe ====
--- list ^net/minecraft/gizmos/[A-Za-z]+[.]class$
-   [minecraft-common-deobf-26.1.2.jar]
-     net/minecraft/gizmos/CircleGizmo.class
-     net/minecraft/gizmos/GizmoStyle.class
-     net/minecraft/gizmos/GizmoPrimitives.class
-     net/minecraft/gizmos/TextGizmo.class
-     net/minecraft/gizmos/Gizmos.class
-     net/minecraft/gizmos/RectGizmo.class
-     net/minecraft/gizmos/GizmoProperties.class
-     net/minecraft/gizmos/LineGizmo.class
-     net/minecraft/gizmos/GizmoCollector.class
-     net/minecraft/gizmos/Gizmo.class
-     net/minecraft/gizmos/PointGizmo.class
-     net/minecraft/gizmos/ArrowGizmo.class
-     net/minecraft/gizmos/CuboidGizmo.class
-     net/minecraft/gizmos/SimpleGizmoCollector.class
-   [minecraft-common.jar]
-     net/minecraft/gizmos/CircleGizmo.class
-     net/minecraft/gizmos/GizmoStyle.class
-     net/minecraft/gizmos/GizmoPrimitives.class
-     net/minecraft/gizmos/TextGizmo.class
-     net/minecraft/gizmos/Gizmos.class
-     net/minecraft/gizmos/RectGizmo.class
-     net/minecraft/gizmos/GizmoProperties.class
-     net/minecraft/gizmos/LineGizmo.class
-     net/minecraft/gizmos/GizmoCollector.class
-     net/minecraft/gizmos/Gizmo.class
-     net/minecraft/gizmos/PointGizmo.class
-     net/minecraft/gizmos/ArrowGizmo.class
-     net/minecraft/gizmos/CuboidGizmo.class
-     net/minecraft/gizmos/SimpleGizmoCollector.class
-   [minecraft-extracted_server.jar]
-     net/minecraft/gizmos/ArrowGizmo.class
-     net/minecraft/gizmos/CircleGizmo.class
-     net/minecraft/gizmos/CuboidGizmo.class
-     net/minecraft/gizmos/Gizmo.class
-     net/minecraft/gizmos/GizmoCollector.class
-     net/minecraft/gizmos/GizmoPrimitives.class
-     net/minecraft/gizmos/GizmoProperties.class
-     net/minecraft/gizmos/GizmoStyle.class
-     net/minecraft/gizmos/Gizmos.class
-     net/minecraft/gizmos/LineGizmo.class
-     net/minecraft/gizmos/PointGizmo.class
-     net/minecraft/gizmos/RectGizmo.class
-     net/minecraft/gizmos/SimpleGizmoCollector.class
-     net/minecraft/gizmos/TextGizmo.class
-   [minecraft-client.jar]
-     net/minecraft/gizmos/ArrowGizmo.class
-     net/minecraft/gizmos/CircleGizmo.class
-     net/minecraft/gizmos/CuboidGizmo.class
-     net/minecraft/gizmos/Gizmo.class
-     net/minecraft/gizmos/GizmoCollector.class
-     net/minecraft/gizmos/GizmoPrimitives.class
-     net/minecraft/gizmos/GizmoProperties.class
-     net/minecraft/gizmos/GizmoStyle.class
-     net/minecraft/gizmos/Gizmos.class
-     net/minecraft/gizmos/LineGizmo.class
-     net/minecraft/gizmos/PointGizmo.class
-     net/minecraft/gizmos/RectGizmo.class
-     net/minecraft/gizmos/SimpleGizmoCollector.class
-     net/minecraft/gizmos/TextGizmo.class
--- javap level/LevelRenderEvents[$]BeforeGizmos[.]class$
-     Compiled from "LevelRenderEvents.java"
-     public interface net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents$BeforeGizmos {
-       public abstract void beforeGizmos(net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext);
-     }
 -- javap ^net/minecraft/gizmos/Gizmos[.]class$
      Compiled from "Gizmos.java"
      public class net.minecraft.gizmos.Gizmos {
@@ -217,6 +151,32 @@ BUILD FAILED in 30s
        public static net.minecraft.gizmos.GizmoProperties billboardText(java.lang.String, net.minecraft.world.phys.Vec3, net.minecraft.gizmos.TextGizmo$Style);
        static {};
      }
+-- javap ^net/minecraft/gizmos/GizmoStyle[.]class$
+     Compiled from "GizmoStyle.java"
+     public final class net.minecraft.gizmos.GizmoStyle extends java.lang.Record {
+       public net.minecraft.gizmos.GizmoStyle(int, float, int);
+       public static net.minecraft.gizmos.GizmoStyle stroke(int);
+       public static net.minecraft.gizmos.GizmoStyle stroke(int, float);
+       public static net.minecraft.gizmos.GizmoStyle fill(int);
+       public static net.minecraft.gizmos.GizmoStyle strokeAndFill(int, float, int);
+       public boolean hasFill();
+       public boolean hasStroke();
+       public int multipliedStroke(float);
+       public int multipliedFill(float);
+       public final java.lang.String toString();
+       public final int hashCode();
+       public final boolean equals(java.lang.Object);
+       public int stroke();
+       public float strokeWidth();
+       public int fill();
+     }
+-- javap ^net/minecraft/gizmos/GizmoProperties[.]class$
+     Compiled from "GizmoProperties.java"
+     public interface net.minecraft.gizmos.GizmoProperties {
+       public abstract net.minecraft.gizmos.GizmoProperties setAlwaysOnTop();
+       public abstract net.minecraft.gizmos.GizmoProperties persistForMillis(int);
+       public abstract net.minecraft.gizmos.GizmoProperties fadeOut();
+     }
 -- javap ^net/minecraft/gizmos/TextGizmo[.]class$
      Compiled from "TextGizmo.java"
      public final class net.minecraft.gizmos.TextGizmo extends java.lang.Record implements net.minecraft.gizmos.Gizmo {
@@ -228,25 +188,4 @@ BUILD FAILED in 30s
        public net.minecraft.world.phys.Vec3 pos();
        public java.lang.String text();
        public net.minecraft.gizmos.TextGizmo$Style style();
-     }
--- javap renderer/state/level/LevelRenderState[.]class$
-     Compiled from "LevelRenderState.java"
-     public class net.minecraft.client.renderer.state.level.LevelRenderState {
-       public net.minecraft.client.renderer.state.level.CameraRenderState cameraRenderState;
-       public final java.util.List<net.minecraft.client.renderer.entity.state.EntityRenderState> entityRenderStates;
-       public final java.util.List<net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState> blockEntityRenderStates;
-       public boolean haveGlowingEntities;
-       public net.minecraft.client.renderer.state.level.BlockOutlineRenderState blockOutlineRenderState;
-       public final java.util.List<net.minecraft.client.renderer.state.level.BlockBreakingRenderState> blockBreakingRenderStates;
-       public final net.minecraft.client.renderer.state.level.WeatherRenderState weatherRenderState;
-       public final net.minecraft.client.renderer.state.level.WorldBorderRenderState worldBorderRenderState;
-       public final net.minecraft.client.renderer.state.level.SkyRenderState skyRenderState;
-       public final net.minecraft.client.renderer.state.level.ParticlesRenderState particlesRenderState;
-       public long gameTime;
-       public int lastEntityRenderStateCount;
-       public int cloudColor;
-       public float cloudHeight;
-       public net.minecraft.client.renderer.chunk.ChunkSectionsToRender chunkSectionsToRender;
-       public net.minecraft.client.renderer.state.level.LevelRenderState();
-       public void reset();
      }
