@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "hymacro",
+  "version": "${version}",
+  "name": "HyMacro",
+  "description": "Garden farming routes that keep running while the window is not in focus.",
+  "authors": ["THIONG"],
+  "contact": {
+    "homepage": "https://github.com/THIONG/hymacro",
+    "sources": "https://github.com/THIONG/hymacro"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["io.github.thiong.hymacro.HyMacroClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
