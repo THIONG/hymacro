@@ -50,7 +50,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          gradle --no-daemon build 2>&1 | tee ../mod-build.log
+          ./gradlew --no-daemon build 2>&1 | tee ../mod-build.log
 
       # Actions logs cannot be read without a token, so the outcome is written
       # back into the repository where it can be fetched over plain HTTP.

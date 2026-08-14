@@ -98,7 +98,7 @@ jobs:
       - name: Build
         if: steps.reuse.outputs.found != 'true'
         working-directory: mod
-        run: gradle --no-daemon build
+        run: ./gradlew --no-daemon build
 
       - name: Collect the jar
         id: package
