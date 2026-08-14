@@ -39,7 +39,9 @@
     "timing_jitter_ms": 8,
     "wait_jitter_percent": 5,
     "wait_jitter_max_seconds": 0.5,
-    "suppress_hotkeys": true
+    "suppress_hotkeys": true,
+    "colors": "auto",
+    "banner_animation": true
   },
   "safety": {
     "require_window_focus": true,

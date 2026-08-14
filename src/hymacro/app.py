@@ -12,6 +12,20 @@ from typing import Any
 
 from . import __version__
 from .config import MACRO_TYPES, ConfigError, ConfigManager, app_dir
+from .console import (
+    BOLD,
+    CYAN,
+    DIM,
+    GREEN,
+    GREY,
+    MAGENTA,
+    RED,
+    WHITE,
+    YELLOW,
+    init_colors,
+    paint,
+    print_rainbow,
+)
 from .controller import MacroController, MacroEvent
 from .winput import InputBackend
 
@@ -86,6 +100,8 @@ class HyMacroApp:
         self._print_lock = threading.Lock()
         self._alive = True
         self._keyboard: Any = None
+        init_colors(self.config.get_str("general", "colors", default="auto"))
+        self._animar_banner = self.config.get_bool("general", "banner_animation", default=True)
 
     # --- salida por consola ---
 
@@ -94,16 +110,16 @@ class HyMacroApp:
             print(message, flush=True)
 
     def _handle_event(self, event: MacroEvent) -> None:
-        prefix = {
-            "info": "  ->",
-            "cycle": "  ..",
-            "stop": "[STOP]",
-            "stats": "[STATS]",
-        }.get(event.level, "  ")
-        self._say(f"{prefix} {event.message}")
+        prefijo, color = {
+            "info": ("  ->", CYAN),
+            "cycle": ("  ..", GREEN),
+            "stop": ("[STOP]", YELLOW),
+            "stats": ("[STATS]", MAGENTA),
+        }.get(event.level, ("  ", GREY))
+        self._say(f"{paint(prefijo, BOLD, color)} {event.message}")
 
     def display_banner(self) -> None:
-        self._say(_BANNER)
+        print_rainbow(_BANNER, animate=self._animar_banner)
         self._say(f"  HyMacro v{__version__} - Hypixel Garden Automation Tool")
         self._say(f"  Config: {self.config.config_path}")
         if self.config.created_default:
@@ -159,9 +175,11 @@ class HyMacroApp:
             try:
                 started, reason = self.controller.start(macro_type)
                 if started:
-                    self._say(f"[START] {_LABELS[macro_type]}")
+                    etiqueta = paint("[START]", BOLD, GREEN)
+                    self._say(f"{etiqueta} {paint(_LABELS[macro_type], WHITE)}")
                 else:
-                    self._say(f"[NO] No se arranco {_LABELS[macro_type]}: {reason}")
+                    etiqueta = paint("[NO]", BOLD, RED)
+                    self._say(f"{etiqueta} No se arranco {_LABELS[macro_type]}: {reason}")
             except Exception:
                 logger.exception("Error en el hotkey de %s", macro_type)
 
@@ -172,7 +190,7 @@ class HyMacroApp:
             if self.controller.is_running:
                 self.controller.request_stop("parada manual (hotkey)")
             else:
-                self._say("[STOP] No hay ningun macro en marcha")
+                self._say(f"{paint('[STOP]', BOLD, YELLOW)} No hay ningun macro en marcha")
         except Exception:
             logger.exception("Error en el hotkey de parada")
 
@@ -231,18 +249,28 @@ def check_config(config_path: str | None = None) -> int:
     return 0
 
 
-_MENU = """
-  Que quieres hacer?
+_OPCIONES_MENU = [
+    ("1", "Arrancar el macro", "teclas F8/F9/F10 para iniciar, F12 para parar"),
+    ("2", "Calibrar los tiempos", "cronometro manual sobre tu propio plot"),
+    ("3", "Probar el movimiento", "comprueba que el juego recibe las teclas"),
+    ("4", "Probar el chat", "escribe el comando de warp sin enviarlo"),
+    ("5", "Ver la configuracion", "ruta del config.json y teclas asignadas"),
+    ("0", "Salir", ""),
+]
 
-    1) Arrancar el macro          teclas F8/F9/F10 para iniciar, F12 para parar
-    2) Calibrar los tiempos       cronometro manual sobre tu propio plot
-    3) Probar el movimiento       comprueba que el juego recibe las teclas
-    4) Probar el chat             escribe el comando de warp sin enviarlo
-    5) Ver la configuracion       ruta del config.json y teclas asignadas
-    0) Salir
 
-  (Enter = 1)
-"""
+def _pintar_menu() -> str:
+    lineas = ["", paint("  Que quieres hacer?", BOLD, WHITE), ""]
+    for numero, titulo, ayuda in _OPCIONES_MENU:
+        color_num = GREY if numero == "0" else CYAN
+        color_tit = GREY if numero == "0" else WHITE
+        lineas.append(
+            f"    {paint(numero + ')', BOLD, color_num)} "
+            f"{paint(titulo.ljust(22), color_tit)} {paint(ayuda, DIM, GREY)}"
+        )
+    lineas.append("")
+    lineas.append(paint("  (Enter = 1)", DIM, GREY))
+    return "\n".join(lineas)
 
 
 def _preguntar(opciones: set[str], por_defecto: str) -> str:
@@ -277,21 +305,25 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
     """
     enable_utf8_console()
     setup_logging(verbose=verbose)
-    print(_BANNER)
-    print(f"  HyMacro v{__version__} - Hypixel Garden Automation Tool")
+
+    # El menu se dibuja antes de cargar la configuracion, asi que aqui se usa
+    # 'auto'; HyMacroApp vuelve a inicializar con lo que diga el config.json.
+    init_colors("auto")
+    print_rainbow(_BANNER)
+    print(paint(f"  HyMacro v{__version__}", BOLD, WHITE), "- Hypixel Garden Automation Tool")
 
     while True:
-        print(_MENU)
+        print(_pintar_menu())
         eleccion = _preguntar({"0", "1", "2", "3", "4", "5"}, "1")
 
         if eleccion == "0":
-            print("  Hasta luego!")
+            print(paint("  Hasta luego!", GREY))
             return 0
         if eleccion == "1":
             try:
                 return HyMacroApp(config_path).run()
             except ConfigError as exc:
-                print(f"  [ERROR] {exc}")
+                print(f"{paint('  [ERROR]', BOLD, RED)} {exc}")
                 return 1
         if eleccion == "2":
             macro_type = _elegir_macro()

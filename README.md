@@ -97,6 +97,12 @@ Al abrir HyMacro (doble clic al `.exe` o `uv run hymacro`) sale un menú:
 Enter a secas arranca el macro, que es lo habitual. Las demás opciones son las
 herramientas de ajuste, que antes sólo existían como argumentos de terminal.
 
+El banner sale con un arcoíris que se dibuja fila a fila, y los mensajes van en
+color: verde al arrancar, amarillo al parar, rojo en los errores. Si la salida
+está redirigida a un fichero o la terminal no admite ANSI, se imprime en texto
+plano — nunca se cuelan secuencias de escape. Se respeta la variable de entorno
+`NO_COLOR`, y `general.colors: "never"` lo apaga del todo.
+
 ### Línea de comandos
 
 Todo lo del menú está también como flag, para quien prefiera la terminal:
@@ -208,6 +214,8 @@ Al terminar te imprime el bloque listo para pegar en `config.json`:
 | `wait_jitter_percent` | `5` | Variación aleatoria de las esperas largas, en % |
 | `wait_jitter_max_seconds` | `0.5` | Tope de esa variación. Sin él, un 5% sobre una fila de 2 min serían ±6 s y te saltarías filas |
 | `suppress_hotkeys` | `true` | Impide que F8–F12 lleguen también al juego |
+| `colors` | `auto` | `auto` / `always` / `never`. En `auto` sólo pinta si hay consola de verdad |
+| `banner_animation` | `true` | El banner se dibuja con un arcoíris fila a fila |
 | `loop_delay_ms` | `100` | Periodo del bucle inactivo |
 
 > Si los comandos llegan al chat cortados o no llegan, prueba a subir

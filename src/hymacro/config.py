@@ -59,6 +59,8 @@ DEFAULTS: dict[str, Any] = {
         "wait_jitter_percent": 5,
         "wait_jitter_max_seconds": 0.5,
         "suppress_hotkeys": True,
+        "colors": "auto",
+        "banner_animation": True,
     },
     "safety": {
         "require_window_focus": True,
@@ -194,6 +196,10 @@ class ConfigManager:
         mode = self.get("general", "command_input_mode")
         if mode not in ("unicode", "scancode"):
             raise ConfigError(f"general.command_input_mode debe ser 'unicode' o 'scancode', no {mode!r}")
+
+        colores = self.get("general", "colors")
+        if colores not in ("auto", "always", "never"):
+            raise ConfigError(f"general.colors debe ser auto/always/never, no {colores!r}")
 
         try:
             resolve_scancode(str(self.get("general", "chat_key")))
