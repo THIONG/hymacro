@@ -1,123 +1,121 @@
-"""Primitivas de menu compartidas por las distintas pantallas.
-
-Viven aparte para que el editor y el menu principal se dibujen y se manejen
-igual sin que uno tenga que importar al otro.
-"""
+"""Shared menu primitives, so every screen looks and behaves the same."""
 
 from __future__ import annotations
 
 import sys
 import time
+from collections.abc import Iterator
 
-from .console import BOLD, CYAN, DIM, GREY, WHITE, BannerAnimator, BannerWave, colors_enabled, paint
+from .console import BOLD, CYAN, DIM, GREY, WHITE, Animation, Banner, colors_enabled, paint
 
-Opcion = tuple[str, str, str]
+Option = tuple[str, str, str]
 
-#: Etiqueta de la opcion de volver/salir. Una sola tecla en todas las
-#: pantallas: antes unas pedian 0 y otras ESC y habia que adivinar cual.
-VOLVER = "ESC"
+BACK = "ESC"
 
-#: Banner de la pantalla actual. Lo fija quien la dibuja, y cualquier lectura
-#: de teclado lo anima mientras espera, sin tener que ir pasandolo por todas
-#: las funciones intermedias.
-_ola_actual: BannerWave | None = None
+_banner: Banner | None = None
 
 
-def fijar_ola(ola: BannerWave | None) -> None:
-    global _ola_actual
-    _ola_actual = ola
+def set_banner(banner: Banner | None) -> None:
+    """Register the banner of the current screen so waits can animate it."""
+    global _banner
+    _banner = banner
 
 
-def _animando() -> BannerAnimator:
-    return BannerAnimator(_ola_actual)
+def current_banner() -> Banner | None:
+    return _banner
 
 
-def consola_interactiva() -> bool:
-    """True si se pueden leer teclas sueltas de la consola."""
+def animating() -> Animation:
+    return Animation(_banner)
+
+
+def interactive_console() -> bool:
+    """True when single key presses can be read without blocking redraws."""
     if sys.platform != "win32" or not colors_enabled():
         return False
-    entrada = sys.stdin
-    return bool(entrada is not None and getattr(entrada, "isatty", lambda: False)())
+    stream = sys.stdin
+    return bool(stream is not None and getattr(stream, "isatty", lambda: False)())
 
 
-def pintar_opciones(titulo: str, opciones: list[Opcion]) -> str:
-    """Dibuja una lista de opciones con el mismo estilo en todas las pantallas."""
-    ancho = max(len(nombre) for _, nombre, _ in opciones)
-    # Las etiquetas no siempre miden lo mismo ("F8)" contra "F10)"), asi que el
-    # relleno va fuera del color: dentro serian espacios pintados para nada.
-    ancho_num = max(len(numero) for numero, _, _ in opciones) + 1
-    lineas = ["", paint(f"  {titulo}", BOLD, WHITE), ""]
-    for numero, nombre, ayuda in opciones:
-        apagada = numero in ("0", VOLVER)
-        color_num = GREY if apagada else CYAN
-        color_txt = GREY if apagada else WHITE
-        etiqueta = nombre.ljust(ancho) if ayuda else nombre
-        relleno = " " * (ancho_num - len(numero) - 1)
-        fila = f"    {paint(numero + ')', BOLD, color_num)}{relleno} {paint(etiqueta, color_txt)}"
-        if ayuda:
-            fila += f"  {paint(ayuda, DIM, GREY)}"
-        lineas.append(fila)
-    return "\n".join(lineas)
+def render_options(title: str, options: list[Option]) -> str:
+    """Render a list of options with a consistent style."""
+    name_width = max(len(name) for _, name, _ in options)
+    label_width = max(len(label) for label, _, _ in options) + 1
+    lines = ["", paint(f"  {title}", BOLD, WHITE), ""]
+    for label, name, detail in options:
+        muted = label == BACK
+        text = name.ljust(name_width) if detail else name
+        padding = " " * (label_width - len(label) - 1)
+        row = f"    {paint(label + ')', BOLD, GREY if muted else CYAN)}{padding} "
+        row += paint(text, GREY if muted else WHITE)
+        if detail:
+            row += f"  {paint(detail, DIM, GREY)}"
+        lines.append(row)
+    return "\n".join(lines)
 
 
-def preguntar(opciones: set[str], por_defecto: str) -> str:
-    """Pide una opcion por linea, para cuando no hay consola interactiva."""
+def prompt_line(options: set[str], fallback: str) -> str:
+    """Read an option as a typed line, for non interactive consoles."""
     while True:
         try:
-            with _animando():
-                respuesta = input("  > ").strip().lower()
+            with animating():
+                answer = input("  > ").strip()
         except (EOFError, KeyboardInterrupt):
             print("")
-            return VOLVER if VOLVER in opciones else "0"
-        if not respuesta:
-            return por_defecto
-        if respuesta.upper() in opciones:
-            return respuesta.upper()
-        if respuesta in opciones:
-            return respuesta
-        print(f"  Opcion no valida. Elige entre: {', '.join(sorted(opciones))}")
+            return BACK if BACK in options else fallback
+        if not answer:
+            return fallback
+        if answer.upper() in options:
+            return answer.upper()
+        if answer in options:
+            return answer
+        print(f"  Not a valid option. Choose one of: {', '.join(sorted(options))}")
 
 
-def leer_opcion(opciones: set[str], por_defecto: str) -> str:
-    """Lee una opcion: de una tecla si hay consola, y si no por linea."""
-    if not consola_interactiva():
-        return preguntar(opciones, por_defecto)
+def read_option(options: set[str], fallback: str) -> str:
+    """Read a single key press, falling back to a typed line when needed."""
+    if not interactive_console():
+        return prompt_line(options, fallback)
 
     import msvcrt
 
     sys.stdout.write("  > ")
     sys.stdout.flush()
-    with _animando():
-        while True:
-            # kbhit + espera corta en vez de getwch a secas: getwch bloquea el
-            # hilo entero y con el la ola.
-            if not msvcrt.kbhit():
-                time.sleep(0.02)
-                continue
-            tecla = msvcrt.getwch()
-            if tecla in ("\x00", "\xe0"):  # teclas extendidas: llegan en pares
-                msvcrt.getwch()
-                continue
-            if tecla in ("\r", "\n"):
-                print(por_defecto)
-                return por_defecto
-            if tecla in ("\x1b", "\x03") and VOLVER in opciones:  # ESC o Ctrl+C
-                print(VOLVER)
-                return VOLVER
-            if tecla == "\x03":
-                print("")
-                return "0"
-            if tecla.lower() in opciones:
-                print(tecla.lower())
-                return tecla.lower()
+    with animating():
+        for key in _key_presses(msvcrt):
+            if key in ("\r", "\n"):
+                print(fallback)
+                return fallback
+            if key in ("\x1b", "\x03") and BACK in options:
+                print(BACK)
+                return BACK
+            if key.upper() in options:
+                print(key.upper())
+                return key.upper()
+    return fallback
 
 
-def leer_texto(mensaje: str) -> str | None:
-    """Pide un valor escrito. None si se cancela con Enter vacio o Ctrl+C."""
+def read_text(message: str) -> str | None:
+    """Read a typed value. None when cancelled with an empty line or Ctrl+C."""
     try:
-        with _animando():
-            respuesta = input(mensaje).strip()
+        with animating():
+            answer = input(message).strip()
     except (EOFError, KeyboardInterrupt):
         print("")
         return None
-    return respuesta or None
+    return answer or None
+
+
+def _key_presses(msvcrt: object, poll_seconds: float = 0.02) -> Iterator[str]:
+    """Yield key presses without blocking, so animations keep running."""
+    kbhit = msvcrt.kbhit  # type: ignore[attr-defined]
+    getwch = msvcrt.getwch  # type: ignore[attr-defined]
+    while True:
+        if not kbhit():
+            time.sleep(poll_seconds)
+            continue
+        key = getwch()
+        if key in ("\x00", "\xe0"):
+            getwch()
+            continue
+        yield key

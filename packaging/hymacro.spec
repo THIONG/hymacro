@@ -1,15 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""Receta de PyInstaller para el ejecutable de Windows.
+"""PyInstaller recipe for the Windows executable.
 
-Se usa --onedir (COLLECT) en vez de --onefile a proposito: el modo onefile se
-auto-extrae en %TEMP% al arrancar, y esa heuristica es justo la que dispara los
-falsos positivos de Windows Defender en un programa que ademas engancha el
-teclado. Onedir arranca mas rapido y molesta menos al antivirus.
+onedir is used rather than onefile on purpose: onefile extracts itself into
+%TEMP% on startup, and that behaviour is exactly what trips Windows Defender for
+a program that also hooks the keyboard.
 """
 
 from pathlib import Path
 
-ROOT = Path(SPECPATH).parent  # noqa: F821 - SPECPATH lo inyecta PyInstaller
+ROOT = Path(SPECPATH).parent  # noqa: F821
 SRC = ROOT / "src"
 
 a = Analysis(  # noqa: F821
@@ -17,7 +16,6 @@ a = Analysis(  # noqa: F821
     pathex=[str(SRC)],
     binaries=[],
     datas=[
-        # Plantilla usada para regenerar config.json si el usuario lo borra.
         (str(SRC / "hymacro" / "data" / "config.default.json"), "hymacro/data"),
     ],
     hiddenimports=["keyboard"],
@@ -25,7 +23,6 @@ a = Analysis(  # noqa: F821
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # Nada de esto se usa; fuera del bundle baja el tamano y la superficie de AV.
         "tkinter",
         "unittest",
         "pydoc",
@@ -49,7 +46,7 @@ exe = EXE(  # noqa: F821
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,  # UPX dispara aun mas antivirus de los que ya se disparan
+    upx=False,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,

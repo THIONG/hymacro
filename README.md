@@ -1,46 +1,27 @@
-# HyMacro - Hypixel Garden Automation Tool
+# HyMacro
 
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 [![CI](https://github.com/THIONG/hymacro/actions/workflows/ci.yml/badge.svg)](https://github.com/THIONG/hymacro/actions/workflows/ci.yml)
 
-## Descripción
+Automation tool for the Hypixel Skyblock Garden: cocoa beans, nether wart and
+cobblestone.
 
-HyMacro automatiza la recolección en el modo Garden de Hypixel Skyblock: cocoa
-beans, nether wart y cobblestone.
+## Install
 
-## Novedades de la v3
+### Download the executable
 
-| | v2 | v3 |
-|---|---|---|
-| **Parar el macro** | solo `Ctrl+C` en la consola | hotkey **F12**, responde al instante |
-| **Ejecución** | bloqueaba el hilo principal | hilo worker + watchdog |
-| **Alt+Tab** | seguía escribiendo en otras ventanas | se detiene solo |
-| **Entrada** | pyautogui (virtual-keys) | `SendInput` con scancodes |
-| **Timings** | fijos | con variación aleatoria configurable |
-| **Distribución** | clonar el repo | `.exe` en Releases |
-| **Dependencias** | pyautogui + keyboard | solo `keyboard` |
+Grab the `.zip` from the [latest release](https://github.com/THIONG/hymacro/releases),
+extract it and run `HyMacro.exe`. Python is not required.
 
-Además se corrigieron cuatro bugs de la v2, entre ellos un `TypeError` al
-arrancar que impedía que el bucle principal llegara a ejecutarse.
+> **SmartScreen and antivirus warnings are expected.** The executable is not code
+> signed, and a program that installs a global keyboard hook looks a lot like a
+> keylogger to heuristic scanners. The full source is in this repository and the
+> binary is built in the open by [`release.yml`](.github/workflows/release.yml).
+> Every release ships a `.sha256` so the download can be verified.
 
-## Instalación
-
-### Opción A: descargar el ejecutable (recomendado)
-
-Baja el `.zip` de la [última release](https://github.com/THIONG/hymacro/releases),
-descomprime y ejecuta `HyMacro.exe`. No necesitas Python.
-
-> **SmartScreen y antivirus**: el ejecutable no está firmado digitalmente, así que
-> Windows mostrará un aviso ("Más información" → "Ejecutar de todas formas"). Tu
-> antivirus también puede marcarlo: un programa que engancha el teclado global se
-> parece mucho a un keylogger para las heurísticas. Es un falso positivo — el
-> código está entero en este repo y el binario se construye públicamente con
-> [`release.yml`](.github/workflows/release.yml). Cada release incluye un
-> `.sha256` para verificar la descarga.
-
-### Opción B: desde el código con [uv](https://docs.astral.sh/uv/)
+### Run from source with [uv](https://docs.astral.sh/uv/)
 
 ```bash
 git clone https://github.com/THIONG/hymacro.git
@@ -50,112 +31,68 @@ git clone https://github.com/THIONG/hymacro.git
 cd hymacro && uv run hymacro
 ```
 
-`uv` se encarga de instalar Python 3.12 y las dependencias. También funciona
-`python main.py` si ya tienes un entorno preparado.
+## Usage
 
-## Uso
+Opening HyMacro shows a menu:
 
-### Controles
+```
+  HyMacro
 
-| Tecla | Acción |
-|-------|--------|
-| **F8** | Cocoa Beans — patrón W→D→S→A, 8 recorridos por warp |
-| **F9** | Nether Wart — serpentina D→W→A→W, 4 idas y vueltas (8 filas) por warp |
-| **F10** | Cobblestone — minado continuo con ciclo hub → isla |
-| **F12** | **DETENER** el macro en marcha |
-| **ESC** | Volver atrás: cierra menús y devuelve al menú desde el macro |
-| **Ctrl+C** | Salir de HyMacro |
+    1)   Start the macro
+    2)   Calibrate timings
+    3)   Settings
+    ESC) Exit
+```
 
-Al detenerse (por hotkey, por failsafe o al salir), HyMacro suelta todas las
-teclas y botones que tenía presionados y te imprime las estadísticas de la sesión.
+Options are picked with a single key press. **Escape** always goes back, and
+returns to the menu from the macro screen. Each screen clears the previous one.
+
+### Hotkeys while the macro screen is open
+
+| Key | Action |
+|-----|--------|
+| **F8** | Cocoa Beans |
+| **F9** | Nether Wart |
+| **F10** | Cobblestone |
+| **F12** | Stop the running macro |
+| **ESC** | Back to the menu (in the HyMacro window, not in the game) |
+
+Stopping releases every key and mouse button that was held down and prints the
+session statistics.
 
 ### Failsafes
 
-El macro se detiene solo cuando:
+The macro stops on its own when Minecraft loses focus, when the mouse is moved
+beyond a tolerance, or when the session limit is reached. A watchdog checks all
+of them ten times a second, including during the long holds of a route.
 
-- **Minecraft pierde el foco** — evita que `/warp garden` acabe en tu Discord.
-- **Mueves el ratón** más de N píxeles — tu intervención manda.
-- Se alcanza el **límite de sesión**, si lo configuras.
+The stop key is polled directly from Windows as well as through the hotkey hook,
+because a hook can silently stop delivering events and losing the ability to stop
+a running macro is the worst possible failure.
 
-El watchdog los comprueba cada 100 ms, también durante los 4 minutos de minado
-de cobblestone.
+## Configuration
 
-### El menú
+Settings live in `config.json` next to the executable, and can be edited from
+**Settings** inside the app. Values are validated before anything is written, so
+the file is never left in a state the program cannot load. Deleting the file
+recreates it with the defaults.
 
-Al abrir HyMacro (doble clic al `.exe` o `uv run hymacro`) sale un menú:
+**Every duration is expressed in seconds.**
 
-```
-    1) Arrancar el macro          teclas F8/F9/F10 para iniciar, F12 para parar
-    2) Calibrar los tiempos       cronometro manual sobre tu propio plot
-    3) Ajustes                    cambiar tiempos, teclas y failsafes
-    0) Salir
-```
+### Routes
 
-Se elige con una sola tecla, sin Enter. Enter a secas arranca el macro, que es
-lo habitual, y **ESC** vuelve al menú desde la pantalla del macro.
+| Key | Meaning |
+|-----|---------|
+| `keys` | The four keys of the pattern: `[out, step, back, step]` |
+| `forward_seconds` | Length of the outward leg. This is what moves you |
+| `return_seconds` | Length of the return leg. `0` for a one way route |
+| `step_seconds` | Time spent moving to the next row |
+| `routes_per_warp` | Laps before warping. `4` means 8 rows, not 4 |
 
-**Ajustes** abre un editor con el que se cambian los tiempos, las teclas y los
-failsafes sin tocar el JSON. Cada valor se valida **antes** de escribir, así
-que no se puede dejar un `config.json` que luego no abra: si pones una tecla
-que no existe o repites un atajo, te lo dice y no guarda nada. Sólo se escribe
-lo que cambias, sin volcarte encima todos los valores por defecto.
+There are two shapes of route.
 
-La ola de arcoíris del banner sigue corriendo mientras el menú está abierto, y los mensajes van en
-color: verde al arrancar, amarillo al parar, rojo en los errores. Si la salida
-está redirigida a un fichero o la terminal no admite ANSI, se imprime en texto
-plano — nunca se cuelan secuencias de escape. Se respeta la variable de entorno
-`NO_COLOR`, y `general.colors: "never"` lo apaga del todo.
-
-### Línea de comandos
-
-Todo lo del menú está también como flag, para quien prefiera la terminal:
-
-```bash
-uv run hymacro --check
-```
-
-| Flag | Descripción |
-|------|-------------|
-| `--config RUTA` | Usa otro `config.json` |
-| `--check` | Valida la configuración y sale, sin registrar hotkeys |
-| `--calibrate [MACRO]` | Cronómetro manual: mides tu recorrido con F12 y te da los tres tiempos |
-| `--no-menu` | Va directo al modo hotkeys, sin menú |
-| `--verbose` | Muestra los logs de debug en consola |
-| `--version` | Muestra la versión |
-
-También se respeta la variable de entorno `HYMACRO_CONFIG`.
-
-## Configuración
-
-Todo se edita en `config.json`, junto al ejecutable. Si lo borras se regenera
-con los valores por defecto. Un `config.json` de la v2 sigue siendo válido: las
-claves nuevas se heredan automáticamente.
-
-### `macros`
-
-| Clave | Descripción |
-|-------|-------------|
-| `keys` | Las 4 teclas del patrón: `[ida, paso, vuelta, paso]` |
-| `routes_per_warp` | **Idas y vueltas** antes del warp. `4` = 8 filas, no 4 |
-| **`forward_seconds`** | **Segundos del tramo de ida (tecla 1). Es lo que te desplaza** |
-| **`return_seconds`** | **Segundos del tramo de vuelta (tecla 3). `0` = un solo sentido** |
-| `step_seconds` | Segundos del paso entre filas (teclas 2 y 4) |
-| `mining_duration_seconds` | (cobblestone) Segundos de minado por ciclo |
-| `hub_wait_seconds` | (cobblestone) Espera en el hub antes de volver a la isla |
-
-> `forward_seconds` es el ajuste que más importa y el único que no se puede
-> adivinar desde fuera: depende del tamaño de tu plot, tu velocidad y tus buffs.
-> Si el macro "va muy rápido" y cambia de fila sin llegar al fondo, es este.
-> Mídelo con `--calibrate` (ver abajo) en vez de probar a ojo.
->
-> Los configs de la v2 usaban `use_cocoa_wait` + `cocoa_wait_seconds` para lo
-> mismo, pero sólo en cocoa beans — por eso nether wart nunca avanzaba. Se
-> siguen leyendo si no defines `forward_seconds`.
-
-#### Los dos tipos de recorrido
-
-**Serpentina** (nether wart) — miras al frente picando y te desplazas de lado.
-El tramo largo es lateral y el paso entre filas es hacia delante:
+**Serpentine** (nether wart) — you face forward, mine, and travel sideways. The
+long leg is lateral and the step between rows goes forward:
 
 ```json
 "keys": ["d", "w", "a", "w"],
@@ -164,11 +101,10 @@ El tramo largo es lateral y el paso entre filas es hacia delante:
 "step_seconds": 1.2
 ```
 
-Recorre la fila hacia la derecha → paso adelante → recorre la siguiente hacia
-la izquierda → paso adelante → y vuelta a empezar.
+Right along the row, step forward, left along the next one, step forward, repeat.
 
-**Un solo sentido** (cocoa beans) — avanzas, corriges y repites. La vuelta no
-tiene tramo largo, así que `return_seconds` se queda en `0`:
+**One way** (cocoa beans) — you advance, correct, and repeat, so the return leg
+has no long hold:
 
 ```json
 "keys": ["w", "d", "s", "a"],
@@ -176,130 +112,110 @@ tiene tramo largo, así que `return_seconds` se queda en `0`:
 "return_seconds": 0
 ```
 
-> En la v2 el tramo de vuelta estaba **fijado a 0 en el código**, así que la
-> serpentina era imposible: por mucho que ajustaras los tiempos, la fila de
-> vuelta duraba sólo `timing_ms`.
+### Calibration
 
-### Calibrar el recorrido
+The timings depend on plot size, movement speed and buffs, so they cannot be
+guessed. **Calibrate timings** is a manual stopwatch: nothing is automated, you
+walk the route and press the stop key twice, once at each end. It measures a full
+row and the step to the next one, then prints the values to apply.
 
-```bash
-uv run hymacro --calibrate nether_wart
-```
+### Other settings
 
-Es un **cronómetro manual**: el programa no mueve nada, conduces tú y él sólo
-mide. Marcas cada tramo pulsando **F12** dos veces, al empezar y al acabar:
+| Section | Key | Default | Meaning |
+|---------|-----|---------|---------|
+| `general` | `mouse_button` | `left` | Button held down while farming |
+| | `chat_key` | `t` | Key that opens the chat |
+| | `chat_open_seconds` | `0.12` | Pause before typing a command |
+| | `command_input_mode` | `unicode` | `unicode` or `scancode` |
+| | `step_jitter_seconds` | `0.008` | Random variation on short steps |
+| | `wait_jitter_percent` | `5` | Random variation on long holds |
+| | `wait_jitter_max_seconds` | `0.5` | Cap on that variation |
+| | `suppress_hotkeys` | `true` | Keep F8 to F12 from reaching the game |
+| | `colors` | `auto` | `auto`, `always` or `never` |
+| | `banner_animation` | `true` | Animate the banner |
+| `safety` | `require_window_focus` | `true` | Stop when Minecraft loses focus |
+| | `window_title_contains` | `Minecraft` | Text to look for in the window title |
+| | `mouse_failsafe` | `true` | Stop when the mouse moves |
+| | `mouse_failsafe_px` | `100` | Mouse tolerance |
+| | `max_session_seconds` | `0` | Session limit, `0` for none |
 
-1. **La fila entera** — F12, recorres la fila de punta a punta, F12.
-2. **El paso a la fila siguiente** — F12, pasas a la fila de al lado, F12.
+`NO_COLOR` is honoured, and `HYMACRO_CONFIG` overrides the configuration path.
 
-Al no inyectar ninguna tecla, no hay riesgo de que el personaje se te vaya del
-plot mientras calibras.
+## Command line
 
-Al terminar te imprime el bloque listo para pegar en `config.json`:
+| Flag | Description |
+|------|-------------|
+| `--config PATH` | Use a different `config.json` |
+| `--check` | Validate the configuration and exit |
+| `--calibrate [MACRO]` | Run the calibration stopwatch |
+| `--no-menu` | Go straight to the macro screen |
+| `--verbose` | Show debug logs on the console |
+| `--version` | Print the version |
 
-```
-    "forward_seconds": 120.4,
-    "return_seconds": 120.4,
-    "step_seconds": 1.20
-```
-
-### `general`
-
-| Clave | Por defecto | Descripción |
-|-------|-------------|-------------|
-| `mouse_button` | `left` | Botón que se mantiene pulsado |
-| `chat_key` | `t` | Tecla que abre el chat |
-| `chat_open_delay_ms` | `120` | Espera antes de escribir el comando |
-| `command_input_mode` | `unicode` | `unicode` o `scancode` (ver abajo) |
-| `timing_jitter_ms` | `8` | Variación aleatoria de los pasos cortos, en ms |
-| `wait_jitter_percent` | `5` | Variación aleatoria de las esperas largas, en % |
-| `wait_jitter_max_seconds` | `0.5` | Tope de esa variación. Sin él, un 5% sobre una fila de 2 min serían ±6 s y te saltarías filas |
-| `suppress_hotkeys` | `true` | Impide que F8–F12 lleguen también al juego |
-| `colors` | `auto` | `auto` / `always` / `never`. En `auto` sólo pinta si hay consola de verdad |
-| `banner_animation` | `true` | El banner se anima con una ola de arcoíris que corre hacia la derecha |
-| `loop_delay_ms` | `100` | Periodo del bucle inactivo |
-
-> Si los comandos llegan al chat cortados o no llegan, prueba a subir
-> `chat_open_delay_ms` o a cambiar `command_input_mode` a `scancode`.
-
-### `safety`
-
-| Clave | Por defecto | Descripción |
-|-------|-------------|-------------|
-| `require_window_focus` | `true` | Parar si la ventana activa no es Minecraft |
-| `window_title_contains` | `Minecraft` | Texto a buscar en el título de la ventana |
-| `mouse_failsafe` | `true` | Parar si mueves el ratón |
-| `mouse_failsafe_px` | `100` | Umbral del failsafe de ratón |
-| `max_session_minutes` | `0` | Límite de sesión (`0` = sin límite) |
-| `watchdog_interval_ms` | `100` | Frecuencia de comprobación de los failsafes |
-
-### `keybinds` y `commands`
-
-`keybinds` acepta cualquier nombre de tecla soportado (`f8`, `f12`, `home`...);
-no puede haber dos iguales. `commands` define los comandos de chat
-(`/warp garden`, `/hub`, `/is`).
-
-## Desarrollo
+## Development
 
 ```bash
 uv sync --all-groups
 ```
 
-| Comando | Qué hace |
-|---------|----------|
+| Command | Purpose |
+|---------|---------|
 | `uv run ruff check .` | Lint |
-| `uv run ruff format .` | Formato |
-| `uv run mypy` | Tipos (en modo estricto) |
+| `uv run ruff format .` | Format |
+| `uv run mypy` | Type check, in strict mode |
 | `uv run pytest` | Tests |
-| `uv run pyinstaller packaging/hymacro.spec --noconfirm` | Construir el `.exe` |
+| `uv run pyinstaller packaging/hymacro.spec --noconfirm` | Build the executable |
 
-### Estructura
+### Layout
 
 ```
 src/hymacro/
-  winput.py      SendInput por ctypes: scancodes, ratón, foco de ventana
-  config.py      Carga, validación y resolución de rutas
-  safety.py      Watchdog y failsafes
-  controller.py  Bucles de macro en hilo worker + estadísticas
-  app.py         Consola y hotkeys globales
-packaging/       Receta de PyInstaller
+  winput.py       SendInput via ctypes: scancodes, mouse, window focus
+  config.py       Loading, validation and persistence
+  console.py      Colour output and the animated banner
+  ui.py           Menu primitives shared by every screen
+  safety.py       Watchdog and failsafes
+  controller.py   Route execution on a worker thread
+  screen.py       Banner and shared header
+  app.py          The running macro screen
+  menu.py         Main menu
+  calibration.py  Manual stopwatch
+  settings.py     In-app settings editor
 ```
 
-### Publicar una release
+### Releasing
 
-Sube la versión en `pyproject.toml` y `src/hymacro/__init__.py`, y empuja el tag:
+Bump the version in `pyproject.toml` and `src/hymacro/__init__.py`, then push a
+tag. The workflow verifies the tag matches the package version, builds the
+executable, checks that it starts, generates the SHA256 and publishes the release.
 
 ```bash
-git tag v3.0.0 && git push origin v3.0.0
+git tag v1.0.0 && git push origin v1.0.0
 ```
 
-El workflow verifica que el tag coincida con la versión del paquete, construye
-el `.exe`, comprueba que arranca, genera el SHA256 y publica la release.
+## Troubleshooting
 
-## Solución de problemas
+**The hotkeys do nothing.** Run HyMacro as administrator. Global keyboard hooks
+cannot intercept input aimed at elevated processes.
 
-**Los hotkeys no responden** — ejecuta HyMacro como administrador. Los hooks
-globales de teclado no pueden interceptar entrada dirigida a procesos elevados.
+**It refuses to start, saying the active window is not Minecraft.** That is the
+focus failsafe. Press the hotkey with Minecraft in the foreground, or adjust
+`safety.window_title_contains` to match your launcher.
 
-**El macro no arranca y dice que la ventana activa no es Minecraft** — el
-failsafe de foco. Pulsa F8 con Minecraft en primer plano, o ajusta
-`safety.window_title_contains` al título real de tu launcher.
+**It stops after a few seconds.** Usually the mouse failsafe. Raise
+`safety.mouse_failsafe_px` or turn it off.
 
-**Se detiene solo a los pocos segundos** — casi siempre es el failsafe de ratón.
-Sube `safety.mouse_failsafe_px` o ponlo en `false`.
+**It changes rows before reaching the end.** `forward_seconds` is too low.
+Measure it with the calibration stopwatch.
 
-**Los movimientos se desincronizan** — ajusta `timing_ms` para tu ping y
-recalibra la posición inicial en el garden.
+Run with `--verbose` to see the details of a failure.
 
-Para ver los detalles de un fallo, arranca con `--verbose`.
+## Notes
 
-## Consideraciones
+Automating gameplay may go against the Hypixel rules. Use at your own risk and
+keep an eye on the macro while it runs; the failsafes reduce accidents but do not
+replace supervision.
 
-- **Úsalo bajo tu propia responsabilidad.** Automatizar acciones puede ir contra
-  las reglas de Hypixel; revísalas antes.
-- Mantén supervisión mientras el macro esté activo.
-- Los failsafes reducen accidentes, pero no sustituyen estar pendiente.
+## Licence
 
-## Licencia
-
-MIT. Ver [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

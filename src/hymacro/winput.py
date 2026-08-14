@@ -1,16 +1,9 @@
-"""Backend de entrada para Windows basado en SendInput.
+"""Windows input backend built on SendInput.
 
-Sustituye a pyautogui por dos motivos:
-
-1. Inyecta *scancodes* en lugar de virtual-keys. Minecraft usa GLFW, que lee
-   el scancode del mensaje; los virtual-keys que enviaba pyautogui se pierden
-   en algunas configuraciones de teclado.
-2. Evita arrastrar Pillow/pyscreeze/pytweening al ejecutable final, que es
-   peso muerto y superficie extra para los falsos positivos de antivirus.
-
-El backend lleva registro de todo lo que mantiene presionado para poder
-soltarlo de golpe cuando se detiene el macro. Sin esto, parar el macro a mitad
-de una ruta te deja caminando contra una pared indefinidamente.
+Scancodes are injected rather than virtual keys because Minecraft runs on GLFW,
+which reads the scancode from the message. The backend also tracks everything it
+is holding down, so a stop can release it all at once instead of leaving the
+character walking into a wall.
 """
 
 from __future__ import annotations
@@ -24,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 _IS_WINDOWS = sys.platform == "win32"
 
-# --- Constantes de la API de Windows -----------------------------------------
 
 _INPUT_MOUSE = 0
 _INPUT_KEYBOARD = 1
@@ -35,13 +27,12 @@ _KEYEVENTF_UNICODE = 0x0004
 _KEYEVENTF_SCANCODE = 0x0008
 
 _MOUSE_FLAGS: dict[str, tuple[int, int]] = {
-    # boton: (flag_down, flag_up)
     "left": (0x0002, 0x0004),
     "right": (0x0008, 0x0010),
     "middle": (0x0020, 0x0040),
 }
 
-# Scancodes del Set 1 (los que entiende GLFW/Minecraft directamente).
+
 _SCANCODES: dict[str, int] = {
     "escape": 0x01,
     "1": 0x02,
@@ -111,10 +102,10 @@ _SCANCODES: dict[str, int] = {
     "f12": 0x58,
 }
 
-# Teclas que necesitan el flag de "extendida" para que Windows las entregue bien.
+
 _EXTENDED = {"rctrl", "ralt", "up", "down", "left_arrow", "right_arrow"}
 
-# Simbolos que en un layout US se escriben con Shift.
+
 _SHIFTED_CHARS: dict[str, str] = {
     "!": "1",
     "@": "2",
@@ -141,12 +132,8 @@ _SHIFTED_CHARS: dict[str, str] = {
 
 
 class InputError(RuntimeError):
-    """Error al inyectar entrada en el sistema."""
+    """Raised when input could not be injected."""
 
-
-# --- Estructuras de ctypes ---------------------------------------------------
-# Se definen con tipos genericos de ctypes en vez de ctypes.wintypes porque ese
-# modulo no importa en Linux, y el linter/CI corre en ubuntu.
 
 _LONG = ctypes.c_long
 _DWORD = ctypes.c_ulong
@@ -196,22 +183,20 @@ class _Point(ctypes.Structure):
     _fields_ = (("x", _LONG), ("y", _LONG))
 
 
-# Fuera de Windows queda en None para que el modulo se pueda importar (linter y
-# tests corren en Linux); cualquier uso real lanza InputError.
 _user32 = ctypes.WinDLL("user32", use_last_error=True) if _IS_WINDOWS else None
 
 
 def _send(*inputs: _Input) -> None:
-    """Envia una tanda de eventos al sistema."""
+    """Send a batch of input events."""
     if _user32 is None:
-        raise InputError("HyMacro solo funciona en Windows")
+        raise InputError("Input injection is only available on Windows")
 
     count = len(inputs)
     array = (_Input * count)(*inputs)
     sent = _user32.SendInput(count, ctypes.byref(array), ctypes.sizeof(_Input))
     if sent != count:
         err = ctypes.get_last_error()
-        raise InputError(f"SendInput entrego {sent}/{count} eventos (error {err})")
+        raise InputError(f"SendInput delivered {sent}/{count} events (error {err})")
 
 
 def _key_event(scancode: int, *, up: bool, extended: bool = False) -> _Input:
@@ -244,16 +229,13 @@ def _mouse_event(flag: int) -> _Input:
 
 
 def resolve_scancode(key: str) -> int:
-    """Traduce un nombre de tecla a su scancode. Lanza ValueError si no existe."""
+    """Translate a key name into its scancode."""
     normalized = key.strip().lower()
     if normalized not in _SCANCODES:
-        raise ValueError(f"Tecla no soportada: {key!r}")
+        raise ValueError(f"unsupported key: {key!r}")
     return _SCANCODES[normalized]
 
 
-#: Virtual-keys para consultar el estado real del teclado con GetAsyncKeyState.
-#: Es una via independiente del hook de `keyboard`, que puede dejar de entregar
-#: eventos sin avisar (Windows desengancha los hooks lentos por su cuenta).
 _VK_CODES: dict[str, int] = {
     **{f"f{n}": 0x6F + n for n in range(1, 13)},
     **{chr(c): c for c in range(ord("A"), ord("Z") + 1)},
@@ -280,10 +262,10 @@ if _user32 is not None:
 
 
 def is_key_held(key: str) -> bool:
-    """True si la tecla esta pulsada ahora mismo, segun el propio Windows.
+    """True when the key is held right now, according to Windows itself.
 
-    No pasa por el hook de `keyboard`: pregunta directamente al sistema, asi
-    que sigue funcionando aunque el hook se haya caido o este saturado.
+    This bypasses the `keyboard` hook, so it keeps working even if that hook
+    stops delivering events.
     """
     if _user32 is None:
         return False
@@ -294,7 +276,7 @@ def is_key_held(key: str) -> bool:
 
 
 def cursor_position() -> tuple[int, int]:
-    """Devuelve la posicion actual del cursor en pixeles de pantalla."""
+    """Current cursor position, in screen pixels."""
     if _user32 is None:
         return (0, 0)
     point = _Point()
@@ -304,7 +286,7 @@ def cursor_position() -> tuple[int, int]:
 
 
 def foreground_window_title() -> str:
-    """Devuelve el titulo de la ventana en primer plano ('' si no se puede leer)."""
+    """Title of the foreground window, or an empty string."""
     if _user32 is None:
         return ""
     handle = _user32.GetForegroundWindow()
@@ -319,19 +301,16 @@ def foreground_window_title() -> str:
 
 
 class InputBackend:
-    """Inyecta teclado y raton, recordando que sigue presionado.
+    """Injects keyboard and mouse input, remembering what is held down.
 
-    Todos los metodos son seguros de llamar desde varios hilos: el watchdog
-    puede pedir `release_all()` mientras el hilo del macro esta a mitad de una
-    ruta.
+    Every method is safe to call from several threads: the watchdog may call
+    `release_all()` while the macro thread is mid-route.
     """
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._held_keys: dict[str, int] = {}
         self._held_buttons: set[str] = set()
-
-    # --- teclado ---
 
     def key_down(self, key: str) -> None:
         key = key.strip().lower()
@@ -360,12 +339,10 @@ class InputBackend:
                 _key_event(scancode, up=True, extended=extended),
             )
 
-    # --- raton ---
-
     def mouse_down(self, button: str = "left") -> None:
         flags = _MOUSE_FLAGS.get(button)
         if flags is None:
-            raise ValueError(f"Boton de raton no soportado: {button!r}")
+            raise ValueError(f"unsupported mouse button: {button!r}")
         with self._lock:
             if button in self._held_buttons:
                 return
@@ -382,14 +359,11 @@ class InputBackend:
             _send(_mouse_event(flags[1]))
             self._held_buttons.discard(button)
 
-    # --- texto ---
-
     def type_text(self, text: str, *, mode: str = "unicode") -> None:
-        """Escribe texto caracter a caracter.
+        """Type text one character at a time.
 
-        `unicode` genera mensajes WM_CHAR (funciona en el chat de Minecraft y
-        con cualquier layout de teclado). `scancode` simula pulsaciones fisicas
-        de un layout US, util si algun mod bloquea la entrada unicode.
+        `unicode` produces WM_CHAR messages, which the Minecraft chat accepts on
+        any keyboard layout. `scancode` simulates physical US layout presses.
         """
         if mode == "scancode":
             self._type_text_scancode(text)
@@ -411,7 +385,7 @@ class InputBackend:
                 try:
                     scancode = resolve_scancode(key)
                 except ValueError:
-                    logger.warning("Caracter %r sin scancode; se envia como unicode", char)
+                    logger.warning("No scancode for %r; sending it as unicode", char)
                     unit = _utf16_units(char)
                     _send(
                         *[e for u in unit for e in (_unicode_event(u, up=False), _unicode_event(u, up=True))]
@@ -427,22 +401,20 @@ class InputBackend:
                     events.append(_key_event(shift, up=True))
                 _send(*events)
 
-    # --- limpieza ---
-
     def release_all(self) -> None:
-        """Suelta todas las teclas y botones pendientes. Nunca lanza excepcion."""
+        """Release every held key and button. Never raises."""
         with self._lock:
             for key in list(self._held_keys):
                 try:
                     self.key_up(key)
                 except Exception:
-                    logger.exception("No se pudo soltar la tecla %r", key)
+                    logger.exception("Could not release key %r", key)
                     self._held_keys.pop(key, None)
             for button in list(self._held_buttons):
                 try:
                     self.mouse_up(button)
                 except Exception:
-                    logger.exception("No se pudo soltar el boton %r", button)
+                    logger.exception("Could not release button %r", button)
                     self._held_buttons.discard(button)
 
     @property
@@ -452,6 +424,6 @@ class InputBackend:
 
 
 def _utf16_units(text: str) -> list[int]:
-    """Descompone el texto en unidades UTF-16 (maneja pares subrogados)."""
+    """Split text into UTF-16 code units, handling surrogate pairs."""
     raw = text.encode("utf-16-le")
     return [int.from_bytes(raw[i : i + 2], "little") for i in range(0, len(raw), 2)]

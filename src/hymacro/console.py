@@ -1,9 +1,8 @@
-"""Colores ANSI para la consola, con degradado suave si la terminal no puede.
+"""ANSI colour output, the animated banner and console window tweaks.
 
-Windows no interpreta secuencias ANSI por defecto en la consola clasica: hay
-que pedirselo con SetConsoleMode. Si eso falla, o la salida esta redirigida a un
-fichero, se imprime en texto plano en vez de llenarlo todo de basura tipo
-`\\x1b[38;2;255;0;0m`.
+Windows does not interpret ANSI escapes in the classic console unless asked to.
+When that fails, or the output is redirected, everything degrades to plain text
+rather than leaking escape sequences into a file.
 """
 
 from __future__ import annotations
@@ -18,6 +17,10 @@ import time
 
 _STD_OUTPUT_HANDLE = -11
 _ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+_WM_SETICON = 0x0080
+
+_HUE_STEPS = 48
+_CYCLES_PER_LINE = 0.75
 
 RESET = "\x1b[0m"
 BOLD = "\x1b[1m"
@@ -36,34 +39,31 @@ _enabled = False
 
 
 def enable_ansi() -> bool:
-    """Pide a Windows que interprete las secuencias ANSI. True si se pudo."""
+    """Ask Windows to interpret ANSI escape sequences."""
     if sys.platform != "win32":
         return True
     try:
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         handle = kernel32.GetStdHandle(_STD_OUTPUT_HANDLE)
-        modo = ctypes.c_ulong()
-        if not kernel32.GetConsoleMode(handle, ctypes.byref(modo)):
+        mode = ctypes.c_ulong()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
             return False
-        nuevo = modo.value | _ENABLE_VIRTUAL_TERMINAL_PROCESSING
-        return bool(kernel32.SetConsoleMode(handle, nuevo))
-    except (OSError, AttributeError):  # pragma: no cover - consolas raras
+        return bool(kernel32.SetConsoleMode(handle, mode.value | _ENABLE_VIRTUAL_TERMINAL_PROCESSING))
+    except (OSError, AttributeError):
         return False
 
 
 def init_colors(mode: str = "auto") -> bool:
-    """Decide si se pinta. `auto` solo pinta en una consola de verdad."""
+    """Decide whether output is colourised. 'auto' requires a real console."""
     global _enabled
     if mode == "never" or os.environ.get("NO_COLOR"):
         _enabled = False
     elif mode == "always":
-        # 'always' es 'always': se intenta activar el modo ANSI, pero si la
-        # salida esta redirigida se pinta igual. Es lo que pide quien lo pone.
         enable_ansi()
         _enabled = True
     else:
-        interactiva = bool(getattr(sys.stdout, "isatty", lambda: False)())
-        _enabled = interactiva and enable_ansi()
+        interactive = bool(getattr(sys.stdout, "isatty", lambda: False)())
+        _enabled = interactive and enable_ansi()
     return _enabled
 
 
@@ -72,77 +72,25 @@ def colors_enabled() -> bool:
 
 
 def paint(text: str, *codes: str) -> str:
-    """Envuelve el texto en codigos ANSI, o lo devuelve tal cual si no hay color."""
+    """Wrap text in ANSI codes, or return it untouched when colour is off."""
     if not _enabled or not codes:
         return text
     return f"{''.join(codes)}{text}{RESET}"
 
 
-def _hue_rgb(fraccion: float) -> tuple[int, int, int]:
-    """Punto del arcoiris, con saturacion y brillo al maximo."""
-    h = fraccion % 1.0
-    sector = int(h * 6)
-    resto = h * 6 - sector
-    subida = int(255 * resto)
-    bajada = 255 - subida
-    return [
-        (255, subida, 0),
-        (bajada, 255, 0),
-        (0, 255, subida),
-        (0, bajada, 255),
-        (subida, 0, 255),
-        (255, 0, bajada),
-    ][sector % 6]
-
-
-def hue(fraccion: float) -> str:
-    """Codigo de color RGB de 24 bits para un punto del arcoiris."""
-    r, g, b = _hue_rgb(fraccion)
-    return f"\x1b[38;2;{r};{g};{b}m"
-
-
-#: Pasos en los que se cuantiza el tono. Sin esto cada caracter llevaria su
-#: propio codigo de color y cada fotograma pesaria el triple para nada: el ojo
-#: no distingue saltos tan finos.
-_PASOS_TONO = 48
-
-#: Vueltas de arcoiris que caben a lo ancho del banner. Menos de una para que
-#: se lea como una ola y no como una tira de confeti.
-_CICLOS_POR_LINEA = 0.75
-
-
-def _linea_ola(linea: str, fila: int, fase: float, paso_fila: float) -> str:
-    """Colorea una linea con el tono variando por columna."""
-    ancho = max(1, len(linea))
-    partes: list[str] = []
-    ultimo = -1
-    for columna, caracter in enumerate(linea):
-        # Restar la fase hace que el patron se desplace hacia la derecha:
-        # un tono fijo aparece en columnas cada vez mayores segun avanza t.
-        tono = (columna / ancho) * _CICLOS_POR_LINEA - fase + fila * paso_fila
-        cuantizado = int(tono % 1.0 * _PASOS_TONO)
-        if cuantizado != ultimo:
-            partes.append(hue(cuantizado / _PASOS_TONO))
-            ultimo = cuantizado
-        partes.append(caracter)
-    partes.append(RESET)
-    return "".join(partes)
-
-
-def set_console_title(titulo: str) -> None:
-    """Pone el titulo de la ventana de consola."""
+def set_console_title(title: str) -> None:
+    """Set the console window title."""
     if sys.platform != "win32":
         return
-    # El titulo es cosmetico: si la consola no deja ponerlo, se sigue igual.
     with contextlib.suppress(OSError, AttributeError):
-        ctypes.WinDLL("kernel32", use_last_error=True).SetConsoleTitleW(titulo)
+        ctypes.WinDLL("kernel32", use_last_error=True).SetConsoleTitleW(title)
 
 
 def set_console_icon() -> None:
-    """Pone el icono del ejecutable en la ventana de consola.
+    """Apply the executable's icon to the console window.
 
-    Solo tiene efecto en la consola clasica (conhost). Windows Terminal dibuja
-    el icono de su propio perfil y no hay forma de cambiarlo desde el programa.
+    Only the classic console honours this. Windows Terminal draws the icon of
+    its own profile and cannot be overridden by the application.
     """
     if sys.platform != "win32" or not getattr(sys, "frozen", False):
         return
@@ -151,7 +99,6 @@ def set_console_icon() -> None:
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         shell32 = ctypes.WinDLL("shell32", use_last_error=True)
 
-        # Sin restype los handles se truncan a 32 bits y no valen para nada.
         kernel32.GetConsoleWindow.restype = ctypes.c_void_p
         shell32.ExtractIconW.restype = ctypes.c_void_p
         shell32.ExtractIconW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint]
@@ -162,181 +109,157 @@ def set_console_icon() -> None:
             ctypes.c_void_p,
         ]
 
-        ventana = kernel32.GetConsoleWindow()
-        if not ventana:
+        window = kernel32.GetConsoleWindow()
+        icon = shell32.ExtractIconW(None, sys.executable, 0) if window else None
+        if not window or not icon:
             return
-        icono = shell32.ExtractIconW(None, sys.executable, 0)
-        if not icono:
-            return
-
-        wm_seticon = 0x0080
-        for tamano in (0, 1):  # ICON_SMALL, ICON_BIG
+        for size in (0, 1):
             user32.SendMessageW(
-                ctypes.c_void_p(ventana),
-                wm_seticon,
-                ctypes.c_void_p(tamano),
-                ctypes.c_void_p(icono),
+                ctypes.c_void_p(window),
+                _WM_SETICON,
+                ctypes.c_void_p(size),
+                ctypes.c_void_p(icon),
             )
-    except (OSError, AttributeError):  # pragma: no cover
-        pass
+    except (OSError, AttributeError):
+        return
 
 
 def clear_screen() -> None:
-    """Limpia la pantalla y el scrollback, y sube el cursor arriba del todo.
-
-    Sin ANSI no se hace nada: es preferible dejar la consola con historial a
-    escupir secuencias de escape por la salida.
-    """
+    """Clear the screen and the scrollback, then home the cursor."""
     if not _enabled:
         return
-    # 2J borra lo visible, 3J el historial de scroll, H lleva el cursor al origen.
     sys.stdout.write("\x1b[H\x1b[2J\x1b[3J")
     sys.stdout.flush()
 
 
-class BannerWave:
-    """Repinta el banner en su sitio mientras el resto de la pantalla sigue.
+def _hue_rgb(fraction: float) -> tuple[int, int, int]:
+    hue = fraction % 1.0
+    sector = int(hue * 6)
+    remainder = hue * 6 - sector
+    rising = int(255 * remainder)
+    falling = 255 - rising
+    return [
+        (255, rising, 0),
+        (falling, 255, 0),
+        (0, 255, rising),
+        (0, falling, 255),
+        (rising, 0, 255),
+        (255, 0, falling),
+    ][sector % 6]
 
-    Se guarda la posicion del cursor, se sube hasta el banner, se repintan sus
-    filas y se vuelve. Asi la ola sigue corriendo aunque debajo haya un menu y
-    el usuario este a punto de pulsar una tecla.
+
+def hue(fraction: float) -> str:
+    """Truecolour escape for a point on the rainbow."""
+    red, green, blue = _hue_rgb(fraction)
+    return f"\x1b[38;2;{red};{green};{blue}m"
+
+
+def _wave_line(line: str, row: int, phase: float, row_offset: float) -> str:
+    """Colourise one line with the hue varying along the columns.
+
+    Subtracting the phase makes the pattern travel to the right: a fixed hue
+    shows up at ever larger columns as time advances. The hue is quantised so a
+    frame does not carry one escape sequence per character.
     """
+    width = max(1, len(line))
+    parts: list[str] = []
+    previous = -1
+    for column, character in enumerate(line):
+        tone = (column / width) * _CYCLES_PER_LINE - phase + row * row_offset
+        quantised = int(tone % 1.0 * _HUE_STEPS)
+        if quantised != previous:
+            parts.append(hue(quantised / _HUE_STEPS))
+            previous = quantised
+        parts.append(character)
+    parts.append(RESET)
+    return "".join(parts)
 
-    def __init__(
-        self,
-        texto: str,
-        *,
-        velocidad: float = 0.7,
-        paso_fila: float = 0.05,
-    ) -> None:
-        self._lineas = texto.splitlines()
-        self._velocidad = velocidad
-        self._paso_fila = paso_fila
-        self._inicio = time.monotonic()
+
+class Banner:
+    """A banner whose rainbow travels to the right as time passes."""
+
+    def __init__(self, text: str, *, speed: float = 0.7, row_offset: float = 0.05) -> None:
+        self._lines = text.splitlines()
+        self._speed = speed
+        self._row_offset = row_offset
+        self._start = time.monotonic()
 
     @property
-    def alto(self) -> int:
-        return len(self._lineas)
+    def height(self) -> int:
+        return len(self._lines)
 
-    def _fase(self) -> float:
-        return (time.monotonic() - self._inicio) * self._velocidad
+    def _phase(self) -> float:
+        return (time.monotonic() - self._start) * self._speed
 
     def draw(self) -> None:
-        """Pinta el banner por primera vez, dejando el cursor debajo."""
+        """Paint the banner, leaving the cursor below it."""
         if not _enabled:
-            print("\n".join(self._lineas), flush=True)
+            print("\n".join(self._lines), flush=True)
             return
-        fase = self._fase()
-        for fila, linea in enumerate(self._lineas):
-            sys.stdout.write(f"{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")
+        phase = self._phase()
+        for row, line in enumerate(self._lines):
+            sys.stdout.write(f"{_wave_line(line, row, phase, self._row_offset)}\x1b[K\n")
         sys.stdout.flush()
 
-    def tick_top(self) -> None:
-        """Repinta el banner dando por hecho que empieza en la fila 1.
+    def refresh(self) -> None:
+        """Repaint in place, assuming the banner starts on the first row.
 
-        Vale para las pantallas que se dibujan tras limpiar: ahi el banner esta
-        siempre arriba del todo, asi que no hace falta contar lo que hay debajo
-        ni acertar cuanto subir el cursor.
+        Every screen is drawn right after clearing, so the banner is always at
+        the top and no line counting is needed.
         """
         if not _enabled:
             return
-        fase = self._fase()
-        partes = ["\x1b[s\x1b[1;1H"]
-        for fila, linea in enumerate(self._lineas):
-            partes.append(f"\r{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")
-        partes.append("\x1b[u")
-        sys.stdout.write("".join(partes))
+        phase = self._phase()
+        parts = ["\x1b[s\x1b[1;1H"]
+        for row, line in enumerate(self._lines):
+            parts.append(f"\r{_wave_line(line, row, phase, self._row_offset)}\x1b[K\n")
+        parts.append("\x1b[u")
+        sys.stdout.write("".join(parts))
         sys.stdout.flush()
 
-    def tick(self, lineas_debajo: int) -> None:
-        """Repinta el banner sin mover el cursor de donde estaba.
-
-        `lineas_debajo` es cuantas filas hay entre el final del banner y el
-        cursor; sin ese dato repintariamos encima del menu.
-        """
+    def refresh_above(self, lines_below: int) -> None:
+        """Repaint in place when output has been printed below the banner."""
         if not _enabled:
             return
-        salto = self.alto + max(0, lineas_debajo)
-
-        # Si el banner ya se ha ido por arriba al hacer scroll, subir el cursor
-        # aterrizaria en medio de otra cosa y la repintariamos con el banner.
-        if salto >= shutil.get_terminal_size(fallback=(80, 24)).lines:
+        jump = self.height + max(0, lines_below)
+        if jump >= shutil.get_terminal_size(fallback=(80, 24)).lines:
             return
-
-        fase = self._fase()
-        partes = [f"\x1b[s\x1b[{salto}A"]
-        for fila, linea in enumerate(self._lineas):
-            partes.append(f"\r{_linea_ola(linea, fila, fase, self._paso_fila)}\x1b[K\n")
-        partes.append("\x1b[u")
-        sys.stdout.write("".join(partes))
+        phase = self._phase()
+        parts = [f"\x1b[s\x1b[{jump}A"]
+        for row, line in enumerate(self._lines):
+            parts.append(f"\r{_wave_line(line, row, phase, self._row_offset)}\x1b[K\n")
+        parts.append("\x1b[u")
+        sys.stdout.write("".join(parts))
         sys.stdout.flush()
 
 
-class BannerAnimator:
-    """Mantiene la ola corriendo mientras el hilo principal espera una tecla.
+class Animation:
+    """Keeps a banner moving while the main thread waits for input.
 
-    Se usa como contexto y solo debe estar activo mientras nadie mas escribe:
-    si otro hilo imprime a la vez que movemos el cursor, la pantalla se
-    descuadra. Por eso se arranca justo antes de leer y se para al volver.
+    Only safe while nothing else writes to the screen, so it runs strictly
+    around a blocking read.
     """
 
-    def __init__(self, ola: BannerWave | None, fps: int = 15) -> None:
-        self._ola = ola if _enabled else None
-        self._espera = 1.0 / max(1, fps)
-        self._parar = threading.Event()
-        self._hilo: threading.Thread | None = None
+    def __init__(self, banner: Banner | None, fps: int = 15) -> None:
+        self._banner = banner if _enabled else None
+        self._interval = 1.0 / max(1, fps)
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
 
-    def __enter__(self) -> BannerAnimator:
-        if self._ola is not None:
-            self._parar.clear()
-            self._hilo = threading.Thread(target=self._bucle, daemon=True, name="hymacro-ola")
-            self._hilo.start()
+    def __enter__(self) -> Animation:
+        if self._banner is not None:
+            self._stop.clear()
+            self._thread = threading.Thread(target=self._loop, daemon=True, name="hymacro-banner")
+            self._thread.start()
         return self
 
     def __exit__(self, *exc: object) -> None:
-        self._parar.set()
-        if self._hilo is not None:
-            self._hilo.join(timeout=1.0)
-            self._hilo = None
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1.0)
+            self._thread = None
 
-    def _bucle(self) -> None:
-        assert self._ola is not None
-        while not self._parar.wait(self._espera):
-            self._ola.tick_top()
-
-
-def print_rainbow(
-    texto: str,
-    *,
-    animate: bool = True,
-    duracion: float = 2.2,
-    fps: int = 18,
-    paso_fila: float = 0.05,
-    velocidad: float = 0.7,
-) -> None:
-    """Dibuja el texto con una ola de arcoiris que se desplaza hacia la derecha.
-
-    Sin color se imprime de golpe y sin pausas: la animacion solo tiene sentido
-    en una consola, y en un fichero de log solo serviria para hacerla lenta.
-    """
-    lineas = texto.splitlines()
-    if not _enabled:
-        print(texto, flush=True)
-        return
-
-    if not animate or duracion <= 0 or fps <= 0:
-        for fila, linea in enumerate(lineas):
-            print(_linea_ola(linea, fila, 0.0, paso_fila), flush=True)
-        return
-
-    espera = 1.0 / fps
-    for fotograma in range(max(1, int(duracion * fps))):
-        if fotograma:
-            # Subir el cursor para repintar el banner en el mismo sitio.
-            sys.stdout.write(f"\x1b[{len(lineas)}A")
-        fase = fotograma * espera * velocidad  # vueltas de arcoiris por segundo
-        for fila, linea in enumerate(lineas):
-            # \x1b[K borra hasta el final por si una linea encoge.
-            sys.stdout.write(f"\r{_linea_ola(linea, fila, fase, paso_fila)}\x1b[K\n")
-        sys.stdout.flush()
-        time.sleep(espera)
+    def _loop(self) -> None:
+        assert self._banner is not None
+        while not self._stop.wait(self._interval):
+            self._banner.refresh()

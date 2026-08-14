@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Atajo para seguir arrancando HyMacro con `python main.py`.
-
-La logica vive en el paquete `src/hymacro`. La forma recomendada de ejecutarlo
-es `uv run hymacro`.
-"""
+"""Shortcut so `python main.py` still works. `uv run hymacro` is preferred."""
 
 from __future__ import annotations
 

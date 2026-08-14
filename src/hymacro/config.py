@@ -1,41 +1,45 @@
-"""Carga, validacion y resolucion de rutas de la configuracion."""
+"""Configuration loading, validation and persistence."""
 
 from __future__ import annotations
 
 import json
-import logging
 import os
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
+_MISSING = object()
 
-_SENTINEL = object()
+MACRO_TYPES = ("cocoa_beans", "nether_wart", "cobblestone")
+ROUTE_MACROS = ("cocoa_beans", "nether_wart")
 
-#: Valores por defecto. Se fusionan con el config.json del usuario, asi que un
-#: config viejo (v2) sigue funcionando y hereda las claves nuevas.
+MACRO_LABELS = {
+    "cocoa_beans": "Cocoa Beans",
+    "nether_wart": "Nether Wart",
+    "cobblestone": "Cobblestone",
+}
+
 DEFAULTS: dict[str, Any] = {
     "macros": {
         "cocoa_beans": {
             "keys": ["w", "d", "s", "a"],
             "routes_per_warp": 8,
-            "use_cocoa_wait": True,
-            "timing_ms": 93,
-            "cocoa_wait_seconds": 1,
+            "forward_seconds": 1.0,
+            "return_seconds": 0.0,
+            "step_seconds": 0.093,
         },
         "nether_wart": {
-            "keys": ["w", "d", "w", "a"],
+            "keys": ["d", "w", "a", "w"],
             "routes_per_warp": 4,
-            "use_cocoa_wait": False,
-            "timing_ms": 119,
-            "cocoa_wait_seconds": 0,
+            "forward_seconds": 120.0,
+            "return_seconds": 120.0,
+            "step_seconds": 1.2,
         },
         "cobblestone": {
             "key": "w",
-            "mining_duration_seconds": 240,
-            "hub_wait_seconds": 3,
+            "mining_seconds": 240.0,
+            "hub_wait_seconds": 3.0,
         },
     },
     "commands": {
@@ -50,53 +54,51 @@ DEFAULTS: dict[str, Any] = {
         "stop": "f12",
     },
     "general": {
-        "loop_delay_ms": 100,
         "mouse_button": "left",
         "chat_key": "t",
-        "chat_open_delay_ms": 120,
+        "chat_open_seconds": 0.12,
         "command_input_mode": "unicode",
-        "timing_jitter_ms": 8,
-        "wait_jitter_percent": 5,
+        "step_jitter_seconds": 0.008,
+        "wait_jitter_percent": 5.0,
         "wait_jitter_max_seconds": 0.5,
         "suppress_hotkeys": True,
         "colors": "auto",
         "banner_animation": True,
+        "idle_poll_seconds": 0.05,
     },
     "safety": {
         "require_window_focus": True,
         "window_title_contains": "Minecraft",
         "mouse_failsafe": True,
         "mouse_failsafe_px": 100,
-        "max_session_minutes": 0,
-        "watchdog_interval_ms": 100,
+        "max_session_seconds": 0.0,
+        "watchdog_seconds": 0.1,
     },
 }
 
-#: Tipos de macro que el controlador sabe ejecutar.
-MACRO_TYPES = ("cocoa_beans", "nether_wart", "cobblestone")
-
 
 class ConfigError(RuntimeError):
-    """La configuracion no se pudo cargar o no es valida."""
+    """The configuration could not be loaded or is not valid."""
 
 
 def app_dir() -> Path:
-    """Directorio donde vive la app: junto al .exe, o la raiz del repo en dev."""
+    """Directory the app lives in: next to the executable, or the repository root."""
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[2]
 
 
-def bundled_default_path() -> Path:
-    """Ruta de la plantilla de configuracion que viaja dentro del paquete."""
+def template_path() -> Path:
+    """Location of the default configuration shipped inside the package."""
     return Path(__file__).resolve().parent / "data" / "config.default.json"
 
 
 def resolve_config_path(explicit: str | os.PathLike[str] | None = None) -> Path:
-    """Decide que config.json usar.
+    """Pick the configuration file to use.
 
-    Prioridad: argumento `--config` > variable HYMACRO_CONFIG > junto a la app >
-    directorio actual (esto ultimo solo cuando NO esta congelado).
+    Priority: explicit path, then HYMACRO_CONFIG, then next to the app. The
+    working directory is only considered when running from source; a frozen
+    executable always anchors to its own folder.
     """
     if explicit is not None:
         return Path(explicit).expanduser().resolve()
@@ -109,9 +111,6 @@ def resolve_config_path(explicit: str | os.PathLike[str] | None = None) -> Path:
     if candidate.exists():
         return candidate
 
-    # Congelado, el .exe manda: nunca se mira el directorio actual. Si no,
-    # arrancar el .exe desde otra carpeta cargaria una config ajena en silencio
-    # y el macro correria con timings que no son los tuyos.
     if not getattr(sys, "frozen", False):
         cwd_candidate = Path.cwd() / "config.json"
         if cwd_candidate.exists():
@@ -121,22 +120,46 @@ def resolve_config_path(explicit: str | os.PathLike[str] | None = None) -> Path:
 
 
 def ensure_config_exists(path: Path) -> bool:
-    """Crea el config.json desde la plantilla si falta. Devuelve True si lo creo."""
+    """Create the configuration from the template when it is missing."""
     if path.exists():
         return False
 
-    template = bundled_default_path()
     path.parent.mkdir(parents=True, exist_ok=True)
+    template = template_path()
     if template.exists():
         shutil.copyfile(template, path)
-    else:  # pragma: no cover - solo si el paquete se instalo mal
-        path.write_text(json.dumps(DEFAULTS, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    logger.info("Se creo una configuracion nueva en %s", path)
+    else:
+        path.write_text(json.dumps(DEFAULTS, indent=2) + "\n", encoding="utf-8")
     return True
 
 
+def read_raw(path: Path) -> dict[str, Any]:
+    """Read the configuration file without merging the defaults in."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ConfigError(f"Configuration file not found: {path}") from exc
+    except OSError as exc:
+        raise ConfigError(f"Could not read {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"Invalid JSON in {path} (line {exc.lineno}): {exc.msg}") from exc
+
+    if not isinstance(data, dict):
+        raise ConfigError(f"{path} must contain a JSON object at the top level")
+    return data
+
+
+def write_raw(path: Path, data: dict[str, Any]) -> None:
+    """Persist the configuration file."""
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def merge_defaults(override: dict[str, Any]) -> dict[str, Any]:
+    """Combine a configuration with the built-in defaults."""
+    return _deep_merge(DEFAULTS, override)
+
+
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    """Fusiona `override` sobre `base` sin mutar ninguno de los dos."""
     result = dict(base)
     for key, value in override.items():
         current = result.get(key)
@@ -147,148 +170,139 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
     return result
 
 
-def _valor(config: dict[str, Any], *keys: str) -> Any:
-    """Lee una clave anidada de un config ya fusionado."""
-    valor: Any = config
+def lookup(config: dict[str, Any], *keys: str) -> Any:
+    """Read a nested key, returning None when any level is missing."""
+    value: Any = config
     for key in keys:
-        if not isinstance(valor, dict) or key not in valor:
+        if not isinstance(value, dict) or key not in value:
             return None
-        valor = valor[key]
-    return valor
+        value = value[key]
+    return value
 
 
-def validate_config(config: dict[str, Any]) -> None:
-    """Valida los campos de los que depende el macro para no fallar a mitad de ruta."""
-    from .winput import resolve_scancode  # import local: winput toca la API de Windows
+def assign(config: dict[str, Any], keys: tuple[str, ...], value: Any) -> None:
+    """Write a nested key, creating the intermediate objects it needs."""
+    target = config
+    for key in keys[:-1]:
+        branch = target.get(key)
+        if not isinstance(branch, dict):
+            branch = {}
+            target[key] = branch
+        target = branch
+    target[keys[-1]] = value
 
+
+def validate(config: dict[str, Any]) -> None:
+    """Check every field the macro relies on, so it cannot fail mid-route."""
     for section in ("macros", "commands", "keybinds", "general", "safety"):
         if not isinstance(config.get(section), dict):
-            raise ConfigError(f"La seccion '{section}' falta o no es un objeto")
+            raise ConfigError(f"Section '{section}' is missing or is not an object")
 
-    button = _valor(config, "general", "mouse_button")
-    if button not in ("left", "right", "middle"):
-        raise ConfigError(f"general.mouse_button debe ser left/right/middle, no {button!r}")
+    _validate_general(config)
+    _validate_route_macros(config)
+    _validate_cobblestone(config)
+    _validate_keybinds(config)
 
-    mode = _valor(config, "general", "command_input_mode")
-    if mode not in ("unicode", "scancode"):
-        raise ConfigError(f"general.command_input_mode debe ser 'unicode' o 'scancode', no {mode!r}")
 
-    colores = _valor(config, "general", "colors")
-    if colores not in ("auto", "always", "never"):
-        raise ConfigError(f"general.colors debe ser auto/always/never, no {colores!r}")
+def _check_key(value: Any, field: str) -> None:
+    from .winput import resolve_scancode
 
     try:
-        resolve_scancode(str(_valor(config, "general", "chat_key")))
+        resolve_scancode(str(value))
     except ValueError as exc:
-        raise ConfigError(f"general.chat_key invalida: {exc}") from exc
+        raise ConfigError(f"{field}: {exc}") from exc
 
-    for name in ("cocoa_beans", "nether_wart"):
-        macro = _valor(config, "macros", name)
+
+def _validate_general(config: dict[str, Any]) -> None:
+    button = lookup(config, "general", "mouse_button")
+    if button not in ("left", "right", "middle"):
+        raise ConfigError(f"general.mouse_button must be left, right or middle, not {button!r}")
+
+    mode = lookup(config, "general", "command_input_mode")
+    if mode not in ("unicode", "scancode"):
+        raise ConfigError(f"general.command_input_mode must be 'unicode' or 'scancode', not {mode!r}")
+
+    colors = lookup(config, "general", "colors")
+    if colors not in ("auto", "always", "never"):
+        raise ConfigError(f"general.colors must be auto, always or never, not {colors!r}")
+
+    _check_key(lookup(config, "general", "chat_key"), "general.chat_key")
+
+
+def _validate_route_macros(config: dict[str, Any]) -> None:
+    for name in ROUTE_MACROS:
+        macro = lookup(config, "macros", name)
         if not isinstance(macro, dict):
-            raise ConfigError(f"Falta la configuracion del macro '{name}'")
+            raise ConfigError(f"Missing configuration for macro '{name}'")
+
         keys = macro.get("keys")
         if not isinstance(keys, list) or len(keys) != 4:
-            raise ConfigError(f"macros.{name}.keys debe ser una lista de 4 teclas, no {keys!r}")
+            raise ConfigError(f"macros.{name}.keys must be a list of 4 keys, not {keys!r}")
         for key in keys:
-            try:
-                resolve_scancode(str(key))
-            except ValueError as exc:
-                raise ConfigError(f"macros.{name}.keys: {exc}") from exc
+            _check_key(key, f"macros.{name}.keys")
+
         if int(macro.get("routes_per_warp", 0)) < 1:
-            raise ConfigError(f"macros.{name}.routes_per_warp debe ser >= 1")
-        paso_ms = (
-            float(macro["step_seconds"]) * 1000
-            if "step_seconds" in macro
-            else float(macro.get("timing_ms", 0))
-        )
-        if paso_ms <= 0:
-            raise ConfigError(f"macros.{name}.step_seconds debe ser > 0")
-        for campo in ("forward_seconds", "return_seconds"):
-            if float(macro.get(campo, 0)) < 0:
-                raise ConfigError(f"macros.{name}.{campo} no puede ser negativo")
+            raise ConfigError(f"macros.{name}.routes_per_warp must be 1 or more")
+        if float(macro.get("step_seconds", 0)) <= 0:
+            raise ConfigError(f"macros.{name}.step_seconds must be greater than 0")
+        for field in ("forward_seconds", "return_seconds"):
+            if float(macro.get(field, 0)) < 0:
+                raise ConfigError(f"macros.{name}.{field} cannot be negative")
 
-    cobble = _valor(config, "macros", "cobblestone")
-    if not isinstance(cobble, dict):
-        raise ConfigError("Falta la configuracion del macro 'cobblestone'")
-    try:
-        resolve_scancode(str(cobble.get("key")))
-    except ValueError as exc:
-        raise ConfigError(f"macros.cobblestone.key invalida: {exc}") from exc
-    if float(cobble.get("mining_duration_seconds", 0)) <= 0:
-        raise ConfigError("macros.cobblestone.mining_duration_seconds debe ser > 0")
 
-    binds = _valor(config, "keybinds")
-    assert isinstance(binds, dict)
+def _validate_cobblestone(config: dict[str, Any]) -> None:
+    macro = lookup(config, "macros", "cobblestone")
+    if not isinstance(macro, dict):
+        raise ConfigError("Missing configuration for macro 'cobblestone'")
+    _check_key(macro.get("key"), "macros.cobblestone.key")
+    if float(macro.get("mining_seconds", 0)) <= 0:
+        raise ConfigError("macros.cobblestone.mining_seconds must be greater than 0")
+
+
+def _validate_keybinds(config: dict[str, Any]) -> None:
+    binds = lookup(config, "keybinds")
+    if not isinstance(binds, dict):
+        raise ConfigError("Section 'keybinds' is missing or is not an object")
     for action in (*MACRO_TYPES, "stop"):
         if not binds.get(action):
-            raise ConfigError(f"Falta el keybind para '{action}'")
-    used = [str(v).lower() for v in binds.values()]
-    duplicated = {k for k in used if used.count(k) > 1}
+            raise ConfigError(f"Missing keybind for '{action}'")
+
+    used = [str(value).lower() for value in binds.values()]
+    duplicated = sorted({key for key in used if used.count(key) > 1})
     if duplicated:
-        raise ConfigError(f"Hay keybinds repetidos: {', '.join(sorted(duplicated))}")
+        raise ConfigError(f"Duplicated keybinds: {', '.join(duplicated)}")
 
 
-class ConfigManager:
-    """Gestor de configuracion para cargar y validar settings del macro."""
+class Config:
+    """Validated configuration, merged with the built-in defaults."""
 
     def __init__(
-        self, config_path: str | os.PathLike[str] | None = None, *, auto_create: bool = True
+        self,
+        path: str | os.PathLike[str] | None = None,
+        *,
+        auto_create: bool = True,
     ) -> None:
-        self.config_path = resolve_config_path(config_path)
-        self.created_default = False
-        self.config: dict[str, Any] = {}
-        if auto_create:
-            self.created_default = ensure_config_exists(self.config_path)
-        self.load_config()
+        self.path = resolve_config_path(path)
+        self.created_default = ensure_config_exists(self.path) if auto_create else False
+        self.values = merge_defaults(read_raw(self.path))
+        validate(self.values)
 
-    def load_config(self) -> None:
-        """Carga la configuracion desde el archivo JSON y la fusiona con los defaults."""
-        try:
-            raw = self.config_path.read_text(encoding="utf-8")
-        except FileNotFoundError as exc:
-            raise ConfigError(f"Archivo de configuracion no encontrado: {self.config_path}") from exc
-        except OSError as exc:
-            raise ConfigError(f"No se pudo leer {self.config_path}: {exc}") from exc
-
-        try:
-            user_config = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise ConfigError(f"JSON invalido en {self.config_path} (linea {exc.lineno}): {exc.msg}") from exc
-
-        if not isinstance(user_config, dict):
-            raise ConfigError(f"{self.config_path} debe contener un objeto JSON en la raiz")
-
-        self.config = _deep_merge(DEFAULTS, user_config)
-        self._validate_config()
-        logger.info("Configuracion cargada desde %s", self.config_path)
-
-    def _validate_config(self) -> None:
-        validate_config(self.config)
-
-    def get(self, *keys: str, default: Any = _SENTINEL) -> Any:
-        """Obtiene un valor anidado de la configuracion.
-
-        `default` es keyword-only a proposito: en la v2 era posicional y se
-        interpretaba como una clave mas, lo que devolvia None y tiraba la app.
-        """
-        value: Any = self.config
-        for key in keys:
-            if isinstance(value, dict) and key in value:
-                value = value[key]
-            else:
-                if default is _SENTINEL:
-                    raise ConfigError(f"Falta la clave de configuracion: {'.'.join(keys)}")
-                return default
+    def get(self, *keys: str, default: Any = _MISSING) -> Any:
+        value = lookup(self.values, *keys)
+        if value is None:
+            if default is _MISSING:
+                raise ConfigError(f"Missing configuration key: {'.'.join(keys)}")
+            return default
         return value
 
-    def get_float(self, *keys: str, default: Any = _SENTINEL) -> float:
+    def number(self, *keys: str, default: Any = _MISSING) -> float:
         return float(self.get(*keys, default=default))
 
-    def get_int(self, *keys: str, default: Any = _SENTINEL) -> int:
+    def integer(self, *keys: str, default: Any = _MISSING) -> int:
         return int(self.get(*keys, default=default))
 
-    def get_bool(self, *keys: str, default: Any = _SENTINEL) -> bool:
+    def flag(self, *keys: str, default: Any = _MISSING) -> bool:
         return bool(self.get(*keys, default=default))
 
-    def get_str(self, *keys: str, default: Any = _SENTINEL) -> str:
+    def text(self, *keys: str, default: Any = _MISSING) -> str:
         return str(self.get(*keys, default=default))

@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag a construir (ej. v3.0.0). Sin tag solo genera el artefacto."
+        description: "Tag to build (for example v1.0.0). Without one only the artifact is produced."
         required: false
         type: string
 
@@ -15,20 +15,20 @@ permissions:
 
 jobs:
   build:
-    name: Construir el .exe de Windows
+    name: Build the Windows executable
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar uv
+      - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      - name: Sincronizar dependencias
+      - name: Sync dependencies
         run: uv sync --all-groups --locked
 
-      - name: Calcular version
+      - name: Resolve the version
         id: version
         shell: pwsh
         run: |
@@ -43,39 +43,36 @@ jobs:
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "Tag: $tag / version: $version"
 
-      # Evita publicar un v3.1.0 cuyo binario reporta 3.0.0.
-      - name: Comprobar que el tag coincide con __version__
+      - name: Check the tag matches __version__
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
           $declared = (uv run hymacro --version) -replace '^HyMacro\s+', ''
           $expected = '${{ steps.version.outputs.version }}'
           if ($declared.Trim() -ne $expected) {
-            Write-Error "El tag dice $expected pero el paquete reporta $declared. Actualiza pyproject.toml y src/hymacro/__init__.py."
+            Write-Error "The tag says $expected but the package reports $declared. Update pyproject.toml and src/hymacro/__init__.py."
             exit 1
           }
-          Write-Host "Version verificada: $declared"
+          Write-Host "Version verified: $declared"
 
-      - name: Construir con PyInstaller
+      - name: Build with PyInstaller
         run: uv run pyinstaller packaging/hymacro.spec --noconfirm --clean
 
-      - name: Preparar el paquete
+      - name: Assemble the package
         shell: pwsh
         run: |
-          # config.json viaja al lado del .exe para que se pueda editar sin
-          # descomprimir nada. Si el usuario lo borra, la app lo regenera.
           Copy-Item config.json  dist/HyMacro/config.json
           Copy-Item README.md    dist/HyMacro/README.md
           Copy-Item LICENSE      dist/HyMacro/LICENSE.txt
           Get-ChildItem dist/HyMacro | Select-Object Name, Length
 
-      - name: Comprobar que el .exe arranca
+      - name: Check the executable starts
         shell: pwsh
         run: |
           & dist/HyMacro/HyMacro.exe --check
-          if ($LASTEXITCODE -ne 0) { Write-Error "El ejecutable no valido la configuracion"; exit 1 }
+          if ($LASTEXITCODE -ne 0) { Write-Error "The executable failed to validate the configuration"; exit 1 }
 
-      - name: Comprimir y firmar con SHA256
+      - name: Compress and checksum
         id: package
         shell: pwsh
         run: |
@@ -86,7 +83,7 @@ jobs:
           "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "SHA256: $hash"
 
-      - name: Subir el artefacto del build
+      - name: Upload the build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.package.outputs.name }}
@@ -95,7 +92,7 @@ jobs:
             ${{ steps.package.outputs.name }}.zip.sha256
           retention-days: 30
 
-      - name: Publicar la release
+      - name: Publish the release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -105,23 +102,24 @@ jobs:
             ${{ steps.package.outputs.name }}.zip
             ${{ steps.package.outputs.name }}.zip.sha256
           body: |
-            ## Instalacion
+            ## Install
 
-            1. Descarga y descomprime `${{ steps.package.outputs.name }}.zip`.
-            2. Ejecuta `HyMacro.exe` (clic derecho -> **Ejecutar como administrador**:
-               los hooks globales de teclado lo necesitan si Minecraft corre elevado).
-            3. Edita `config.json` para ajustar timings y keybinds.
+            1. Download and extract `${{ steps.package.outputs.name }}.zip`.
+            2. Run `HyMacro.exe`. Right click and **Run as administrator** if the
+               hotkeys do not respond: global keyboard hooks need it when
+               Minecraft itself runs elevated.
+            3. Adjust timings and hotkeys from **Settings** inside the app.
 
-            ## Avisos
+            ## Notes
 
-            - **Windows SmartScreen** va a avisar porque el ejecutable no esta firmado
-              digitalmente. Es esperado: "Mas informacion" -> "Ejecutar de todas formas".
-            - **Tu antivirus puede marcarlo como falso positivo.** Un binario que
-              engancha el teclado global se parece mucho a un keylogger para las
-              heuristicas. El codigo esta completo en este repo y el build es
-              reproducible desde este workflow.
-            - Verifica la descarga con el `.sha256` adjunto:
+            - **Windows SmartScreen will warn you.** The executable is not code
+              signed. Choose "More info" then "Run anyway".
+            - **Your antivirus may flag it.** A binary that installs a global
+              keyboard hook looks like a keylogger to heuristic scanners. The
+              source is in this repository and this workflow builds it in the open.
+            - Verify the download with the attached `.sha256`:
               ```
               Get-FileHash ${{ steps.package.outputs.name }}.zip -Algorithm SHA256
               ```
-            - Usar macros puede ir contra las reglas de Hypixel. Bajo tu responsabilidad.
+            - Automating gameplay may go against the Hypixel rules. Use at your
+              own risk.

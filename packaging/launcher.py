@@ -1,7 +1,7 @@
-"""Punto de entrada para PyInstaller.
+"""PyInstaller entry point.
 
-No se puede congelar `src/hymacro/__main__.py` directamente: PyInstaller lo
-ejecutaria como script suelto y los imports relativos del paquete fallarian.
+`src/hymacro/__main__.py` cannot be frozen directly: PyInstaller would run it as
+a loose script and the package relative imports would fail.
 """
 
 from hymacro.__main__ import main
