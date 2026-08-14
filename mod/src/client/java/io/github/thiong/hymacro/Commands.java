@@ -2,6 +2,7 @@ package io.github.thiong.hymacro;
 
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -66,6 +67,10 @@ public final class Commands {
 						.then(argument("everyTicks", IntegerArgumentType.integer(1, 100))
 							.executes(context -> addAction(context, host, Route.SPAM,
 								IntegerArgumentType.getInteger(context, "everyTicks"))))))
+				.then(literal("look")
+					.then(argument("yaw", FloatArgumentType.floatArg(-180.0f, 180.0f))
+						.then(argument("pitch", FloatArgumentType.floatArg(-90.0f, 90.0f))
+							.executes(context -> setLook(context, host)))))
 				.then(literal("undo")
 					.executes(context -> undo(context, host)))
 				.then(literal("clear")
@@ -137,6 +142,7 @@ public final class Commands {
 		Chat.entry(source, "/hymacro point", "mark where you stand and look");
 		Chat.entry(source, "/hymacro hold <key>", "hold it until that point");
 		Chat.entry(source, "/hymacro spam <key> [ticks]", "click it repeatedly instead");
+		Chat.entry(source, "/hymacro look <yaw> <pitch>", "aim that leg by numbers");
 		Chat.entry(source, "/hymacro undo", "drop the last point");
 		Chat.entry(source, "/hymacro clear", "start this macro over");
 		Chat.note(source, "Keys: w a s d space shift ctrl attack use");
@@ -178,14 +184,62 @@ public final class Commands {
 			source.getPlayer().getX(),
 			source.getPlayer().getY(),
 			source.getPlayer().getZ(),
-			source.getPlayer().getYRot(),
+			wrap(source.getPlayer().getYRot()),
 			source.getPlayer().getXRot(),
 			new ArrayList<>()));
 		host.book().save();
 
-		Chat.ok(source, "Point " + route.waypoints.size() + " set.");
+		Chat.ok(source, "Point " + route.waypoints.size() + " set, facing "
+			+ round(wrap(source.getPlayer().getYRot())) + " / "
+			+ round(source.getPlayer().getXRot()) + ".");
 		Chat.note(source, "Now say what happens on the way to it: /hymacro hold or /hymacro spam");
 		return 1;
+	}
+
+	/**
+	 * Aims the leg by hand.
+	 *
+	 * <p>Standing somewhere captures the look direction along with the position,
+	 * which is enough most of the time. On a wall of crops it is not: a camera a
+	 * degree off ruins a run, and a degree is finer than a person can hold a
+	 * mouse. Typing the number the game itself shows is exact.
+	 */
+	private static int setLook(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		if (route.isEmpty()) {
+			Chat.error(context.getSource(), "Set a point first with /hymacro point.");
+			return 0;
+		}
+
+		float yaw = wrap(FloatArgumentType.getFloat(context, "yaw"));
+		float pitch = FloatArgumentType.getFloat(context, "pitch");
+		Route.Waypoint last = route.waypoints.get(route.waypoints.size() - 1);
+		route.waypoints.set(route.waypoints.size() - 1, new Route.Waypoint(
+			last.x, last.y, last.z, yaw, pitch, last.actions));
+		host.book().save();
+
+		Chat.ok(context.getSource(), "Leg " + route.waypoints.size()
+			+ " now faces " + round(yaw) + " / " + round(pitch) + ".");
+		return 1;
+	}
+
+	/** Into the -180 to 180 the game shows, so a typed number matches a read one. */
+	private static float wrap(float degrees) {
+		float wrapped = degrees % 360.0f;
+		if (wrapped >= 180.0f) {
+			wrapped -= 360.0f;
+		}
+		if (wrapped < -180.0f) {
+			wrapped += 360.0f;
+		}
+		return wrapped;
+	}
+
+	private static String round(float degrees) {
+		return String.valueOf(Math.round(degrees * 10.0f) / 10.0f);
 	}
 
 	/** Attaches work to the leg that ends at the last point set. */

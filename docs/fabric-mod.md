@@ -33,6 +33,7 @@ stand on the second block  /hymacro point
 | `/hymacro point` | Marks where you stand, facing where you face |
 | `/hymacro hold <key>` | Hold a key on the way to the last point |
 | `/hymacro spam <key> [ticks]` | Click it repeatedly instead of holding |
+| `/hymacro look <yaw> <pitch>` | Aim that leg by numbers instead of by standing |
 | `/hymacro undo`, `clear` | Drop the last point, or start over |
 | `/hymacro radius <blocks>` | How close counts as arrived |
 | `/hymacro warp <command>` | What to send at the end of a lap |
@@ -115,6 +116,15 @@ else is stated outright.
 On a wall of crops the player faces the wall while moving sideways. A camera off
 by a degree ruins a run as surely as a mistimed key, so yaw and pitch are
 recorded with the point and restored when the leg begins.
+
+Standing somewhere captures both at once, which is enough most of the time. When
+it is not, `/hymacro look <yaw> <pitch>` sets them outright: a degree is finer
+than anyone can hold a mouse, and the game already shows the exact numbers on
+the debug screen. Marking a point prints what it captured, so the value to
+adjust from is in front of you.
+
+The direction belongs to the leg ending at that point, not to the point itself.
+It is applied when the leg begins and held for the whole of it.
 
 ## Toolchain, verified against the official example mod
 
