@@ -64,10 +64,8 @@ jobs:
       - name: Probe the API
         if: steps.build.outcome != 'success'
         env:
-          # Paths to list, and classes to dump the signatures of. Edited
-          # alongside whatever the build could not resolve.
-          PROBE_LIST: "fabric/api/client/rendering/.*[.]class$ fabric/api/.*(WorldRender|RenderEvents|RenderCallback).*[.]class$"
-          PROBE_JAVAP: ""
+          PROBE_LIST: "client/.*[Gg]izmo[A-Za-z]*[.]class$"
+          PROBE_JAVAP: "rendering/v1/level/LevelRenderEvents[.]class$ rendering/v1/level/LevelRenderContext[.]class$ rendering/v1/level/AbstractLevelRenderContext[.]class$"
         run: |
           jars=$(find ~/.gradle -name '*.jar' 2>/dev/null)
           {
@@ -76,23 +74,18 @@ jobs:
             for pattern in $PROBE_LIST; do
               echo "-- list $pattern"
               for jar in $jars; do
-                hits=$(unzip -Z1 "$jar" 2>/dev/null | grep -E "$pattern" | head -n 120 || true)
+                hits=$(unzip -Z1 "$jar" 2>/dev/null | grep -E "$pattern" | head -n 40 || true)
                 [ -n "$hits" ] || continue
                 echo "   [$(basename "$jar")]"
                 echo "$hits" | sed 's/^/     /'
               done
             done
-            echo "-- fabric modules"
-            for jar in $jars; do
-              case "$(basename "$jar")" in fabric-*) echo "   $(basename "$jar")";; esac
-            done | sort -u
             for pattern in $PROBE_JAVAP; do
               echo "-- javap $pattern"
               for jar in $jars; do
                 entry=$(unzip -Z1 "$jar" 2>/dev/null | grep -E "$pattern" | head -n 1 || true)
                 [ -n "$entry" ] || continue
-                echo "   [$(basename "$jar")] $entry"
-                javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#[.]class$##')" 2>/dev/null                   | grep -iE "box|line|outline" | head -n 20 | sed 's/^/     /' || true
+                javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#[.]class$##')" 2>/dev/null                   | head -n 45 | sed 's/^/     /' || true
                 break
               done
             done
