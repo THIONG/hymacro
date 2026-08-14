@@ -39,14 +39,16 @@ def consola_interactiva() -> bool:
 def pintar_opciones(titulo: str, opciones: list[Opcion]) -> str:
     """Dibuja una lista de opciones con el mismo estilo en todas las pantallas."""
     ancho = max(len(nombre) for _, nombre, _ in opciones)
+    # Las etiquetas no siempre miden lo mismo ("F8)" contra "F10)"), asi que el
+    # relleno va fuera del color: dentro serian espacios pintados para nada.
+    ancho_num = max(len(numero) for numero, _, _ in opciones) + 1
     lineas = ["", paint(f"  {titulo}", BOLD, WHITE), ""]
     for numero, nombre, ayuda in opciones:
         color_num = GREY if numero == "0" else CYAN
         color_txt = GREY if numero == "0" else WHITE
-        # Solo se rellena cuando hay ayuda que alinear a la derecha; si no, el
-        # relleno quedaria dentro del color sin pintar nada.
         etiqueta = nombre.ljust(ancho) if ayuda else nombre
-        fila = f"    {paint(numero + ')', BOLD, color_num)} {paint(etiqueta, color_txt)}"
+        relleno = " " * (ancho_num - len(numero) - 1)
+        fila = f"    {paint(numero + ')', BOLD, color_num)}{relleno} {paint(etiqueta, color_txt)}"
         if ayuda:
             fila += f"  {paint(ayuda, DIM, GREY)}"
         lineas.append(fila)

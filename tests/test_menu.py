@@ -155,3 +155,26 @@ def test_un_config_roto_no_impide_abrir_el_menu(tmp_path: Path, monkeypatch: pyt
     _con_respuestas(monkeypatch, ["0"])
 
     assert app.run_menu(str(roto)) == 0
+
+
+def test_las_etiquetas_de_distinto_ancho_quedan_alineadas() -> None:
+    """En la pantalla del macro conviven "F8)" y "F10)"."""
+    from hymacro.ui import pintar_opciones
+
+    texto = ANSI.sub(
+        "",
+        pintar_opciones(
+            "Teclas",
+            [("F8", "Cocoa Beans", ""), ("F10", "Cobblestone", ""), ("ESC", "volver", "")],
+        ),
+    )
+    columnas = {
+        linea.index(nombre)
+        for linea, nombre in zip(
+            [line for line in texto.splitlines() if ")" in line],
+            ["Cocoa Beans", "Cobblestone", "volver"],
+            strict=True,
+        )
+    }
+
+    assert len(columnas) == 1, f"los nombres empiezan en columnas distintas: {columnas}"

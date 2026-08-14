@@ -8,6 +8,7 @@ fichero, se imprime en texto plano en vez de llenarlo todo de basura tipo
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import os
 import shutil
@@ -126,6 +127,58 @@ def _linea_ola(linea: str, fila: int, fase: float, paso_fila: float) -> str:
         partes.append(caracter)
     partes.append(RESET)
     return "".join(partes)
+
+
+def set_console_title(titulo: str) -> None:
+    """Pone el titulo de la ventana de consola."""
+    if sys.platform != "win32":
+        return
+    # El titulo es cosmetico: si la consola no deja ponerlo, se sigue igual.
+    with contextlib.suppress(OSError, AttributeError):
+        ctypes.WinDLL("kernel32", use_last_error=True).SetConsoleTitleW(titulo)
+
+
+def set_console_icon() -> None:
+    """Pone el icono del ejecutable en la ventana de consola.
+
+    Solo tiene efecto en la consola clasica (conhost). Windows Terminal dibuja
+    el icono de su propio perfil y no hay forma de cambiarlo desde el programa.
+    """
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return
+    try:
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+
+        # Sin restype los handles se truncan a 32 bits y no valen para nada.
+        kernel32.GetConsoleWindow.restype = ctypes.c_void_p
+        shell32.ExtractIconW.restype = ctypes.c_void_p
+        shell32.ExtractIconW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint]
+        user32.SendMessageW.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_uint,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        ]
+
+        ventana = kernel32.GetConsoleWindow()
+        if not ventana:
+            return
+        icono = shell32.ExtractIconW(None, sys.executable, 0)
+        if not icono:
+            return
+
+        wm_seticon = 0x0080
+        for tamano in (0, 1):  # ICON_SMALL, ICON_BIG
+            user32.SendMessageW(
+                ctypes.c_void_p(ventana),
+                wm_seticon,
+                ctypes.c_void_p(tamano),
+                ctypes.c_void_p(icono),
+            )
+    except (OSError, AttributeError):  # pragma: no cover
+        pass
 
 
 def clear_screen() -> None:

@@ -16,6 +16,7 @@ from .app import (
     setup_logging,
 )
 from .config import ConfigError
+from .console import set_console_icon, set_console_title
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ def main(argv: list[str] | None = None) -> int:
 
     enable_utf8_console()
     setup_logging(verbose=args.verbose)
+    set_console_title(f"HyMacro v{__version__}")
+    set_console_icon()
 
     if sys.platform != "win32":
         print("[ERROR] HyMacro solo funciona en Windows.", file=sys.stderr)

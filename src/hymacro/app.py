@@ -38,7 +38,7 @@ from .console import (
 )
 from .controller import MacroController, MacroEvent
 from .editor import editar_configuracion
-from .ui import consola_interactiva, fijar_ola, leer_opcion, pintar_opciones, preguntar
+from .ui import Opcion, consola_interactiva, fijar_ola, leer_opcion, pintar_opciones, preguntar
 
 logger = logging.getLogger(__name__)
 
@@ -174,24 +174,19 @@ class HyMacroApp:
         else:
             print_rainbow(_BANNER, animate=False)
         self._lineas_bajo_banner = 0
-        self._say(f"  HyMacro v{__version__} - Hypixel Garden Automation Tool")
+        self._say(_cabecera())
         self._say(paint(f"  Config: {self.config.config_path}", GREY))
         if self.config.created_default:
-            self._say("  (se genero una configuracion nueva con los valores por defecto)")
-        self._say("")
+            self._say(paint("  (configuracion nueva con los valores por defecto)", GREY))
 
         binds = self.config.get("keybinds")
-        for macro_type in MACRO_TYPES:
-            key = str(binds[macro_type]).upper()
-            self._say(
-                f"    {paint(key.ljust(5), BOLD, YELLOW)}{paint('->', GREY)} "
-                f"{paint(_LABELS[macro_type], WHITE)}"
-            )
-        parada = str(binds["stop"]).upper().ljust(5)
-        self._say(f"    {paint(parada, BOLD, RED)}{paint('->', GREY)} {paint('DETENER macro', WHITE)}")
+        teclas: list[Opcion] = [
+            (str(binds[macro_type]).upper(), _LABELS[macro_type], "") for macro_type in MACRO_TYPES
+        ]
+        teclas.append((str(binds["stop"]).upper(), "DETENER macro", ""))
         if self._permitir_volver:
-            self._say(f"    {paint('ESC  ', BOLD, CYAN)}{paint('->', GREY)} volver al menu")
-        self._say(f"    {paint('CTRL+C', BOLD, GREY)} {paint('->', GREY)} salir de HyMacro")
+            teclas.append(("ESC", "volver al menu", ""))
+        self._say(pintar_opciones("Teclas", teclas))
         self._say("")
 
         safety = self.config.get("safety")
@@ -321,11 +316,18 @@ def check_config(config_path: str | None = None) -> int:
 
 
 _OPCIONES_MENU = [
-    ("1", "Arrancar el macro", "teclas F8/F9/F10 para iniciar, F12 para parar"),
-    ("2", "Calibrar los tiempos", "cronometro manual sobre tu propio plot"),
-    ("3", "Ajustes", "cambiar tiempos, teclas y failsafes"),
+    ("1", "Arrancar el macro", ""),
+    ("2", "Calibrar los tiempos", ""),
+    ("3", "Ajustes", ""),
     ("0", "Salir", ""),
 ]
+
+
+def _cabecera() -> str:
+    """La linea de version, igual en todas las pantallas."""
+    nombre = paint(f"  HyMacro v{__version__}", BOLD, WHITE)
+    return f"{nombre} {paint('- Hypixel Garden Automation Tool', GREY)}"
+
 
 _OPCIONES_MACRO = [
     ("1", "Nether Wart", ""),
@@ -383,7 +385,7 @@ def _nueva_pantalla() -> BannerWave:
     clear_screen()
     ola = BannerWave(_BANNER)
     ola.draw()
-    print(paint(f"  HyMacro v{__version__}", BOLD, WHITE), "- Hypixel Garden Automation Tool")
+    print(_cabecera())
     fijar_ola(ola)
     return ola
 
@@ -424,7 +426,7 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
         clear_screen()
         ola = BannerWave(_BANNER)
         ola.draw()
-        cabecera = f"{paint(f'  HyMacro v{__version__}', BOLD, WHITE)} - Hypixel Garden Automation Tool"
+        cabecera = _cabecera()
         # Se escribe de una pieza y se cuentan los saltos de linea reales: es
         # el numero de filas que baja el cursor, y contarlas a mano es como se
         # cuelan los off-by-one que dejan el banner repintado una fila arriba.
@@ -466,8 +468,11 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
             _nueva_pantalla()
             calibrate(config_path, macro_type)
         elif eleccion == "3":
-            _nueva_pantalla()
-            editar_configuracion(_ruta_config(config_path))
+
+            def redibujar() -> None:
+                _nueva_pantalla()
+
+            editar_configuracion(_ruta_config(config_path), redibujar)
             continue  # el editor ya tiene su propio 'Volver'
 
         try:

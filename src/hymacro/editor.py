@@ -9,6 +9,7 @@ nunca se escribe un config que no cargue.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -152,8 +153,14 @@ def _guardar(ruta_config: Path, crudo: dict[str, Any]) -> None:
     ruta_config.write_text(json.dumps(crudo, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def _editar_campo(ruta_config: Path, crudo: dict[str, Any], campo: Campo) -> bool:
+def _editar_campo(
+    ruta_config: Path,
+    crudo: dict[str, Any],
+    campo: Campo,
+    redibujar: Callable[[], None],
+) -> bool:
     """Pide un valor nuevo, valida y guarda. True si se llego a guardar."""
+    redibujar()
     fusionado = _deep_merge(DEFAULTS, crudo)
     actual = _mostrar(_leer(fusionado, campo.ruta), campo.tipo)
 
@@ -198,8 +205,15 @@ def _editar_campo(ruta_config: Path, crudo: dict[str, Any], campo: Campo) -> boo
     return True
 
 
-def _menu_seccion(ruta_config: Path, crudo: dict[str, Any], titulo: str, campos: list[Campo]) -> None:
+def _menu_seccion(
+    ruta_config: Path,
+    crudo: dict[str, Any],
+    titulo: str,
+    campos: list[Campo],
+    redibujar: Callable[[], None],
+) -> None:
     while True:
+        redibujar()
         fusionado = _deep_merge(DEFAULTS, crudo)
         opciones: list[Opcion] = [
             (str(indice + 1), campo.etiqueta, _mostrar(_leer(fusionado, campo.ruta), campo.tipo))
@@ -213,13 +227,20 @@ def _menu_seccion(ruta_config: Path, crudo: dict[str, Any], titulo: str, campos:
         if eleccion == "0":
             return
 
-        if _editar_campo(ruta_config, crudo, campos[int(eleccion) - 1]):
+        if _editar_campo(ruta_config, crudo, campos[int(eleccion) - 1], redibujar):
             print(paint("  Guardado. Reinicia el macro para que tenga efecto.", GREY))
         leer_texto("\n  Enter para seguir > ")
 
 
-def editar_configuracion(ruta_config: Path) -> None:
-    """Menu principal del editor."""
+def editar_configuracion(
+    ruta_config: Path,
+    redibujar: Callable[[], None] = lambda: None,
+) -> None:
+    """Menu principal del editor.
+
+    `redibujar` limpia la pantalla y vuelve a pintar el banner. Se recibe de
+    fuera para que el editor no tenga que saber nada del banner.
+    """
     try:
         crudo = json.loads(ruta_config.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -231,6 +252,7 @@ def editar_configuracion(ruta_config: Path) -> None:
         return
 
     while True:
+        redibujar()
         opciones: list[Opcion] = [
             (str(indice + 1), titulo, f"{len(campos)} ajustes")
             for indice, (titulo, campos) in enumerate(SECCIONES)
@@ -245,4 +267,4 @@ def editar_configuracion(ruta_config: Path) -> None:
             return
 
         titulo, campos = SECCIONES[int(eleccion) - 1]
-        _menu_seccion(ruta_config, crudo, titulo, campos)
+        _menu_seccion(ruta_config, crudo, titulo, campos, redibujar)
