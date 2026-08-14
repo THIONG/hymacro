@@ -1,18 +1,24 @@
-outcome: failure
-commit: 2314fe65fc7199567af45149377daac589b8cdbe
+outcome: success
+commit: 1339d0f8c992008b31791c2637fba6c999216392
 ----
 > Configure project :
 > Task :compileJava NO-SOURCE
 > Task :processResources
 > Task :classes
 > Task :compileClientJava
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:53: error: cannot find symbol
-> Task :compileClientJava FAILED
-FAILURE: Build failed with an exception.
-> Compilation failed; see the compiler output below.
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:53: error: cannot find symbol
-> Check your code and dependencies to fix the compilation error(s)
-> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Task :processClientResources NO-SOURCE
+> Task :processIncludeJars
+> Task :jar
+> Task :sourcesJar
+> Task :assemble
+> Task :clientClasses
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources NO-SOURCE
+> Task :testClasses UP-TO-DATE
+> Task :test NO-SOURCE
+> Task :validateAccessWidener NO-SOURCE
+> Task :check UP-TO-DATE
+> Task :build
 ----
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
@@ -23,35 +29,26 @@ Fabric Loom: 1.17.19
 > Task :compileJava NO-SOURCE
 > Task :processResources
 > Task :classes
-
 > Task :compileClientJava
-/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:53: error: cannot find symbol
-		return InputConstants.isKeyDown(client.getWindow().getWindow(), code);
-		                                                  ^
-  symbol:   method getWindow()
-  location: class Window
-1 error
+> Task :processClientResources NO-SOURCE
+> Task :processIncludeJars
+> Task :jar
+> Task :sourcesJar
+> Task :assemble
+> Task :clientClasses
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources NO-SOURCE
+> Task :testClasses UP-TO-DATE
+> Task :test NO-SOURCE
+> Task :validateAccessWidener NO-SOURCE
+> Task :check UP-TO-DATE
+> Task :build
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786721298413.json
 
-> Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786721068886.json
-
-[Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
-
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':compileClientJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
-> Compilation failed; see the compiler output below.
-  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:53: error: cannot find symbol
-  		return InputConstants.isKeyDown(client.getWindow().getWindow(), code);
-  		                                                  ^
-    symbol:   method getWindow()
-    location: class Window
-  1 error
-
-* Try:
-> Check your code and dependencies to fix the compilation error(s)
-> Run with --scan to get full insights from a Build Scan (powered by Develocity).
-
-BUILD FAILED in 31s
-2 actionable tasks: 2 executed
+BUILD SUCCESSFUL in 52s
+5 actionable tasks: 5 executed
+total 28
+drwxr-xr-x 2 runner runner  4096 Aug 14 15:28 .
+drwxr-xr-x 8 runner runner  4096 Aug 14 15:28 ..
+-rw-r--r-- 1 runner runner  5788 Aug 14 15:28 hymacro-0.1.0-sources.jar
+-rw-r--r-- 1 runner runner 10563 Aug 14 15:28 hymacro-0.1.0.jar
