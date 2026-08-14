@@ -6,6 +6,7 @@ pintar NO se cuelen secuencias de escape en la salida.
 
 from __future__ import annotations
 
+import re
 import sys
 
 import pytest
@@ -75,8 +76,47 @@ def test_print_rainbow_no_se_anima_sin_color(capsys: pytest.CaptureFixture[str])
 
     init_colors("never")
     inicio = time.perf_counter()
-    print_rainbow("\n".join(str(n) for n in range(40)), animate=True, delay=0.05)
+    print_rainbow("\n".join(str(n) for n in range(40)), animate=True, duracion=2.0)
     tardado = time.perf_counter() - inicio
 
     capsys.readouterr()
     assert tardado < 0.2, f"tardo {tardado:.2f} s: se esta durmiendo sin pintar"
+
+
+def test_la_ola_varia_a_lo_ancho_no_solo_por_fila() -> None:
+    """Si el tono dependiera solo de la fila seria un degradado, no una ola."""
+    init_colors("always")
+    pintada = console._linea_ola("#" * 60, fila=0, fase=0.0, paso_fila=0.05)
+
+    tonos = set(re.findall(r"\x1b\[38;2;[\d;]+m", pintada))
+    assert len(tonos) > 5, "no hay degradado horizontal"
+
+
+def test_la_ola_se_desplaza_hacia_la_derecha() -> None:
+    """Un tono fijo debe aparecer en columnas mayores segun avanza la fase."""
+    init_colors("always")
+    patron = re.compile(r"\x1b\[38;2;(\d+;\d+;\d+)m")
+
+    def columna_del_primer_tono(fase: float) -> tuple[str, int]:
+        pintada = console._linea_ola("#" * 60, fila=0, fase=fase, paso_fila=0.05)
+        limpia = patron.sub("", pintada)
+        primer = patron.search(pintada)
+        assert primer is not None
+        return primer.group(1), len(limpia)
+
+    tono_inicial, _ = columna_del_primer_tono(0.0)
+
+    despues = console._linea_ola("#" * 60, fila=0, fase=0.10, paso_fila=0.05)
+    posicion = 0
+    encontrada = None
+    resto = despues
+    while (m := patron.search(resto)) is not None:
+        posicion += m.start()
+        if m.group(1) == tono_inicial:
+            encontrada = posicion
+            break
+        resto = resto[m.end() :]
+
+    assert encontrada is not None and encontrada > 0, (
+        "el tono no se ha movido a la derecha; la ola va al reves o esta quieta"
+    )

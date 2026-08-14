@@ -98,8 +98,44 @@ def hue(fraccion: float) -> str:
     return f"\x1b[38;2;{r};{g};{b}m"
 
 
-def print_rainbow(texto: str, *, animate: bool = True, delay: float = 0.045) -> None:
-    """Imprime el texto con un arcoiris que avanza fila a fila.
+#: Pasos en los que se cuantiza el tono. Sin esto cada caracter llevaria su
+#: propio codigo de color y cada fotograma pesaria el triple para nada: el ojo
+#: no distingue saltos tan finos.
+_PASOS_TONO = 48
+
+#: Vueltas de arcoiris que caben a lo ancho del banner. Menos de una para que
+#: se lea como una ola y no como una tira de confeti.
+_CICLOS_POR_LINEA = 0.75
+
+
+def _linea_ola(linea: str, fila: int, fase: float, paso_fila: float) -> str:
+    """Colorea una linea con el tono variando por columna."""
+    ancho = max(1, len(linea))
+    partes: list[str] = []
+    ultimo = -1
+    for columna, caracter in enumerate(linea):
+        # Restar la fase hace que el patron se desplace hacia la derecha:
+        # un tono fijo aparece en columnas cada vez mayores segun avanza t.
+        tono = (columna / ancho) * _CICLOS_POR_LINEA - fase + fila * paso_fila
+        cuantizado = int(tono % 1.0 * _PASOS_TONO)
+        if cuantizado != ultimo:
+            partes.append(hue(cuantizado / _PASOS_TONO))
+            ultimo = cuantizado
+        partes.append(caracter)
+    partes.append(RESET)
+    return "".join(partes)
+
+
+def print_rainbow(
+    texto: str,
+    *,
+    animate: bool = True,
+    duracion: float = 2.2,
+    fps: int = 18,
+    paso_fila: float = 0.05,
+    velocidad: float = 0.7,
+) -> None:
+    """Dibuja el texto con una ola de arcoiris que se desplaza hacia la derecha.
 
     Sin color se imprime de golpe y sin pausas: la animacion solo tiene sentido
     en una consola, y en un fichero de log solo serviria para hacerla lenta.
@@ -109,8 +145,19 @@ def print_rainbow(texto: str, *, animate: bool = True, delay: float = 0.045) -> 
         print(texto, flush=True)
         return
 
-    total = max(1, len(lineas))
-    for indice, linea in enumerate(lineas):
-        print(paint(linea, hue(indice / total)), flush=True)
-        if animate and delay > 0:
-            time.sleep(delay)
+    if not animate or duracion <= 0 or fps <= 0:
+        for fila, linea in enumerate(lineas):
+            print(_linea_ola(linea, fila, 0.0, paso_fila), flush=True)
+        return
+
+    espera = 1.0 / fps
+    for fotograma in range(max(1, int(duracion * fps))):
+        if fotograma:
+            # Subir el cursor para repintar el banner en el mismo sitio.
+            sys.stdout.write(f"\x1b[{len(lineas)}A")
+        fase = fotograma * espera * velocidad  # vueltas de arcoiris por segundo
+        for fila, linea in enumerate(lineas):
+            # \x1b[K borra hasta el final por si una linea encoge.
+            sys.stdout.write(f"\r{_linea_ola(linea, fila, fase, paso_fila)}\x1b[K\n")
+        sys.stdout.flush()
+        time.sleep(espera)

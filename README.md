@@ -60,7 +60,7 @@ cd hymacro && uv run hymacro
 | Tecla | Acción |
 |-------|--------|
 | **F8** | Cocoa Beans — patrón W→D→S→A, 8 recorridos por warp |
-| **F9** | Nether Wart — patrón W→D→W→A, 4 recorridos por warp |
+| **F9** | Nether Wart — serpentina D→W→A→W, 4 idas y vueltas (8 filas) por warp |
 | **F10** | Cobblestone — minado continuo con ciclo hub → isla |
 | **F12** | **DETENER** el macro en marcha |
 | **Ctrl+C** | Salir de HyMacro |
@@ -97,7 +97,7 @@ Al abrir HyMacro (doble clic al `.exe` o `uv run hymacro`) sale un menú:
 Enter a secas arranca el macro, que es lo habitual. Las demás opciones son las
 herramientas de ajuste, que antes sólo existían como argumentos de terminal.
 
-El banner sale con un arcoíris que se dibuja fila a fila, y los mensajes van en
+El banner sale con una ola de arcoíris que se desplaza hacia la derecha, y los mensajes van en
 color: verde al arrancar, amarillo al parar, rojo en los errores. Si la salida
 está redirigida a un fichero o la terminal no admite ANSI, se imprime en texto
 plano — nunca se cuelan secuencias de escape. Se respeta la variable de entorno
@@ -115,7 +115,7 @@ uv run hymacro --check
 |------|-------------|
 | `--config RUTA` | Usa otro `config.json` |
 | `--check` | Valida la configuración y sale, sin registrar hotkeys |
-| `--calibrate [MACRO]` | Cronometra tu fila y te da el `forward_seconds` exacto |
+| `--calibrate [MACRO]` | Cronómetro manual: mides tu recorrido con F12 y te da los tres tiempos |
 | `--test-move [TECLA]` | Mantiene una tecla unos segundos, para ver si el juego la registra |
 | `--test-chat` | Escribe el comando de warp en el chat sin enviarlo |
 | `--no-menu` | Va directo al modo hotkeys, sin menú |
@@ -215,7 +215,7 @@ Al terminar te imprime el bloque listo para pegar en `config.json`:
 | `wait_jitter_max_seconds` | `0.5` | Tope de esa variación. Sin él, un 5% sobre una fila de 2 min serían ±6 s y te saltarías filas |
 | `suppress_hotkeys` | `true` | Impide que F8–F12 lleguen también al juego |
 | `colors` | `auto` | `auto` / `always` / `never`. En `auto` sólo pinta si hay consola de verdad |
-| `banner_animation` | `true` | El banner se dibuja con un arcoíris fila a fila |
+| `banner_animation` | `true` | El banner se anima con una ola de arcoíris que corre hacia la derecha |
 | `loop_delay_ms` | `100` | Periodo del bucle inactivo |
 
 > Si los comandos llegan al chat cortados o no llegan, prueba a subir

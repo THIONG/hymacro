@@ -1,6 +1,6 @@
 [project]
 name = "hymacro"
-version = "3.7.0"
+version = "3.8.0"
 description = "Herramienta de automatizacion para el Garden de Hypixel Skyblock"
 readme = "README.md"
 requires-python = ">=3.11"
