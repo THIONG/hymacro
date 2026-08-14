@@ -64,8 +64,8 @@ jobs:
       - name: Probe the API
         if: steps.build.outcome != 'success'
         env:
-          PROBE_LIST: "^net/minecraft/gizmos/[A-Za-z]+[.]class$"
-          PROBE_JAVAP: "level/LevelRenderEvents[$]BeforeGizmos[.]class$ ^net/minecraft/gizmos/Gizmos[.]class$ ^net/minecraft/gizmos/TextGizmo[.]class$ renderer/state/level/LevelRenderState[.]class$"
+          PROBE_LIST: ""
+          PROBE_JAVAP: "^net/minecraft/gizmos/Gizmos[.]class$ ^net/minecraft/gizmos/GizmoStyle[.]class$ ^net/minecraft/gizmos/GizmoProperties[.]class$ ^net/minecraft/gizmos/TextGizmo[.]class$"
         run: |
           jars=$(find ~/.gradle -name '*.jar' 2>/dev/null)
           {
@@ -85,7 +85,7 @@ jobs:
               for jar in $jars; do
                 entry=$(unzip -Z1 "$jar" 2>/dev/null | grep -E "$pattern" | head -n 1 || true)
                 [ -n "$entry" ] || continue
-                javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#[.]class$##')" 2>/dev/null                   | head -n 45 | sed 's/^/     /' || true
+                javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#[.]class$##')" 2>/dev/null                   | head -n 70 | sed 's/^/     /' || true
                 break
               done
             done
