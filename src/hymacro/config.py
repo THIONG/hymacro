@@ -34,7 +34,7 @@ DEFAULTS: dict[str, Any] = {
             "routes_per_warp": 4,
             "forward_seconds": 120.0,
             "return_seconds": 120.0,
-            "step_seconds": 1.2,
+            "step_seconds": 2.0,
         },
         "cobblestone": {
             "key": "w",

@@ -1,18 +1,28 @@
 {
   "macros": {
     "cocoa_beans": {
-      "keys": ["w", "d", "s", "a"],
+      "keys": [
+        "w",
+        "d",
+        "s",
+        "a"
+      ],
       "routes_per_warp": 8,
       "forward_seconds": 1.0,
       "return_seconds": 0.0,
       "step_seconds": 0.093
     },
     "nether_wart": {
-      "keys": ["d", "w", "a", "w"],
+      "keys": [
+        "d",
+        "w",
+        "a",
+        "w"
+      ],
       "routes_per_warp": 4,
       "forward_seconds": 120.0,
       "return_seconds": 120.0,
-      "step_seconds": 1.2
+      "step_seconds": 2.0
     },
     "cobblestone": {
       "key": "w",

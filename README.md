@@ -98,7 +98,7 @@ long leg is lateral and the step between rows goes forward:
 "keys": ["d", "w", "a", "w"],
 "forward_seconds": 120,
 "return_seconds": 120,
-"step_seconds": 1.2
+"step_seconds": 2.0
 ```
 
 Right along the row, step forward, left along the next one, step forward, repeat.
