@@ -120,9 +120,22 @@ something is a poor thing to ask.
 
 It travels as a code rather than as its own JSON because chat takes 256
 characters and a macro of ten points is thousands. Compressed and encoded, the
-same macro fits in a single message anywhere. The code is marked with its
-format, so one from a later version says where it came from instead of failing
-as corrupt.
+same macro fits in a single message anywhere.
+
+### Importing what a stranger wrote
+
+Everything past the marker is somebody else's data, so none of it is trusted.
+The code carries a format number and one from a later format is refused by name
+rather than failing as corrupt. Beyond that the macro itself is checked field by
+field: a point without coordinates, a coordinate that is not finite, an action
+without a key, a list that is not a list, a claim of more points than any plot
+could hold. Each is a sentence saying what is wrong. None of it may throw out of
+a command, so the parse converts anything unexpected into the same kind of
+message.
+
+The part worth more than the parsing is what the macro will do. A shared macro
+can type into your chat, which is somebody else's commands running under your
+name. Import lists every line it would send, in red, before you ever press F9.
 
 ## Why a macro stays selected
 

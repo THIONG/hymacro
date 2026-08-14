@@ -25,11 +25,19 @@ public final class Share {
 	private static final String MARKER = "HYMACRO1:";
 	private static final Gson GSON = new Gson();
 
+	/**
+	 * The shape of what is inside. The marker says it is a HyMacro code at all;
+	 * this says whether this build understands the one it is holding.
+	 */
+	private static final int FORMAT = 1;
+
 	private Share() {
 	}
 
 	public static String encode(Route route) throws IOException {
-		byte[] json = GSON.toJson(route.toJson()).getBytes(StandardCharsets.UTF_8);
+		JsonObject payload = route.toJson();
+		payload.addProperty("format", FORMAT);
+		byte[] json = GSON.toJson(payload).getBytes(StandardCharsets.UTF_8);
 		ByteArrayOutputStream packed = new ByteArrayOutputStream();
 		try (GZIPOutputStream gzip = new GZIPOutputStream(packed)) {
 			gzip.write(json);
@@ -55,12 +63,34 @@ public final class Share {
 		byte[] json;
 		try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(packed))) {
 			json = gzip.readAllBytes();
+		} catch (IOException truncated) {
+			throw new IOException("the code is damaged, copy the whole line again");
 		}
 
-		JsonObject root = GSON.fromJson(new String(json, StandardCharsets.UTF_8), JsonObject.class);
-		if (root == null) {
-			throw new IOException("the code holds nothing readable");
+		// Everything past here is parsing what a stranger wrote, so a fault in it
+		// is a message about their code, never an exception out of a command.
+		try {
+			JsonObject root =
+				GSON.fromJson(new String(json, StandardCharsets.UTF_8), JsonObject.class);
+			if (root == null) {
+				throw new IOException("the code holds nothing readable");
+			}
+			if (root.has("format") && root.get("format").getAsInt() > FORMAT) {
+				throw new IOException("it was made by a newer HyMacro, update yours");
+			}
+
+			Route route = Route.fromJson(root);
+			if (route.isEmpty()) {
+				throw new IOException("the macro in it has no points");
+			}
+			return route;
+		} catch (IOException known) {
+			throw known;
+		} catch (RuntimeException broken) {
+			String reason = broken.getMessage();
+			throw new IOException(reason == null || reason.isBlank()
+				? "the macro inside it is malformed"
+				: reason);
 		}
-		return Route.fromJson(root);
 	}
 }

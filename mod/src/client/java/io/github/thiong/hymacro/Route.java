@@ -109,6 +109,9 @@ public final class Route {
 		return waypoints.isEmpty();
 	}
 
+	/** More points than any plot could want, and a sign of a bad code. */
+	private static final int MAX_WAYPOINTS = 512;
+
 	public static Route fromJson(JsonObject root) {
 		Route route = new Route();
 		if (root.has("arrivalRadius")) {
@@ -124,7 +127,17 @@ public final class Route {
 			route.visible = root.get("showMarkers").getAsBoolean();
 		}
 		if (root.has("waypoints")) {
-			for (JsonElement element : root.getAsJsonArray("waypoints")) {
+			JsonElement list = root.get("waypoints");
+			if (!list.isJsonArray()) {
+				throw new IllegalArgumentException("the points are not a list");
+			}
+			if (list.getAsJsonArray().size() > MAX_WAYPOINTS) {
+				throw new IllegalArgumentException("it claims more than " + MAX_WAYPOINTS + " points");
+			}
+			for (JsonElement element : list.getAsJsonArray()) {
+				if (!element.isJsonObject()) {
+					throw new IllegalArgumentException("a point is not an object");
+				}
 				route.waypoints.add(readWaypoint(element.getAsJsonObject()));
 			}
 		}
@@ -188,11 +201,28 @@ public final class Route {
 
 
 
+	/**
+	 * Reads a point, refusing anything it cannot make sense of.
+	 *
+	 * <p>This parses whatever a stranger pasted in, so nothing here may assume a
+	 * field is present or is the type it should be. A missing coordinate used to
+	 * be a null dereference rather than a message.
+	 */
 	static Waypoint readWaypoint(JsonObject point) {
 		List<Action> actions = new ArrayList<>();
 		if (point.has("actions")) {
-			for (JsonElement element : point.getAsJsonArray("actions")) {
+			JsonElement list = point.get("actions");
+			if (!list.isJsonArray()) {
+				throw new IllegalArgumentException("the actions of a point are not a list");
+			}
+			for (JsonElement element : list.getAsJsonArray()) {
+				if (!element.isJsonObject()) {
+					throw new IllegalArgumentException("an action is not an object");
+				}
 				JsonObject action = element.getAsJsonObject();
+				if (!action.has("key")) {
+					throw new IllegalArgumentException("an action has no key");
+				}
 				actions.add(new Action(
 					action.get("key").getAsString(),
 					action.has("mode") ? action.get("mode").getAsString() : HOLD,
@@ -200,14 +230,36 @@ public final class Route {
 			}
 		}
 		return new Waypoint(
-			point.get("x").getAsDouble(),
-			point.get("y").getAsDouble(),
-			point.get("z").getAsDouble(),
+			coordinate(point, "x"),
+			coordinate(point, "y"),
+			coordinate(point, "z"),
 			point.has("yaw") ? point.get("yaw").getAsFloat() : 0.0f,
 			point.has("pitch") ? point.get("pitch").getAsFloat() : 0.0f,
 			actions,
 			point.has("send") ? point.get("send").getAsString() : "",
 			point.has("walk") && point.get("walk").getAsBoolean());
+	}
+
+	private static double coordinate(JsonObject point, String name) {
+		if (!point.has(name)) {
+			throw new IllegalArgumentException("a point has no " + name);
+		}
+		double value = point.get(name).getAsDouble();
+		if (!Double.isFinite(value)) {
+			throw new IllegalArgumentException("a point has an impossible " + name);
+		}
+		return value;
+	}
+
+	/** Every line this macro would type into chat if it ran. */
+	public List<String> chatLines() {
+		List<String> lines = new ArrayList<>();
+		for (Waypoint point : waypoints) {
+			if (point.sends()) {
+				lines.add(point.send);
+			}
+		}
+		return lines;
 	}
 
 }

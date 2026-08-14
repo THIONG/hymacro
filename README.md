@@ -93,6 +93,11 @@ no save step.
 send to someone, `/hymacro share <name>` copies one you are not on, and
 `/hymacro import <name>` reads one back. Names complete with Tab.
 
+An imported macro is checked field by field, and a code from a newer HyMacro
+says so rather than failing as corrupt. Import also lists every line the macro
+would type into your chat, since that is somebody else's commands running under
+your name.
+
 ## Development
 
 The mod is in [`mod/`](mod) and builds with a JDK 25 and nothing else:

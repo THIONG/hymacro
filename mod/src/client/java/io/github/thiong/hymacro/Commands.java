@@ -692,6 +692,18 @@ public final class Commands {
 		book.save();
 		Chat.ok(context.getSource(),
 			"Imported '" + name + "', " + imported.waypoints.size() + " points.");
+
+		// A macro someone else wrote can type into your chat. That is worth
+		// seeing before it runs, not discovering afterwards.
+		List<String> lines = imported.chatLines();
+		if (!lines.isEmpty()) {
+			Chat.error(context.getSource(), "It will type " + lines.size()
+				+ (lines.size() == 1 ? " line" : " lines") + " into your chat:");
+			for (String line : lines) {
+				Chat.bullet(context.getSource(), line, true);
+			}
+			Chat.note(context.getSource(), "Read those before pressing F9. /hymacro leg <n> send -");
+		}
 		Chat.note(context.getSource(), "It is drawn in the world. Check it fits your plot.");
 		return 1;
 	}
