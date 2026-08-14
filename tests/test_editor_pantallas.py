@@ -41,7 +41,7 @@ def _responde(monkeypatch: pytest.MonkeyPatch, respuestas: list[str]) -> None:
 def test_se_redibuja_en_cada_pantalla(config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     redibujados: list[int] = []
     # 1 = Nether Wart, 2 = Ida, valor, Enter, 0 = volver, 0 = salir
-    _responde(monkeypatch, ["1", "2", "95", "", "0", "0"])
+    _responde(monkeypatch, ["1", "2", "95", "", "ESC", "ESC"])
 
     editar_configuracion(config, lambda: redibujados.append(1))
 
@@ -51,7 +51,7 @@ def test_se_redibuja_en_cada_pantalla(config: Path, monkeypatch: pytest.MonkeyPa
 
 def test_sin_callback_sigue_funcionando(config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """El valor por defecto no hace nada: el editor no depende de la pantalla."""
-    _responde(monkeypatch, ["1", "2", "95", "", "0", "0"])
+    _responde(monkeypatch, ["1", "2", "95", "", "ESC", "ESC"])
 
     editar_configuracion(config)
 

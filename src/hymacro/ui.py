@@ -13,6 +13,10 @@ from .console import BOLD, CYAN, DIM, GREY, WHITE, BannerAnimator, BannerWave, c
 
 Opcion = tuple[str, str, str]
 
+#: Etiqueta de la opcion de volver/salir. Una sola tecla en todas las
+#: pantallas: antes unas pedian 0 y otras ESC y habia que adivinar cual.
+VOLVER = "ESC"
+
 #: Banner de la pantalla actual. Lo fija quien la dibuja, y cualquier lectura
 #: de teclado lo anima mientras espera, sin tener que ir pasandolo por todas
 #: las funciones intermedias.
@@ -44,8 +48,9 @@ def pintar_opciones(titulo: str, opciones: list[Opcion]) -> str:
     ancho_num = max(len(numero) for numero, _, _ in opciones) + 1
     lineas = ["", paint(f"  {titulo}", BOLD, WHITE), ""]
     for numero, nombre, ayuda in opciones:
-        color_num = GREY if numero == "0" else CYAN
-        color_txt = GREY if numero == "0" else WHITE
+        apagada = numero in ("0", VOLVER)
+        color_num = GREY if apagada else CYAN
+        color_txt = GREY if apagada else WHITE
         etiqueta = nombre.ljust(ancho) if ayuda else nombre
         relleno = " " * (ancho_num - len(numero) - 1)
         fila = f"    {paint(numero + ')', BOLD, color_num)}{relleno} {paint(etiqueta, color_txt)}"
@@ -63,9 +68,11 @@ def preguntar(opciones: set[str], por_defecto: str) -> str:
                 respuesta = input("  > ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print("")
-            return "0"
+            return VOLVER if VOLVER in opciones else "0"
         if not respuesta:
             return por_defecto
+        if respuesta.upper() in opciones:
+            return respuesta.upper()
         if respuesta in opciones:
             return respuesta
         print(f"  Opcion no valida. Elige entre: {', '.join(sorted(opciones))}")

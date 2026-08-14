@@ -16,7 +16,7 @@ from typing import Any
 
 from .config import DEFAULTS, ConfigError, _deep_merge, validate_config
 from .console import BOLD, CYAN, GREEN, GREY, RED, WHITE, paint
-from .ui import Opcion, leer_opcion, leer_texto, pintar_opciones
+from .ui import VOLVER, Opcion, leer_opcion, leer_texto, pintar_opciones
 
 
 @dataclass(frozen=True)
@@ -219,12 +219,12 @@ def _menu_seccion(
             (str(indice + 1), campo.etiqueta, _mostrar(_leer(fusionado, campo.ruta), campo.tipo))
             for indice, campo in enumerate(campos)
         ]
-        opciones.append(("0", "Volver", ""))
+        opciones.append((VOLVER, "Volver", ""))
 
         print(pintar_opciones(titulo, opciones))
         print("")
-        eleccion = leer_opcion({o[0] for o in opciones}, "0")
-        if eleccion == "0":
+        eleccion = leer_opcion({o[0] for o in opciones}, VOLVER)
+        if eleccion == VOLVER:
             return
 
         if _editar_campo(ruta_config, crudo, campos[int(eleccion) - 1], redibujar):
@@ -254,16 +254,14 @@ def editar_configuracion(
     while True:
         redibujar()
         opciones: list[Opcion] = [
-            (str(indice + 1), titulo, f"{len(campos)} ajustes")
-            for indice, (titulo, campos) in enumerate(SECCIONES)
+            (str(indice + 1), titulo, "") for indice, (titulo, campos) in enumerate(SECCIONES)
         ]
-        opciones.append(("0", "Volver", ""))
+        opciones.append((VOLVER, "Volver", ""))
 
-        print(paint(f"  Configuracion: {ruta_config}", GREY))
         print(pintar_opciones("Que quieres cambiar?", opciones))
         print("")
-        eleccion = leer_opcion({o[0] for o in opciones}, "0")
-        if eleccion == "0":
+        eleccion = leer_opcion({o[0] for o in opciones}, VOLVER)
+        if eleccion == VOLVER:
             return
 
         titulo, campos = SECCIONES[int(eleccion) - 1]

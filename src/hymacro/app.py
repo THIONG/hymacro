@@ -38,7 +38,15 @@ from .console import (
 )
 from .controller import MacroController, MacroEvent
 from .editor import editar_configuracion
-from .ui import Opcion, consola_interactiva, fijar_ola, leer_opcion, pintar_opciones, preguntar
+from .ui import (
+    VOLVER,
+    Opcion,
+    consola_interactiva,
+    fijar_ola,
+    leer_opcion,
+    pintar_opciones,
+    preguntar,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +183,6 @@ class HyMacroApp:
             print_rainbow(_BANNER, animate=False)
         self._lineas_bajo_banner = 0
         self._say(_cabecera())
-        self._say(paint(f"  Config: {self.config.config_path}", GREY))
         if self.config.created_default:
             self._say(paint("  (configuracion nueva con los valores por defecto)", GREY))
 
@@ -319,7 +326,7 @@ _OPCIONES_MENU = [
     ("1", "Arrancar el macro", ""),
     ("2", "Calibrar los tiempos", ""),
     ("3", "Ajustes", ""),
-    ("0", "Salir", ""),
+    (VOLVER, "Salir", ""),
 ]
 
 
@@ -332,7 +339,7 @@ def _cabecera() -> str:
 _OPCIONES_MACRO = [
     ("1", "Nether Wart", ""),
     ("2", "Cocoa Beans", ""),
-    ("0", "Volver", ""),
+    (VOLVER, "Volver", ""),
 ]
 
 
@@ -343,7 +350,7 @@ def _pintar_menu() -> str:
 def _leer_tecla_animando(
     opciones: set[str],
     por_defecto: str,
-    ola: BannerWave,
+    ola: BannerWave | None,
     lineas_debajo: int,
     fps: int = 15,
 ) -> str:
@@ -366,9 +373,12 @@ def _leer_tecla_animando(
                 return por_defecto
             if tecla == "\x03":  # Ctrl+C
                 raise KeyboardInterrupt
+            if tecla == "\x1b" and VOLVER in opciones:
+                return VOLVER
             if tecla.lower() in opciones:
                 return tecla.lower()
-        ola.tick(lineas_debajo)
+        if ola is not None:
+            ola.tick(lineas_debajo)
         time.sleep(espera)
 
 
@@ -376,17 +386,19 @@ def _elegir_macro() -> str | None:
     """Pregunta que macro calibrar. Devuelve None si se elige volver."""
     print(pintar_opciones("Que macro?", _OPCIONES_MACRO))
     print("")
-    eleccion = leer_opcion({"0", "1", "2"}, "1")
+    eleccion = leer_opcion({VOLVER, "1", "2"}, VOLVER)
     return {"1": "nether_wart", "2": "cocoa_beans"}.get(eleccion)
 
 
-def _nueva_pantalla() -> BannerWave:
+def _nueva_pantalla(animar: bool = True) -> BannerWave:
     """Limpia, redibuja el banner y lo deja registrado para que se anime."""
     clear_screen()
     ola = BannerWave(_BANNER)
     ola.draw()
     print(_cabecera())
-    fijar_ola(ola)
+    # Solo se registra si toca animar: el registro es lo que hace que las
+    # esperas de teclado lo repinten.
+    fijar_ola(ola if animar else None)
     return ola
 
 
@@ -395,6 +407,20 @@ def _ruta_config(config_path: str | None) -> Path:
     ruta = resolve_config_path(config_path)
     ensure_config_exists(ruta)
     return ruta
+
+
+def _animacion_activa(config_path: str | None) -> bool:
+    """Lee general.banner_animation.
+
+    El menu creaba la ola sin consultarlo, asi que ponerlo en `false` solo
+    tenia efecto en la pantalla del macro.
+    """
+    try:
+        return ConfigManager(config_path, auto_create=False).get_bool(
+            "general", "banner_animation", default=True
+        )
+    except ConfigError:
+        return True
 
 
 def _modo_color(config_path: str | None) -> str:
@@ -420,8 +446,17 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
     setup_logging(verbose=verbose)
 
     init_colors(_modo_color(config_path))
+    animar = _animacion_activa(config_path)
     opciones = {numero for numero, _, _ in _OPCIONES_MENU}
+    try:
+        return _bucle_menu(config_path, animar, opciones)
+    finally:
+        # Sin esto queda una ola apuntando a un banner que ya no esta en
+        # pantalla, y la siguiente espera de teclado la repintaria encima.
+        fijar_ola(None)
 
+
+def _bucle_menu(config_path: str | None, animar: bool, opciones: set[str]) -> int:
     while True:
         clear_screen()
         ola = BannerWave(_BANNER)
@@ -438,15 +473,15 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
             sys.stdout.write("  > ")
             sys.stdout.flush()
             try:
-                eleccion = _leer_tecla_animando(opciones, "1", ola, debajo)
+                eleccion = _leer_tecla_animando(opciones, "1", ola if animar else None, debajo)
             except KeyboardInterrupt:
                 print("")
-                eleccion = "0"
+                eleccion = VOLVER
             print(eleccion)
         else:
             eleccion = preguntar(opciones, "1")
 
-        if eleccion == "0":
+        if eleccion == VOLVER:
             print(paint("  Hasta luego!", GREY))
             return 0
         if eleccion == "1":
@@ -461,16 +496,16 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
                 continue
             return codigo
         if eleccion == "2":
-            _nueva_pantalla()
+            _nueva_pantalla(animar)
             macro_type = _elegir_macro()
             if macro_type is None:
                 continue  # "Volver" vuelve directo, sin pedir otra tecla
-            _nueva_pantalla()
+            _nueva_pantalla(animar)
             calibrate(config_path, macro_type)
         elif eleccion == "3":
 
             def redibujar() -> None:
-                _nueva_pantalla()
+                _nueva_pantalla(animar)
 
             editar_configuracion(_ruta_config(config_path), redibujar)
             continue  # el editor ya tiene su propio 'Volver'

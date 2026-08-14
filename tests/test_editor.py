@@ -70,7 +70,7 @@ def test_mostrar_formatea_para_leer() -> None:
 
 def test_guarda_un_valor_valido(config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # 1 = Nether Wart, 2 = Ida, valor, Enter, 0 = volver, 0 = salir
-    _responde(monkeypatch, ["1", "2", "95,5", "", "0", "0"])
+    _responde(monkeypatch, ["1", "2", "95,5", "", "ESC", "ESC"])
     editar_configuracion(config)
 
     guardado = json.loads(config.read_text(encoding="utf-8"))
@@ -82,7 +82,7 @@ def test_un_valor_invalido_no_toca_el_fichero(config: Path, monkeypatch: pytest.
     """Es la razon de ser del editor: no dejar un config que no abre."""
     antes = config.read_text(encoding="utf-8")
     # Tecla inexistente en el recorrido de Nether Wart.
-    _responde(monkeypatch, ["1", "1", "d w a pepino", "", "0", "0"])
+    _responde(monkeypatch, ["1", "1", "d w a pepino", "", "ESC", "ESC"])
     editar_configuracion(config)
 
     assert config.read_text(encoding="utf-8") == antes, "escribio un config invalido"
@@ -91,7 +91,7 @@ def test_un_valor_invalido_no_toca_el_fichero(config: Path, monkeypatch: pytest.
 def test_no_deja_asignar_dos_veces_la_misma_tecla(config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     antes = json.loads(config.read_text(encoding="utf-8"))
     # 4 = Teclas, 4 = Detener, f8 (ya usada por cocoa beans)
-    _responde(monkeypatch, ["4", "4", "f8", "", "0", "0"])
+    _responde(monkeypatch, ["4", "4", "f8", "", "ESC", "ESC"])
     editar_configuracion(config)
 
     assert json.loads(config.read_text(encoding="utf-8")) == antes
@@ -99,7 +99,7 @@ def test_no_deja_asignar_dos_veces_la_misma_tecla(config: Path, monkeypatch: pyt
 
 def test_enter_vacio_deja_el_valor_como_estaba(config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     antes = json.loads(config.read_text(encoding="utf-8"))
-    _responde(monkeypatch, ["1", "2", "", "", "0", "0"])
+    _responde(monkeypatch, ["1", "2", "", "", "ESC", "ESC"])
     editar_configuracion(config)
 
     assert json.loads(config.read_text(encoding="utf-8")) == antes
@@ -118,7 +118,7 @@ def test_solo_se_escribe_lo_que_cambia(config: Path, monkeypatch: pytest.MonkeyP
     minimo = {"macros": {"nether_wart": {"forward_seconds": 10}}}
     config.write_text(json.dumps(minimo), encoding="utf-8")
 
-    _responde(monkeypatch, ["1", "3", "60", "", "0", "0"])
+    _responde(monkeypatch, ["1", "3", "60", "", "ESC", "ESC"])
     editar_configuracion(config)
 
     guardado = json.loads(config.read_text(encoding="utf-8"))
