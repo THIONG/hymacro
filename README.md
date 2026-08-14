@@ -60,6 +60,15 @@ two does not need undoing back from leg six:
 
 A leg is numbered after where it ends: leg 2 runs from point 1 to point 2.
 
+Points can be moved after the fact, so one being a block out is not a rebuild:
+
+```
+/hymacro move 2           put point 2 where you stand
+/hymacro anchor           carry the whole macro so point 1 lands on you
+```
+
+`anchor` is how a macro moves to another plot of the same shape.
+
 ## Seeing it
 
 The macro is drawn where it happens: a box on every point with its number above

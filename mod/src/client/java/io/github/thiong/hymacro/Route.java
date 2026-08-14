@@ -83,6 +83,14 @@ public final class Route {
 			return !send.isBlank();
 		}
 
+		public Waypoint withPosition(double newX, double newY, double newZ) {
+			return new Waypoint(newX, newY, newZ, yaw, pitch, actions, send, walk);
+		}
+
+		public Waypoint movedBy(double byX, double byY, double byZ) {
+			return withPosition(x + byX, y + byY, z + byZ);
+		}
+
 		public Waypoint withActions(List<Action> replacement) {
 			return new Waypoint(x, y, z, yaw, pitch, replacement, send, walk);
 		}

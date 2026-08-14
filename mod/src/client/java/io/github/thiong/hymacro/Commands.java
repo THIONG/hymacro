@@ -112,6 +112,14 @@ public final class Commands {
 									BoolArgumentType.getBool(context, "on")))))
 						.then(literal("clear")
 							.executes(context -> clearLeg(context, host)))))
+				.then(literal("move")
+					.executes(context -> movePoint(context, host, LAST))
+					.then(argument("point", IntegerArgumentType.integer(1, 999))
+						.executes(context -> movePoint(context, host, point(context)))))
+				.then(literal("anchor")
+					.executes(context -> anchor(context, host, 0))
+					.then(argument("point", IntegerArgumentType.integer(1, 999))
+						.executes(context -> anchor(context, host, point(context)))))
 				.then(literal("undo")
 					.executes(context -> undo(context, host)))
 				.then(literal("clear")
@@ -202,6 +210,88 @@ public final class Commands {
 		return IntegerArgumentType.getInteger(context, "leg") - 1;
 	}
 
+	private static int point(CommandContext<FabricClientCommandSource> context) {
+		return IntegerArgumentType.getInteger(context, "point") - 1;
+	}
+
+	/**
+	 * Puts one point where you stand.
+	 *
+	 * <p>Rebuilding a macro because one point sits a block out is a poor trade,
+	 * and undoing back to it loses everything after it.
+	 */
+	private static int movePoint(
+			CommandContext<FabricClientCommandSource> context, Host host, int requested) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		int index = resolve(context, route, requested);
+		if (index == LAST) {
+			return 0;
+		}
+
+		FabricClientCommandSource source = context.getSource();
+		Route.Waypoint was = route.waypoints.get(index);
+		double moved = distance(was, source.getPlayer().getX(), source.getPlayer().getZ());
+		route.waypoints.set(index, was.withPosition(
+			source.getPlayer().getX(), source.getPlayer().getY(), source.getPlayer().getZ()));
+		host.book().save();
+
+		Chat.ok(source, "Point " + (index + 1) + " moved here, "
+			+ round((float) moved) + " blocks.");
+		Chat.note(source, "It keeps what it does and where it faces.");
+		return 1;
+	}
+
+	/**
+	 * Carries the whole macro so that one of its points lands where you stand.
+	 *
+	 * <p>A plot of the same shape somewhere else is the same macro in a different
+	 * place, so it should be a move rather than an afternoon of remarking points.
+	 * Shape and facing are untouched; only the position changes.
+	 */
+	private static int anchor(
+			CommandContext<FabricClientCommandSource> context, Host host, int index) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		if (index < 0 || index >= route.waypoints.size()) {
+			Chat.error(context.getSource(), "There is no point " + (index + 1)
+				+ ". This macro has " + route.waypoints.size() + ".");
+			return 0;
+		}
+
+		FabricClientCommandSource source = context.getSource();
+		Route.Waypoint pivot = route.waypoints.get(index);
+		double byX = source.getPlayer().getX() - pivot.x;
+		double byY = source.getPlayer().getY() - pivot.y;
+		double byZ = source.getPlayer().getZ() - pivot.z;
+		if (Math.abs(byX) + Math.abs(byY) + Math.abs(byZ) < 0.01) {
+			Chat.ok(source, "Point " + (index + 1) + " is already here.");
+			return 1;
+		}
+
+		host.stop();
+		for (int i = 0; i < route.waypoints.size(); i++) {
+			route.waypoints.set(i, route.waypoints.get(i).movedBy(byX, byY, byZ));
+		}
+		host.book().save();
+
+		Chat.ok(source, "Moved all " + route.waypoints.size()
+			+ " points, bringing point " + (index + 1) + " here.");
+		Chat.note(source, "Shifted by " + Math.round(byX) + " " + Math.round(byY)
+			+ " " + Math.round(byZ) + ". Stand back where it was and anchor again to undo.");
+		return 1;
+	}
+
+	private static double distance(Route.Waypoint from, double x, double z) {
+		double dx = x - from.x;
+		double dz = z - from.z;
+		return Math.sqrt(dx * dx + dz * dz);
+	}
+
 	/**
 	 * Which leg an edit lands on, complaining if there is no such thing.
 	 *
@@ -289,6 +379,8 @@ public final class Commands {
 		Chat.entry(source, "/hymacro once <key>", "click it once as the leg starts");
 		Chat.entry(source, "/hymacro walk", "steer to that point on its own");
 		Chat.entry(source, "/hymacro look <yaw> <pitch>", "aim that leg by numbers");
+		Chat.entry(source, "/hymacro move [n]", "put that point where you stand");
+		Chat.entry(source, "/hymacro anchor [n]", "carry the whole macro to you");
 		Chat.entry(source, "/hymacro undo", "drop the last point");
 		Chat.entry(source, "/hymacro clear", "start this macro over");
 		Chat.note(source, "Any of those take a leg: /hymacro leg 3 hold w");

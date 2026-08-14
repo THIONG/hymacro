@@ -35,6 +35,8 @@ stand on the second block  /hymacro point
 | `/hymacro spam <key> [ticks]` | Click it over and over |
 | `/hymacro once <key>` | Click it once as the leg starts |
 | `/hymacro look <yaw> <pitch>` | Aim that leg by numbers instead of by standing |
+| `/hymacro move [n]` | Put that point where you stand |
+| `/hymacro anchor [n]` | Carry the whole macro so that point lands on you |
 | `/hymacro undo`, `clear` | Drop the last point, or start over |
 | `/hymacro radius <blocks>` | How close counts as arrived |
 | `/hymacro send <text>` | Put in chat on arriving at that point |
@@ -150,6 +152,22 @@ and refuses if you are somewhere else entirely, because a macro started away
 from its beginning holds keys towards a point it is not walking to and arrives
 nowhere until it times out. Pressing F9 again within five seconds starts it
 anyway, for when you meant it.
+
+## Moving what is already built
+
+A macro is a shape and a place, and the two come apart.
+
+`/hymacro move 2` puts one point where you stand, keeping what it does and
+where it faces. Rebuilding because a point sits a block out is a poor trade, and
+undoing back to it throws away everything after it.
+
+`/hymacro anchor` carries every point at once so that point 1 lands on you.
+Another plot of the same shape is the same macro somewhere else, which should be
+a move rather than an afternoon of remarking points. `/hymacro anchor 3` pivots
+on point 3 instead, for when that is the corner you can find again.
+
+Both leave the shape and the facing alone. Anchor reports the offset it applied,
+so standing where the pivot used to be and anchoring again puts it back.
 
 ## Why sending is per leg
 
