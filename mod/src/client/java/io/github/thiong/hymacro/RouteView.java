@@ -3,37 +3,49 @@ package io.github.thiong.hymacro;
 import java.util.List;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
-import net.minecraft.core.BlockPos;
 import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
+import net.minecraft.gizmos.TextGizmo;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
- * Shows the route where it happens: a box standing on every point, squares
- * along the ground between them, and what each leg does written above it.
+ * Shows the macro where it happens: a box on every point, its number above it,
+ * what that leg does under the number, and arrows along the ground pointing the
+ * way it travels.
  *
  * <p>A list of coordinates in chat is a poor answer to <em>where does this go</em>.
  * Standing on the plot and looking at it is the better one, so there is no
- * command to print a route.
+ * command to print a macro.
  *
- * <p>Colour carries the same answer from further away than the text can be read
- * from: green where a key is held for the whole leg, orange where something is
- * clicked repeatedly, grey where nothing has been set and the player only walks.
+ * <p>Arrows rather than a plain trail, because direction is the one thing a
+ * still picture of a route cannot otherwise say and the first thing anyone wants
+ * to know. The leg closing the loop is drawn faintly, since it is the way back
+ * rather than more of the same work, and is left out when the last point warps,
+ * because then it is not walked at all.
  *
- * <p>Drawn as gizmos rather than by driving the render pipeline. Gizmos are what
- * this version of the game gives mods for exactly this, and a box is one call
- * instead of twelve lines of matrix arithmetic against an API with no published
- * mappings.
+ * <p>Colour carries the kind of work from further away than the text can be read
+ * from: green where a key is held, orange where something is clicked repeatedly,
+ * grey where nothing is set and the player only walks.
  */
 public final class RouteView {
 	private static final int GREY = 0xFFB0B0B0;
 	private static final int GREEN = 0xFF4CE066;
 	private static final int ORANGE = 0xFFFF9922;
+	private static final int RETURN = 0xFF6A7A8A;
+	private static final int FAINT = 0xFFD8D8D8;
 
 	private static final float STROKE = 2.0f;
-	private static final float TEXT_SCALE = 0.8f;
-	private static final double SPACING = 1.0;
-	private static final int MAX_MARKERS = 64;
+	private static final float ARROW = 0.22f;
+	private static final float RETURN_ARROW = 0.12f;
+	private static final float NUMBER_SCALE = 1.6f;
+	private static final float TEXT_SCALE = 0.75f;
+
+	private static final double NUMBER_HEIGHT = 1.9;
+	private static final double TEXT_HEIGHT = 1.45;
+	private static final double SPACING = 3.0;
+	private static final double ARROW_LENGTH = 1.6;
+	private static final int MAX_ARROWS = 40;
 	private static final double MAX_LEG = 400.0;
 
 	private RouteView() {
@@ -55,12 +67,23 @@ public final class RouteView {
 
 			Gizmos.cuboid(stand(to), GizmoStyle.strokeAndFill(colour, STROKE, translucent(colour)))
 				.setAlwaysOnTop();
-			Gizmos.billboardTextOverBlock(describe(i + 1, to), above(to), colour, 0, TEXT_SCALE)
+			Gizmos.billboardText(String.valueOf(i + 1), over(to, NUMBER_HEIGHT),
+					TextGizmo.Style.forColorAndCentered(colour).withScale(NUMBER_SCALE))
+				.setAlwaysOnTop();
+			Gizmos.billboardText(describe(to), over(to, TEXT_HEIGHT),
+					TextGizmo.Style.forColorAndCentered(FAINT).withScale(TEXT_SCALE))
 				.setAlwaysOnTop();
 
-			if (points.size() > 1) {
-				trail(points.get((i + points.size() - 1) % points.size()), to, colour);
+			if (points.size() < 2) {
+				continue;
 			}
+
+			Route.Waypoint from = points.get((i + points.size() - 1) % points.size());
+			boolean closing = i == 0;
+			if (closing && from.sends()) {
+				continue;
+			}
+			flow(from, to, closing ? RETURN : colour, closing ? RETURN_ARROW : ARROW);
 		}
 	}
 
@@ -71,33 +94,38 @@ public final class RouteView {
 			point.x + 0.5, point.y + 1.0, point.z + 0.5);
 	}
 
-	private static BlockPos above(Route.Waypoint point) {
-		return BlockPos.containing(point.x, point.y + 1.0, point.z);
+	private static Vec3 over(Route.Waypoint point, double height) {
+		return new Vec3(point.x, point.y + height, point.z);
 	}
 
 	/**
-	 * Flat squares along the ground rather than one long line, so the path reads
-	 * as ground being covered. Long legs space them out instead of drawing
-	 * hundreds.
+	 * Short arrows along the leg rather than one long one, so that a hundred
+	 * block row reads as a direction of travel instead of one enormous
+	 * arrowhead.
 	 */
-	private static void trail(Route.Waypoint from, Route.Waypoint to, int colour) {
+	private static void flow(Route.Waypoint from, Route.Waypoint to, int colour, float width) {
 		double dx = to.x - from.x;
 		double dy = to.y - from.y;
 		double dz = to.z - from.z;
 		double length = Math.sqrt(dx * dx + dz * dz);
-		if (length < SPACING || length > MAX_LEG) {
+		if (length < 1.0 || length > MAX_LEG) {
 			return;
 		}
 
-		int steps = (int) Math.min(MAX_MARKERS, Math.floor(length / SPACING));
-		GizmoStyle style = GizmoStyle.fill(translucent(colour));
-		for (int i = 1; i < steps; i++) {
-			double t = (double) i / steps;
-			double x = from.x + dx * t;
-			double y = from.y + dy * t;
-			double z = from.z + dz * t;
-			Gizmos.cuboid(new AABB(x - 0.35, y + 0.02, z - 0.35, x + 0.35, y + 0.06, z + 0.35), style);
+		double spacing = Math.max(SPACING, length / MAX_ARROWS);
+		int steps = (int) Math.floor(length / spacing);
+		double head = Math.min(ARROW_LENGTH, spacing * 0.6) / length;
+
+		for (int i = 0; i < steps; i++) {
+			double start = (i + 0.5) * spacing / length;
+			double end = Math.min(1.0, start + head);
+			Gizmos.arrow(along(from, dx, dy, dz, start), along(from, dx, dy, dz, end), colour, width)
+				.setAlwaysOnTop();
 		}
+	}
+
+	private static Vec3 along(Route.Waypoint from, double dx, double dy, double dz, double t) {
+		return new Vec3(from.x + dx * t, from.y + dy * t + 0.15, from.z + dz * t);
 	}
 
 	private static int translucent(int colour) {
@@ -116,8 +144,8 @@ public final class RouteView {
 		return GREEN;
 	}
 
-	private static String describe(int leg, Route.Waypoint point) {
-		StringBuilder text = new StringBuilder().append(leg).append("  ");
+	private static String describe(Route.Waypoint point) {
+		StringBuilder text = new StringBuilder();
 		if (point.actions.isEmpty()) {
 			text.append("walk");
 		}

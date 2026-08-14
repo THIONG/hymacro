@@ -59,9 +59,19 @@ nothing, and inventing an unnamed macro to hold it just hides the mistake.
 
 ## Seeing it rather than reading it
 
-The route is drawn where it happens. A box stands on every point, flat boxes run
-along the ground between them, and the leg number and its work float over the
-middle of each stretch.
+The macro is drawn where it happens. A box stands on every point with its number
+above it and its leg's work under that, and arrows run along the ground pointing
+the way it travels.
+
+Arrows rather than a plain trail, because direction is the one thing a still
+picture of a route cannot otherwise say, and it is the first thing anyone wants
+to know. They are drawn in short repeated steps so a hundred block row reads as
+flow rather than as one enormous arrowhead.
+
+The leg from the last point back to the first is drawn faintly. It is real, the
+macro loops, but it is the way back rather than more of the same work. When the
+last point warps it is left out entirely, because then it is not walked at
+all.
 
 Colour carries the same answer at a distance the text cannot be read from:
 
