@@ -165,6 +165,22 @@ public final class Commands {
 		return route;
 	}
 
+	/**
+	 * Names a leg by both its ends.
+	 *
+	 * <p>A leg is numbered after the point it finishes at, which is right while
+	 * building one: you stand somewhere, mark it, and say how you got there. Read
+	 * back later it is ambiguous, since "leg 2" is as easily heard as the leg
+	 * leaving point 2. Saying "2 (1 to 2)" costs a few characters and removes the
+	 * question.
+	 */
+	private static String legName(Route route, int index) {
+		int from = (index + route.waypoints.size() - 1) % route.waypoints.size() + 1;
+		return route.waypoints.size() < 2
+			? String.valueOf(index + 1)
+			: (index + 1) + " (" + from + " to " + (index + 1) + ")";
+	}
+
 	private static int named(CommandContext<FabricClientCommandSource> context) {
 		return IntegerArgumentType.getInteger(context, "leg") - 1;
 	}
@@ -202,10 +218,9 @@ public final class Commands {
 		}
 
 		Route.Waypoint point = route.waypoints.get(index);
-		int from = (index + route.waypoints.size() - 1) % route.waypoints.size() + 1;
-		Chat.heading(context.getSource(), "Leg " + (index + 1));
-		Chat.note(context.getSource(), "point " + from + " to point " + (index + 1)
-			+ ", facing " + round(point.yaw) + " / " + round(point.pitch));
+		Chat.heading(context.getSource(), "Leg " + legName(route, index));
+		Chat.note(context.getSource(),
+			"facing " + round(point.yaw) + " / " + round(point.pitch));
 		if (point.actions.isEmpty() && !point.sends() && !point.walk) {
 			Chat.note(context.getSource(), "nothing set, it only walks");
 		}
@@ -236,7 +251,7 @@ public final class Commands {
 		Route.Waypoint point = route.waypoints.get(index);
 		route.waypoints.set(index, point.withActions(new ArrayList<>()).withSend("").withWalk(false));
 		host.book().save();
-		Chat.ok(context.getSource(), "Leg " + (index + 1) + " now only walks.");
+		Chat.ok(context.getSource(), "Leg " + legName(route, index) + " now only walks.");
 		return 1;
 	}
 
@@ -261,6 +276,7 @@ public final class Commands {
 		Chat.entry(source, "/hymacro leg <n> clear", "make it only walk");
 		Chat.note(source, "Keys: w a s d space shift ctrl attack use");
 		Chat.note(source, "Mark the point first, then say what happens on the way to it.");
+		Chat.note(source, "A leg is numbered after where it ends: leg 2 runs from point 1 to 2.");
 
 		Chat.heading(source, "Run");
 		Chat.entry(source, "F9  /hymacro play", "start or stop");
@@ -336,7 +352,7 @@ public final class Commands {
 		route.waypoints.set(index, point.withLook(yaw, pitch));
 		host.book().save();
 
-		Chat.ok(context.getSource(), "Leg " + (index + 1)
+		Chat.ok(context.getSource(), "Leg " + legName(route, index)
 			+ " now faces " + round(yaw) + " / " + round(pitch) + ".");
 		return 1;
 	}
@@ -385,8 +401,8 @@ public final class Commands {
 		host.book().save();
 
 		Chat.ok(context.getSource(), Route.SPAM.equals(mode)
-			? "Leg " + (index + 1) + ": spam " + key + " every " + interval + " ticks."
-			: "Leg " + (index + 1) + ": hold " + key + ".");
+			? "Leg " + legName(route, index) + ": spam " + key + " every " + interval + " ticks."
+			: "Leg " + legName(route, index) + ": hold " + key + ".");
 		return 1;
 	}
 
@@ -471,7 +487,7 @@ public final class Commands {
 		host.book().save();
 
 		if (clearing) {
-			Chat.ok(context.getSource(), "Leg " + (index + 1) + " sends nothing now.");
+			Chat.ok(context.getSource(), "Leg " + legName(route, index) + " sends nothing now.");
 			return 1;
 		}
 		Chat.ok(context.getSource(), "On reaching point " + (index + 1)
@@ -503,8 +519,8 @@ public final class Commands {
 		route.waypoints.set(index, route.waypoints.get(index).withWalk(on));
 		host.book().save();
 		Chat.ok(context.getSource(), on
-			? "Leg " + (index + 1) + " now walks itself to point " + (index + 1) + "."
-			: "Leg " + (index + 1) + " now only holds what you told it to.");
+			? "Leg " + legName(route, index) + " walks itself there now."
+			: "Leg " + legName(route, index) + " now only holds what you told it to.");
 		if (on) {
 			Chat.note(context.getSource(), "It still faces where you set, and still spams what you set.");
 		}

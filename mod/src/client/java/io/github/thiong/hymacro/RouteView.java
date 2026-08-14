@@ -46,6 +46,7 @@ public final class RouteView {
 	/** Far enough apart that a tall number and its caption never touch. */
 	private static final double NUMBER_HEIGHT = 2.6;
 	private static final double TEXT_HEIGHT = 1.7;
+	private static final double LEG_TEXT_HEIGHT = 1.1;
 
 	/** Off the ground, or a flat line is invisible at a grazing angle. */
 	private static final double PATH_HEIGHT = 0.35;
@@ -76,11 +77,11 @@ public final class RouteView {
 			Gizmos.billboardText(String.valueOf(i + 1), over(to, NUMBER_HEIGHT),
 					TextGizmo.Style.forColorAndCentered(colour).withScale(NUMBER_SCALE))
 				.setAlwaysOnTop();
-			Gizmos.billboardText(describe(to), over(to, TEXT_HEIGHT),
-					TextGizmo.Style.forColorAndCentered(FAINT).withScale(TEXT_SCALE))
-				.setAlwaysOnTop();
 
 			if (points.size() < 2) {
+				Gizmos.billboardText(describe(to), over(to, TEXT_HEIGHT),
+						TextGizmo.Style.forColorAndCentered(FAINT).withScale(TEXT_SCALE))
+					.setAlwaysOnTop();
 				continue;
 			}
 
@@ -89,6 +90,14 @@ public final class RouteView {
 			if (closing && from.sends()) {
 				continue;
 			}
+
+			// Over the middle of the stretch it describes, not over its end. A
+			// caption above a point reads as belonging to the point, and the leg
+			// that ends there is the one before it.
+			Gizmos.billboardText(describe(to), middle(from, to),
+					TextGizmo.Style.forColorAndCentered(closing ? RETURN : FAINT)
+						.withScale(TEXT_SCALE))
+				.setAlwaysOnTop();
 			flow(from, to, closing);
 		}
 	}
@@ -102,6 +111,13 @@ public final class RouteView {
 
 	private static Vec3 over(Route.Waypoint point, double height) {
 		return new Vec3(point.x, point.y + height, point.z);
+	}
+
+	private static Vec3 middle(Route.Waypoint from, Route.Waypoint to) {
+		return new Vec3(
+			(from.x + to.x) / 2.0,
+			(from.y + to.y) / 2.0 + LEG_TEXT_HEIGHT,
+			(from.z + to.z) / 2.0);
 	}
 
 	/**
