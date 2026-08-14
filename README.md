@@ -218,7 +218,22 @@ in the foreground while it runs.
 
 The Fabric mod in [`mod/`](mod) removes that limitation. It runs inside the
 game and sets the key state directly, so the route keeps going while the
-computer is used for something else. See
+computer is used for something else.
+
+To install it, take the `.jar` from a
+[`mod-v*` release](https://github.com/THIONG/hymacro/releases) and drop it in
+your `mods` folder alongside
+[Fabric API](https://modrinth.com/mod/fabric-api) `0.155.2+26.1.2`, on Fabric
+Loader 0.19.3 or newer for Minecraft 26.1.2.
+
+**F9** starts and stops the route, **F12** stops it. Settings live in
+`config/hymacro.json` inside the Minecraft folder and use the same field names
+as above, so calibrated timings copy straight across.
+
+Two things the mod does not have: the keys cannot be rebound from the game's
+controls screen, and it reports to the log rather than the chat. Both were given
+up to keep the Minecraft API surface small enough to build against a version
+whose mappings are not published. See
 [docs/fabric-mod.md](docs/fabric-mod.md).
 
 ## Notes
