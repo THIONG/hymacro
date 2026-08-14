@@ -59,13 +59,27 @@ jobs:
           } > mod/reports/last-build.txt
           ls -la mod/build/libs 2>/dev/null >> mod/reports/last-build.txt || true
 
+      # Anything else pushed while this job runs would reject a plain push and
+      # lose the report, which is the only window into what the build did.
       - name: Commit the report
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add mod/reports/last-build.txt
-          git diff --staged --quiet || git commit -m "ci: mod build report [skip ci]"
-          git push
+          if git diff --staged --quiet; then
+            echo "report unchanged"
+            exit 0
+          fi
+          git commit -m "ci: mod build report [skip ci]"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main && git push; then
+              exit 0
+            fi
+            echo "push attempt $attempt failed, retrying"
+            sleep 5
+          done
+          echo "could not publish the report"
+          exit 0
 
       - name: Fail if the build failed
         if: steps.build.outcome != 'success'
