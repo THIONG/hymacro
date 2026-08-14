@@ -226,14 +226,18 @@ your `mods` folder alongside
 [Fabric API](https://modrinth.com/mod/fabric-api) `0.155.2+26.1.2`, on Fabric
 Loader 0.19.3 or newer for Minecraft 26.1.2.
 
-**F9** starts and stops the route, **F12** stops it. Settings live in
-`config/hymacro.json` inside the Minecraft folder and use the same field names
-as above, so calibrated timings copy straight across.
+A route is built by standing somewhere and saying what happens on the way there:
 
-Two things the mod does not have: the keys cannot be rebound from the game's
-controls screen, and it reports to the log rather than the chat. Both were given
-up to keep the Minecraft API surface small enough to build against a version
-whose mappings are not published. See
+```
+stand on the first block   /hymacro point
+stand on the second block  /hymacro point
+                           /hymacro hold d
+                           /hymacro spam attack 4
+                           F9
+```
+
+A leg ends when you reach its point, not after a measured time, so there is
+nothing to calibrate and nothing to drift. See
 [docs/fabric-mod.md](docs/fabric-mod.md).
 
 ## Notes
