@@ -9,6 +9,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from .background import BackgroundBackend
 from .config import Config
 from .safety import SafetyGuard, SafetyLimits
 from .winput import InputBackend, InputError
@@ -63,7 +64,8 @@ class MacroController:
 
     def __init__(self, config: Config, on_event: EventHandler | None = None) -> None:
         self.config = config
-        self.input = InputBackend()
+        self.input_mode = config.text("general", "input_mode", default="foreground")
+        self.input = self._make_backend()
         self.stats = SessionStats()
 
         self._on_event = on_event or (lambda event: None)
@@ -80,6 +82,12 @@ class MacroController:
         self._step_jitter = config.number("general", "step_jitter_seconds", default=0.008)
         self._wait_jitter_percent = config.number("general", "wait_jitter_percent", default=5.0)
         self._wait_jitter_max = config.number("general", "wait_jitter_max_seconds", default=0.5)
+
+    def _make_backend(self) -> InputBackend | BackgroundBackend:
+        if self.input_mode == "background":
+            title = self.config.text("safety", "window_title_contains", default="Minecraft")
+            return BackgroundBackend(title)
+        return InputBackend()
 
     @property
     def is_running(self) -> bool:

@@ -54,6 +54,7 @@ DEFAULTS: dict[str, Any] = {
         "stop": "f12",
     },
     "general": {
+        "input_mode": "foreground",
         "mouse_button": "left",
         "chat_key": "t",
         "chat_open_seconds": 0.12,
@@ -221,6 +222,10 @@ def _validate_general(config: dict[str, Any]) -> None:
     mode = lookup(config, "general", "command_input_mode")
     if mode not in ("unicode", "scancode"):
         raise ConfigError(f"general.command_input_mode must be 'unicode' or 'scancode', not {mode!r}")
+
+    injection = lookup(config, "general", "input_mode")
+    if injection not in ("foreground", "background"):
+        raise ConfigError(f"general.input_mode must be 'foreground' or 'background', not {injection!r}")
 
     colors = lookup(config, "general", "colors")
     if colors not in ("auto", "always", "never"):

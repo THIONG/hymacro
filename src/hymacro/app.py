@@ -119,6 +119,11 @@ class MacroApp:
             active.append(f"session limit {float(safety['max_session_seconds']) / 60:.0f} min")
         detail = ", ".join(active) if active else "none enabled"
         self._say(f"  {paint('Failsafes:', BOLD, GREEN if active else RED)} {paint(detail, GREY)}")
+
+        if self.controller.input_mode == "background":
+            self._say(
+                f"  {paint('Input:', BOLD, YELLOW)} " + paint("background, posted to the game window", GREY)
+            )
         self._say("")
 
     def _register_hotkeys(self) -> None:
