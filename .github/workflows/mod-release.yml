@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   build:
@@ -19,15 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install JDK 25
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "25"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
 
       - name: Resolve the version
         id: version
@@ -54,7 +46,57 @@ jobs:
           fi
           echo "Version verified: $declared"
 
+      # The Mod workflow already built this commit. Building it a second time
+      # costs another cold Loom run for a jar that exists, so it is fetched
+      # instead, and only built when there is nothing to fetch.
+      - name: Reuse the jar CI already built
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --workflow=mod.yml --commit="$GITHUB_SHA"             --json databaseId,conclusion             --jq 'map(select(.conclusion == "success")) | first | .databaseId' 2>/dev/null || true)
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "nothing built for $GITHUB_SHA, this run will build it"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p mod/build/libs
+          if gh run download "$run_id" --name hymacro-mod --dir mod/build/libs; then
+            echo "reused the jar from run $run_id"
+            ls -la mod/build/libs
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run $run_id kept no jar, this run will build it"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install JDK 25
+        if: steps.reuse.outputs.found != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        if: steps.reuse.outputs.found != 'true'
+        uses: gradle/actions/setup-gradle@v4
+
+      # setup-gradle caches the dependency modules but not Loom's own cache,
+      # which is where the remapped Minecraft lives. That is the expensive part
+      # of a cold build, so it is kept explicitly, keyed on the versions that
+      # decide its contents.
+      - name: Cache the Loom artifacts
+        if: steps.reuse.outputs.found != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/fabric-loom
+            mod/.gradle/loom-cache
+          key: loom-${{ runner.os }}-${{ hashFiles('mod/gradle.properties') }}
+          restore-keys: loom-${{ runner.os }}-
+
       - name: Build
+        if: steps.reuse.outputs.found != 'true'
         working-directory: mod
         run: gradle --no-daemon build
 

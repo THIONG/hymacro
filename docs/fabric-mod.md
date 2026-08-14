@@ -183,6 +183,20 @@ That answered every question in four rounds:
 | `client.renderer.RenderType.lines()` | `client.renderer.rendertype.RenderTypes.lines()` |
 | `LevelRenderer.renderLineBox` | gone; `Gizmos.cuboid` replaces it |
 
+## Keeping the build short
+
+Two things made a release slow, both of them work already done.
+
+The release workflow rebuilt the commit CI had just built, paying for a second
+cold Loom run to produce a jar that already existed. It now looks up the Mod
+run for the same commit and downloads its jar, and only builds when there is
+nothing to download.
+
+The other is that `setup-gradle` caches dependency modules but not Loom's own
+cache, which holds the remapped Minecraft. That is the expensive part of a cold
+build, so it is now cached explicitly, keyed on the versions in
+`gradle.properties` that decide its contents.
+
 ## Reading a failed build
 
 Actions logs need a token to fetch, so a red badge alone says nothing about what

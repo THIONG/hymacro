@@ -31,6 +31,19 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # setup-gradle caches the dependency modules but not Loom's own cache,
+      # which is where the remapped Minecraft lives. That is the expensive part
+      # of a cold build, so it is kept explicitly, keyed on the versions that
+      # decide its contents.
+      - name: Cache the Loom artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/fabric-loom
+            mod/.gradle/loom-cache
+          key: loom-${{ runner.os }}-${{ hashFiles('mod/gradle.properties') }}
+          restore-keys: loom-${{ runner.os }}-
+
       - name: Build
         id: build
         working-directory: mod
