@@ -96,33 +96,9 @@ def test_refresh_returns_the_cursor(capsys: pytest.CaptureFixture[str]) -> None:
     assert TOP_LEFT in output
 
 
-def test_refresh_above_jumps_the_right_number_of_rows(
-    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    init_colors("always")
-    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((80, 60)))
-    Banner(SAMPLE).refresh_above(lines_below=7)
-
-    jump = re.search(r"\x1b\[(\d+)A", capsys.readouterr().out)
-    assert jump is not None
-    assert int(jump.group(1)) == 3 + 7
-
-
-def test_refresh_above_gives_up_once_the_banner_scrolled_off(
-    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Jumping up would land in the middle of unrelated output."""
-    init_colors("always")
-    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((80, 10)))
-    Banner(SAMPLE).refresh_above(lines_below=20)
-
-    assert capsys.readouterr().out == ""
-
-
 def test_nothing_is_written_without_colour(capsys: pytest.CaptureFixture[str]) -> None:
     init_colors("never")
     Banner(SAMPLE).refresh()
-    Banner(SAMPLE).refresh_above(5)
 
     assert capsys.readouterr().out == ""
 
@@ -134,3 +110,35 @@ def test_the_phase_advances_over_time() -> None:
     time.sleep(0.05)
 
     assert banner._phase() > first
+
+
+def test_pinning_needs_room_for_the_block(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Freezing almost the whole screen would leave nowhere for the log."""
+    init_colors("always")
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((80, 24)))
+
+    assert console.pin_top(10) is True
+    assert console.pin_top(22) is False
+    assert console.pin_top(0) is False
+
+
+def test_pinning_writes_the_region_and_unpinning_clears_it(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    init_colors("always")
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((80, 40)))
+
+    console.pin_top(14)
+    console.unpin()
+
+    output = capsys.readouterr().out
+    assert "\x1b[15;40r" in output
+    assert output.endswith("\x1b[r")
+
+
+def test_nothing_is_pinned_without_colour(capsys: pytest.CaptureFixture[str]) -> None:
+    init_colors("never")
+
+    assert console.pin_top(10) is False
+    console.unpin()
+    assert capsys.readouterr().out == ""

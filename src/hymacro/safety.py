@@ -1,9 +1,4 @@
-"""Failsafes that stop the macro when the situation is no longer expected.
-
-Background input deliberately disables the focus and mouse checks: the whole
-point of that mode is that Minecraft is not in front and the mouse is being
-used for something else, so both would fire immediately.
-"""
+"""Failsafes that stop the macro when the situation is no longer expected."""
 
 from __future__ import annotations
 
@@ -32,11 +27,10 @@ class SafetyLimits:
 
     @classmethod
     def from_config(cls, config: Config) -> SafetyLimits:
-        background = config.text("general", "input_mode", default="foreground") == "background"
         return cls(
-            require_focus=(not background and config.flag("safety", "require_window_focus", default=True)),
+            require_focus=config.flag("safety", "require_window_focus", default=True),
             title_contains=config.text("safety", "window_title_contains", default="Minecraft"),
-            mouse_failsafe=(not background and config.flag("safety", "mouse_failsafe", default=True)),
+            mouse_failsafe=config.flag("safety", "mouse_failsafe", default=True),
             mouse_threshold_px=config.integer("safety", "mouse_failsafe_px", default=100),
             max_session_seconds=config.number("safety", "max_session_seconds", default=0.0),
             interval_seconds=config.number("safety", "watchdog_seconds", default=0.1),

@@ -119,36 +119,11 @@ guessed. **Calibrate timings** is a manual stopwatch: nothing is automated, you
 walk the route and press the stop key twice, once at each end. It measures a full
 row and the step to the next one, then prints the values to apply.
 
-### Running in the background
-
-By default the macro uses `SendInput`, which feeds the global input queue, so
-Minecraft has to stay in the foreground. Setting `general.input_mode` to
-`background` posts the messages straight to the game window instead, leaving the
-computer free for something else.
-
-**This is worth trying rather than something guaranteed.** Minecraft runs on
-GLFW, which does read keyboard and character messages from its own queue, so keys
-and chat usually arrive. The mouse is less reliable: the client reads movement
-through raw input and ignores some events while unfocused. If mining or movement
-do not register, the mode does not work for your setup and a virtual machine is
-the dependable alternative.
-
-**Leave Minecraft with Alt+Tab, never with Escape.** Escape opens the game menu,
-and the menu swallows every key and click that arrives afterwards, so the macro
-appears to stop. Alt+Tab releases the mouse cursor on its own and leaves the
-game running. If your client opens the menu whenever the window loses focus,
-look for an option to stop it doing that; without one this mode cannot work.
-
-Background mode turns off the focus and mouse failsafes, because both would fire
-immediately by design. The stop key keeps working: it is read from Windows
-directly, so it responds whatever window is in front.
-
 ### Other settings
 
 | Section | Key | Default | Meaning |
 |---------|-----|---------|---------|
-| `general` | `input_mode` | `foreground` | `foreground` or `background` |
-| | `mouse_button` | `left` | Button held down while farming |
+| `general` | `mouse_button` | `left` | Button held down while farming |
 | | `chat_key` | `t` | Key that opens the chat |
 | | `chat_open_seconds` | `0.12` | Pause before typing a command |
 | | `command_input_mode` | `unicode` | `unicode` or `scancode` |
@@ -196,7 +171,6 @@ uv sync --all-groups
 ```
 src/hymacro/
   winput.py       SendInput via ctypes: scancodes, mouse, window focus
-  background.py   Messages posted straight to the game window
   config.py       Loading, validation and persistence
   console.py      Colour output and the animated banner
   ui.py           Menu primitives shared by every screen

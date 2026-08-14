@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -16,6 +18,12 @@ from hymacro.console import init_colors
 from hymacro.screen import TAGLINE
 
 ANSI = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
+
+
+@pytest.fixture(autouse=True)
+def _tall_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A short terminal cannot pin the header, which is a separate path."""
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((120, 60)))
 
 
 @pytest.fixture(autouse=True)
@@ -39,19 +47,35 @@ def test_the_header_is_shown(app: MacroApp, capsys: pytest.CaptureFixture[str]) 
     assert TAGLINE in ANSI.sub("", capsys.readouterr().out)
 
 
-def test_the_line_count_matches_what_was_printed(app: MacroApp, capsys: pytest.CaptureFixture[str]) -> None:
-    """The repaint jumps banner height plus this count.
+def test_the_banner_is_pinned_so_it_cannot_scroll_away(
+    app: MacroApp, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Counting the lines below the banner caused three separate bugs.
 
-    When the header was printed before the counter was reset, the jump came out
-    one row short and the repaint landed on top of the header.
+    Freezing the top rows removes the arithmetic entirely: output scrolls in the
+    region underneath and the banner stays on row one, however much is printed.
     """
     app.display()
     output = capsys.readouterr().out
 
-    banner_height = len(app._banner._lines) if app._banner else 0
-    printed_below = output.count("\n") - banner_height
+    assert app._pinned, "the scroll region was not set"
+    assert app._banner is not None
+    region = re.search(r"\x1b\[(\d+);(\d+)r", output)
+    assert region is not None, "no scroll region escape was emitted"
 
-    assert app._lines_below == printed_below
+    printed_rows = ANSI.sub("", output).count("\n")
+    assert int(region.group(1)) == printed_rows + 1, (
+        "the region must begin right below everything that was printed"
+    )
+
+
+def test_unpinning_gives_the_screen_back(app: MacroApp, capsys: pytest.CaptureFixture[str]) -> None:
+    app.display()
+    capsys.readouterr()
+    app._shutdown()
+
+    assert "\x1b[r" in capsys.readouterr().out
+    assert not app._pinned
 
 
 def test_the_hotkeys_are_listed(app: MacroApp, capsys: pytest.CaptureFixture[str]) -> None:
@@ -75,23 +99,6 @@ def _screen_text(config_path: Path, capsys: pytest.CaptureFixture[str]) -> str:
     return ANSI.sub("", capsys.readouterr().out)
 
 
-def test_background_mode_reports_the_failsafes_it_actually_has(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The screen used to read the raw config and claim checks that were off."""
-    data = json.loads(json.dumps(DEFAULTS))
-    data["general"]["input_mode"] = "background"
-    path = tmp_path / "config.json"
-    path.write_text(json.dumps(data), encoding="utf-8")
-
-    text = _screen_text(path, capsys)
-
-    assert "none active" in text
-    assert "window focus" not in text
-    assert "mouse failsafe" not in text
-    assert "Alt+Tab" in text
-
-
 def test_foreground_mode_still_lists_them(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     path = tmp_path / "config.json"
     path.write_text(json.dumps(DEFAULTS), encoding="utf-8")
@@ -101,3 +108,15 @@ def test_foreground_mode_still_lists_them(tmp_path: Path, capsys: pytest.Capture
     assert "window focus" in text
     assert "mouse failsafe" in text
     assert "Alt+Tab" not in text
+
+
+def test_a_short_terminal_simply_does_not_pin(
+    app: MacroApp, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The header will not fit, so the screen scrolls as it always did."""
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((80, 20)))
+    app.display()
+    capsys.readouterr()
+
+    assert not app._pinned
+    assert app._banner is None

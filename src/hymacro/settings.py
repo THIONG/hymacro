@@ -73,13 +73,6 @@ SECTIONS: list[tuple[str, list[Field]]] = [
         "Input",
         [
             Field(
-                ("general", "input_mode"),
-                "Injection",
-                "choice",
-                "background lets you use the PC, but Minecraft may ignore it",
-                choices=("foreground", "background"),
-            ),
-            Field(
                 ("general", "mouse_button"), "Farming button", "choice", choices=("left", "right", "middle")
             ),
             Field(

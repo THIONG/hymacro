@@ -132,6 +132,35 @@ def clear_screen() -> None:
     sys.stdout.flush()
 
 
+def terminal_rows() -> int:
+    return shutil.get_terminal_size(fallback=(80, 24)).lines
+
+
+def pin_top(rows: int) -> bool:
+    """Freeze the first rows and let everything below them scroll.
+
+    Output printed afterwards scrolls only inside the lower region, so a banner
+    at the top stays put however much is written. Without this the banner is
+    pushed off screen by the first few lines of output and cannot be animated.
+    """
+    if not _enabled:
+        return False
+    height = terminal_rows()
+    if rows <= 0 or rows >= height - 2:
+        return False
+    sys.stdout.write(f"\x1b[{rows + 1};{height}r\x1b[{rows + 1};1H")
+    sys.stdout.flush()
+    return True
+
+
+def unpin() -> None:
+    """Give the whole screen back to scrolling."""
+    if not _enabled:
+        return
+    sys.stdout.write("\x1b[r")
+    sys.stdout.flush()
+
+
 def _hue_rgb(fraction: float) -> tuple[int, int, int]:
     hue = fraction % 1.0
     sector = int(hue * 6)
@@ -211,21 +240,6 @@ class Banner:
             return
         phase = self._phase()
         parts = ["\x1b[s\x1b[1;1H"]
-        for row, line in enumerate(self._lines):
-            parts.append(f"\r{_wave_line(line, row, phase, self._row_offset)}\x1b[K\n")
-        parts.append("\x1b[u")
-        sys.stdout.write("".join(parts))
-        sys.stdout.flush()
-
-    def refresh_above(self, lines_below: int) -> None:
-        """Repaint in place when output has been printed below the banner."""
-        if not _enabled:
-            return
-        jump = self.height + max(0, lines_below)
-        if jump >= shutil.get_terminal_size(fallback=(80, 24)).lines:
-            return
-        phase = self._phase()
-        parts = [f"\x1b[s\x1b[{jump}A"]
         for row, line in enumerate(self._lines):
             parts.append(f"\r{_wave_line(line, row, phase, self._row_offset)}\x1b[K\n")
         parts.append("\x1b[u")

@@ -9,7 +9,6 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .background import BackgroundBackend
 from .config import Config
 from .safety import SafetyGuard, SafetyLimits
 from .winput import InputBackend, InputError
@@ -64,8 +63,7 @@ class MacroController:
 
     def __init__(self, config: Config, on_event: EventHandler | None = None) -> None:
         self.config = config
-        self.input_mode = config.text("general", "input_mode", default="foreground")
-        self.input = self._make_backend()
+        self.input = InputBackend()
         self.stats = SessionStats()
 
         self._on_event = on_event or (lambda event: None)
@@ -84,22 +82,6 @@ class MacroController:
         self._wait_jitter_percent = config.number("general", "wait_jitter_percent", default=5.0)
         self._wait_jitter_max = config.number("general", "wait_jitter_max_seconds", default=0.5)
 
-    def _backend_preflight(self) -> str | None:
-        """Reason the backend cannot deliver input yet."""
-        if not isinstance(self.input, BackgroundBackend):
-            return None
-        try:
-            self.input.ensure_target()
-        except InputError as exc:
-            return str(exc)
-        return None
-
-    def _make_backend(self) -> InputBackend | BackgroundBackend:
-        if self.input_mode == "background":
-            title = self.config.text("safety", "window_title_contains", default="Minecraft")
-            return BackgroundBackend(title)
-        return InputBackend()
-
     @property
     def is_running(self) -> bool:
         thread = self._thread
@@ -111,7 +93,7 @@ class MacroController:
             if self.is_running:
                 return False, "a macro is already running"
 
-            rejection = self._guard.preflight() or self._backend_preflight()
+            rejection = self._guard.preflight()
             if rejection is not None:
                 return False, rejection
 
@@ -164,10 +146,6 @@ class MacroController:
             self.stats.finished_at = time.monotonic()
             self._emit("stop", self._stop_reason or "macro finished")
             self._emit("stats", self.stats.summary())
-
-    def _announce_target(self) -> None:
-        if isinstance(self.input, BackgroundBackend):
-            self._emit("info", f"posting input to {self.input.target_title!r}")
 
     def _sleep(self, seconds: float) -> bool:
         """Interruptible sleep. False when a stop was requested."""
@@ -251,7 +229,6 @@ class MacroController:
         )
         if forward <= 0:
             self._emit("warn", "forward_seconds is 0, so the outward leg will not move you")
-        self._announce_target()
 
         while not self._stop.is_set():
             for _ in range(routes_per_warp):
@@ -276,7 +253,6 @@ class MacroController:
         warp_island = self.config.text("commands", "warp_island")
 
         self._emit("info", f"{mining:.0f}s of mining per cycle")
-        self._announce_target()
 
         while not self._stop.is_set():
             if not self._hold(key, mining):

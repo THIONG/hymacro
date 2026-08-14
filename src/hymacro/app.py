@@ -10,7 +10,20 @@ from collections.abc import Callable
 from typing import Any
 
 from .config import MACRO_LABELS, MACRO_TYPES, Config
-from .console import BOLD, CYAN, GREEN, GREY, MAGENTA, RED, WHITE, YELLOW, Banner, paint
+from .console import (
+    BOLD,
+    CYAN,
+    GREEN,
+    GREY,
+    MAGENTA,
+    RED,
+    WHITE,
+    YELLOW,
+    Banner,
+    paint,
+    pin_top,
+    unpin,
+)
 from .controller import MacroController, MacroEvent
 from .screen import BANNER, header, new_screen
 from .ui import BACK, Option, interactive_console, render_options, set_banner
@@ -52,12 +65,11 @@ class MacroApp:
         self._allow_back = allow_back and interactive_console()
         self._animate = config.flag("general", "banner_animation", default=True)
         self._banner: Banner | None = None
-        self._lines_below = 0
+        self._pinned = False
 
     def _say(self, message: str) -> None:
         with self._print_lock:
             print(message, flush=True)
-            self._lines_below += message.count("\n") + 1
 
     def _handle_event(self, event: MacroEvent) -> None:
         prefix, color = _EVENT_STYLES.get(event.level, ("   ", GREY))
@@ -67,7 +79,7 @@ class MacroApp:
         if self._banner is None:
             return
         with self._print_lock:
-            self._banner.refresh_above(self._lines_below)
+            self._banner.refresh()
 
     def _back_requested(self) -> bool:
         """True when Escape was pressed in the HyMacro window.
@@ -89,15 +101,11 @@ class MacroApp:
                 requested = True
         return requested
 
-    def display(self) -> None:
-        banner = new_screen(animate=False, with_header=False)
-        set_banner(None)
-        self._banner = banner if self._animate else None
-        self._lines_below = 0
-        self._say(header())
-
+    def _static_block(self) -> str:
+        """Everything above the log: header, hotkeys and failsafes."""
+        parts = [header()]
         if self.config.created_default:
-            self._say(paint("  A new configuration was created with the defaults.", GREY))
+            parts.append(paint("  A new configuration was created with the defaults.", GREY))
 
         binds = self.config.get("keybinds")
         hotkeys: list[Option] = [
@@ -106,8 +114,8 @@ class MacroApp:
         hotkeys.append((str(binds["stop"]).upper(), "Stop the macro", ""))
         if self._allow_back:
             hotkeys.append((BACK, "Back to the menu", ""))
-        self._say(render_options("Hotkeys", hotkeys))
-        self._say("")
+        parts.append(render_options("Hotkeys", hotkeys))
+        parts.append("")
 
         limits = self.controller.limits
         active = []
@@ -118,17 +126,21 @@ class MacroApp:
         if limits.max_session_seconds > 0:
             active.append(f"session limit {limits.max_session_seconds / 60:.0f} min")
         detail = ", ".join(active) if active else "none active"
-        self._say(f"  {paint('Failsafes:', BOLD, GREEN if active else RED)} {paint(detail, GREY)}")
+        parts.append(f"  {paint('Failsafes:', BOLD, GREEN if active else RED)} {paint(detail, GREY)}")
+        return "\n".join(parts)
 
-        if self.controller.input_mode == "background":
-            self._say(
-                f"  {paint('Input:', BOLD, YELLOW)} " + paint("background, posted to the game window", GREY)
-            )
-            self._say(
-                f"  {paint('Note:', BOLD, YELLOW)} "
-                + paint("leave Minecraft with Alt+Tab, not Escape: the game menu eats the input", GREY)
-            )
-        self._say("")
+    def display(self) -> None:
+        banner = new_screen(animate=False, with_header=False)
+        set_banner(None)
+
+        block = self._static_block()
+        self._say(block)
+
+        rows = banner.height + block.count("\n") + 1
+        self._pinned = pin_top(rows)
+        self._banner = banner if (self._animate and self._pinned) else None
+        if not self._pinned:
+            self._say("")
 
     def _register_hotkeys(self) -> None:
         import keyboard
@@ -196,6 +208,9 @@ class MacroApp:
 
     def _shutdown(self) -> None:
         self._alive = False
+        if self._pinned:
+            unpin()
+            self._pinned = False
         self.controller.request_stop("shutting down")
         self.controller.join(timeout=5.0)
         self.controller.input.release_all()
