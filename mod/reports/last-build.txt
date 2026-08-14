@@ -1,0 +1,92 @@
+outcome: failure
+commit: 60cab4bd6bcf4257fc45c180ee61f430f4b91e31
+----
+> Configure project :
+> Task :compileJava NO-SOURCE
+> Task :processResources
+> Task :classes
+> Task :compileClientJava
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:6: error: package net.fabricmc.fabric.api.client.keybinding.v1 does not exist
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:105: error: cannot find symbol
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:111: error: cannot find symbol
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:117: error: cannot find symbol
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:27: error: incompatible types: String cannot be converted to Category
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:26: error: cannot find symbol
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:29: error: incompatible types: String cannot be converted to Category
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:28: error: cannot find symbol
+/home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:75: error: cannot find symbol
+> Task :compileClientJava FAILED
+FAILURE: Build failed with an exception.
+> Compilation failed; see the compiler output below.
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:27: error: incompatible types: String cannot be converted to Category
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:29: error: incompatible types: String cannot be converted to Category
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:26: error: cannot find symbol
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:28: error: cannot find symbol
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:105: error: cannot find symbol
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:111: error: cannot find symbol
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:117: error: cannot find symbol
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:75: error: cannot find symbol
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:6: error: package net.fabricmc.fabric.api.client.keybinding.v1 does not exist
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+----
+9 errors
+
+> Task :compileClientJava FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786720836901.json
+
+[Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileClientJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:27: error: incompatible types: String cannot be converted to Category
+  			"key.hymacro.start", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F9, CATEGORY));
+  			                                                                   ^
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:29: error: incompatible types: String cannot be converted to Category
+  			"key.hymacro.stop", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F12, CATEGORY));
+  			                                                                   ^
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:26: error: cannot find symbol
+  		startKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+  		           ^
+    symbol:   variable KeyBindingHelper
+    location: class HyMacroClient
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:28: error: cannot find symbol
+  		stopKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+  		          ^
+    symbol:   variable KeyBindingHelper
+    location: class HyMacroClient
+  Note: Some messages have been simplified; recompile with -Xdiags:verbose to get full output
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:105: error: cannot find symbol
+  		KeyMapping.set(mapping.getKey(), true);
+  		                      ^
+    symbol:   method getKey()
+    location: variable mapping of type KeyMapping
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:111: error: cannot find symbol
+  		KeyMapping.set(attack.getKey(), true);
+  		                     ^
+    symbol:   method getKey()
+    location: variable attack of type KeyMapping
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/RouteRunner.java:117: error: cannot find symbol
+  			KeyMapping.set(mapping.getKey(), false);
+  			                      ^
+    symbol:   method getKey()
+    location: variable mapping of type KeyMapping
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:75: error: cannot find symbol
+  			client.player.displayClientMessage(Component.literal("[HyMacro] " + message), false);
+  			             ^
+    symbol:   method displayClientMessage(MutableComponent,boolean)
+    location: variable player of type LocalPlayer
+  /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/HyMacroClient.java:6: error: package net.fabricmc.fabric.api.client.keybinding.v1 does not exist
+  import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+                                                     ^
+  9 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 37s
+2 actionable tasks: 2 executed
