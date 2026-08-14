@@ -87,14 +87,18 @@ Al abrir HyMacro (doble clic al `.exe` o `uv run hymacro`) sale un menú:
 ```
     1) Arrancar el macro          teclas F8/F9/F10 para iniciar, F12 para parar
     2) Calibrar los tiempos       cronometro manual sobre tu propio plot
-    3) Ver la configuracion       ruta del config.json y teclas asignadas
+    3) Ajustes                    cambiar tiempos, teclas y failsafes
     0) Salir
 ```
 
 Se elige con una sola tecla, sin Enter. Enter a secas arranca el macro, que es
-lo habitual. Cada pantalla limpia la anterior, así que no se van acumulando.
-`--test-move` y `--test-chat` siguen disponibles desde la terminal para
-diagnosticar, pero ya no ocupan sitio en el menú.
+lo habitual, y **ESC** vuelve al menú desde la pantalla del macro.
+
+**Ajustes** abre un editor con el que se cambian los tiempos, las teclas y los
+failsafes sin tocar el JSON. Cada valor se valida **antes** de escribir, así
+que no se puede dejar un `config.json` que luego no abra: si pones una tecla
+que no existe o repites un atajo, te lo dice y no guarda nada. Sólo se escribe
+lo que cambias, sin volcarte encima todos los valores por defecto.
 
 La ola de arcoíris del banner sigue corriendo mientras el menú está abierto, y los mensajes van en
 color: verde al arrancar, amarillo al parar, rojo en los errores. Si la salida
@@ -115,8 +119,6 @@ uv run hymacro --check
 | `--config RUTA` | Usa otro `config.json` |
 | `--check` | Valida la configuración y sale, sin registrar hotkeys |
 | `--calibrate [MACRO]` | Cronómetro manual: mides tu recorrido con F12 y te da los tres tiempos |
-| `--test-move [TECLA]` | Mantiene una tecla unos segundos, para ver si el juego la registra |
-| `--test-chat` | Escribe el comando de warp en el chat sin enviarlo |
 | `--no-menu` | Va directo al modo hotkeys, sin menú |
 | `--verbose` | Muestra los logs de debug en consola |
 | `--version` | Muestra la versión |

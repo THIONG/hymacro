@@ -147,6 +147,87 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
     return result
 
 
+def _valor(config: dict[str, Any], *keys: str) -> Any:
+    """Lee una clave anidada de un config ya fusionado."""
+    valor: Any = config
+    for key in keys:
+        if not isinstance(valor, dict) or key not in valor:
+            return None
+        valor = valor[key]
+    return valor
+
+
+def validate_config(config: dict[str, Any]) -> None:
+    """Valida los campos de los que depende el macro para no fallar a mitad de ruta."""
+    from .winput import resolve_scancode  # import local: winput toca la API de Windows
+
+    for section in ("macros", "commands", "keybinds", "general", "safety"):
+        if not isinstance(config.get(section), dict):
+            raise ConfigError(f"La seccion '{section}' falta o no es un objeto")
+
+    button = _valor(config, "general", "mouse_button")
+    if button not in ("left", "right", "middle"):
+        raise ConfigError(f"general.mouse_button debe ser left/right/middle, no {button!r}")
+
+    mode = _valor(config, "general", "command_input_mode")
+    if mode not in ("unicode", "scancode"):
+        raise ConfigError(f"general.command_input_mode debe ser 'unicode' o 'scancode', no {mode!r}")
+
+    colores = _valor(config, "general", "colors")
+    if colores not in ("auto", "always", "never"):
+        raise ConfigError(f"general.colors debe ser auto/always/never, no {colores!r}")
+
+    try:
+        resolve_scancode(str(_valor(config, "general", "chat_key")))
+    except ValueError as exc:
+        raise ConfigError(f"general.chat_key invalida: {exc}") from exc
+
+    for name in ("cocoa_beans", "nether_wart"):
+        macro = _valor(config, "macros", name)
+        if not isinstance(macro, dict):
+            raise ConfigError(f"Falta la configuracion del macro '{name}'")
+        keys = macro.get("keys")
+        if not isinstance(keys, list) or len(keys) != 4:
+            raise ConfigError(f"macros.{name}.keys debe ser una lista de 4 teclas, no {keys!r}")
+        for key in keys:
+            try:
+                resolve_scancode(str(key))
+            except ValueError as exc:
+                raise ConfigError(f"macros.{name}.keys: {exc}") from exc
+        if int(macro.get("routes_per_warp", 0)) < 1:
+            raise ConfigError(f"macros.{name}.routes_per_warp debe ser >= 1")
+        paso_ms = (
+            float(macro["step_seconds"]) * 1000
+            if "step_seconds" in macro
+            else float(macro.get("timing_ms", 0))
+        )
+        if paso_ms <= 0:
+            raise ConfigError(f"macros.{name}.step_seconds debe ser > 0")
+        for campo in ("forward_seconds", "return_seconds"):
+            if float(macro.get(campo, 0)) < 0:
+                raise ConfigError(f"macros.{name}.{campo} no puede ser negativo")
+
+    cobble = _valor(config, "macros", "cobblestone")
+    if not isinstance(cobble, dict):
+        raise ConfigError("Falta la configuracion del macro 'cobblestone'")
+    try:
+        resolve_scancode(str(cobble.get("key")))
+    except ValueError as exc:
+        raise ConfigError(f"macros.cobblestone.key invalida: {exc}") from exc
+    if float(cobble.get("mining_duration_seconds", 0)) <= 0:
+        raise ConfigError("macros.cobblestone.mining_duration_seconds debe ser > 0")
+
+    binds = _valor(config, "keybinds")
+    assert isinstance(binds, dict)
+    for action in (*MACRO_TYPES, "stop"):
+        if not binds.get(action):
+            raise ConfigError(f"Falta el keybind para '{action}'")
+    used = [str(v).lower() for v in binds.values()]
+    duplicated = {k for k in used if used.count(k) > 1}
+    if duplicated:
+        raise ConfigError(f"Hay keybinds repetidos: {', '.join(sorted(duplicated))}")
+
+
 class ConfigManager:
     """Gestor de configuracion para cargar y validar settings del macro."""
 
@@ -182,74 +263,7 @@ class ConfigManager:
         logger.info("Configuracion cargada desde %s", self.config_path)
 
     def _validate_config(self) -> None:
-        """Valida los campos de los que depende el macro para no fallar a mitad de ruta."""
-        from .winput import resolve_scancode  # import local: winput toca la API de Windows
-
-        for section in ("macros", "commands", "keybinds", "general", "safety"):
-            if not isinstance(self.config.get(section), dict):
-                raise ConfigError(f"La seccion '{section}' falta o no es un objeto")
-
-        button = self.get("general", "mouse_button")
-        if button not in ("left", "right", "middle"):
-            raise ConfigError(f"general.mouse_button debe ser left/right/middle, no {button!r}")
-
-        mode = self.get("general", "command_input_mode")
-        if mode not in ("unicode", "scancode"):
-            raise ConfigError(f"general.command_input_mode debe ser 'unicode' o 'scancode', no {mode!r}")
-
-        colores = self.get("general", "colors")
-        if colores not in ("auto", "always", "never"):
-            raise ConfigError(f"general.colors debe ser auto/always/never, no {colores!r}")
-
-        try:
-            resolve_scancode(str(self.get("general", "chat_key")))
-        except ValueError as exc:
-            raise ConfigError(f"general.chat_key invalida: {exc}") from exc
-
-        for name in ("cocoa_beans", "nether_wart"):
-            macro = self.get("macros", name)
-            if not isinstance(macro, dict):
-                raise ConfigError(f"Falta la configuracion del macro '{name}'")
-            keys = macro.get("keys")
-            if not isinstance(keys, list) or len(keys) != 4:
-                raise ConfigError(f"macros.{name}.keys debe ser una lista de 4 teclas, no {keys!r}")
-            for key in keys:
-                try:
-                    resolve_scancode(str(key))
-                except ValueError as exc:
-                    raise ConfigError(f"macros.{name}.keys: {exc}") from exc
-            if int(macro.get("routes_per_warp", 0)) < 1:
-                raise ConfigError(f"macros.{name}.routes_per_warp debe ser >= 1")
-            paso_ms = (
-                float(macro["step_seconds"]) * 1000
-                if "step_seconds" in macro
-                else float(macro.get("timing_ms", 0))
-            )
-            if paso_ms <= 0:
-                raise ConfigError(f"macros.{name}.step_seconds debe ser > 0")
-            for campo in ("forward_seconds", "return_seconds"):
-                if float(macro.get(campo, 0)) < 0:
-                    raise ConfigError(f"macros.{name}.{campo} no puede ser negativo")
-
-        cobble = self.get("macros", "cobblestone")
-        if not isinstance(cobble, dict):
-            raise ConfigError("Falta la configuracion del macro 'cobblestone'")
-        try:
-            resolve_scancode(str(cobble.get("key")))
-        except ValueError as exc:
-            raise ConfigError(f"macros.cobblestone.key invalida: {exc}") from exc
-        if float(cobble.get("mining_duration_seconds", 0)) <= 0:
-            raise ConfigError("macros.cobblestone.mining_duration_seconds debe ser > 0")
-
-        binds = self.get("keybinds")
-        assert isinstance(binds, dict)
-        for action in (*MACRO_TYPES, "stop"):
-            if not binds.get(action):
-                raise ConfigError(f"Falta el keybind para '{action}'")
-        used = [str(v).lower() for v in binds.values()]
-        duplicated = {k for k in used if used.count(k) > 1}
-        if duplicated:
-            raise ConfigError(f"Hay keybinds repetidos: {', '.join(sorted(duplicated))}")
+        validate_config(self.config)
 
     def get(self, *keys: str, default: Any = _SENTINEL) -> Any:
         """Obtiene un valor anidado de la configuracion.

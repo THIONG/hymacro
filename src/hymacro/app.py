@@ -8,14 +8,21 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .config import MACRO_TYPES, ConfigError, ConfigManager, app_dir
+from .config import (
+    MACRO_TYPES,
+    ConfigError,
+    ConfigManager,
+    app_dir,
+    ensure_config_exists,
+    resolve_config_path,
+)
 from .console import (
     BOLD,
     CYAN,
-    DIM,
     GREEN,
     GREY,
     MAGENTA,
@@ -30,7 +37,8 @@ from .console import (
     print_rainbow,
 )
 from .controller import MacroController, MacroEvent
-from .winput import InputBackend
+from .editor import editar_configuracion
+from .ui import consola_interactiva, leer_opcion, pintar_opciones, preguntar
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +113,7 @@ class HyMacroApp:
         self._keyboard: Any = None
         #: Lo consulta run_menu para saber si hay que volver a dibujarlo.
         self.volver_al_menu = False
-        self._permitir_volver = permitir_volver and _consola_interactiva()
+        self._permitir_volver = permitir_volver and consola_interactiva()
         init_colors(self.config.get_str("general", "colors", default="auto"))
         self._animar_banner = self.config.get_bool("general", "banner_animation", default=True)
         self._ola: BannerWave | None = None
@@ -308,7 +316,7 @@ def check_config(config_path: str | None = None) -> int:
 _OPCIONES_MENU = [
     ("1", "Arrancar el macro", "teclas F8/F9/F10 para iniciar, F12 para parar"),
     ("2", "Calibrar los tiempos", "cronometro manual sobre tu propio plot"),
-    ("3", "Ver la configuracion", "ruta del config.json y teclas asignadas"),
+    ("3", "Ajustes", "cambiar tiempos, teclas y failsafes"),
     ("0", "Salir", ""),
 ]
 
@@ -319,33 +327,8 @@ _OPCIONES_MACRO = [
 ]
 
 
-def _pintar_opciones(titulo: str, opciones: list[tuple[str, str, str]]) -> str:
-    """Dibuja una lista de opciones con el mismo estilo en todas las pantallas."""
-    ancho = max(len(nombre) for _, nombre, _ in opciones)
-    lineas = ["", paint(f"  {titulo}", BOLD, WHITE), ""]
-    for numero, nombre, ayuda in opciones:
-        color_num = GREY if numero == "0" else CYAN
-        color_txt = GREY if numero == "0" else WHITE
-        # Solo se rellena cuando hay ayuda que alinear a la derecha; si no, el
-        # relleno quedaria dentro del color sin pintar nada.
-        etiqueta = nombre.ljust(ancho) if ayuda else nombre
-        fila = f"    {paint(numero + ')', BOLD, color_num)} {paint(etiqueta, color_txt)}"
-        if ayuda:
-            fila += f"  {paint(ayuda, DIM, GREY)}"
-        lineas.append(fila)
-    return "\n".join(lineas)
-
-
 def _pintar_menu() -> str:
-    return _pintar_opciones("Que quieres hacer?", _OPCIONES_MENU)
-
-
-def _consola_interactiva() -> bool:
-    """True si podemos leer teclas sueltas sin bloquear el repintado."""
-    if sys.platform != "win32" or not colors_enabled():
-        return False
-    entrada = sys.stdin
-    return bool(entrada is not None and getattr(entrada, "isatty", lambda: False)())
+    return pintar_opciones("Que quieres hacer?", _OPCIONES_MENU)
 
 
 def _leer_tecla_animando(
@@ -380,52 +363,12 @@ def _leer_tecla_animando(
         time.sleep(espera)
 
 
-def _preguntar(opciones: set[str], por_defecto: str) -> str:
-    """Pide una opcion por teclado hasta que sea valida."""
-    while True:
-        try:
-            respuesta = input("  > ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print("")
-            return "0"
-        if not respuesta:
-            return por_defecto
-        if respuesta in opciones:
-            return respuesta
-        print(f"  Opcion no valida. Elige entre: {', '.join(sorted(opciones))}")
-
-
 def _elegir_macro() -> str | None:
     """Pregunta que macro calibrar. Devuelve None si se elige volver."""
-    print(_pintar_opciones("Que macro?", _OPCIONES_MACRO))
+    print(pintar_opciones("Que macro?", _OPCIONES_MACRO))
     print("")
-    eleccion = _leer_opcion({"0", "1", "2"}, "1")
+    eleccion = leer_opcion({"0", "1", "2"}, "1")
     return {"1": "nether_wart", "2": "cocoa_beans"}.get(eleccion)
-
-
-def _leer_opcion(opciones: set[str], por_defecto: str) -> str:
-    """Lee una opcion: de una tecla si hay consola, y si no por linea."""
-    if not _consola_interactiva():
-        return _preguntar(opciones, por_defecto)
-
-    import msvcrt
-
-    sys.stdout.write("  > ")
-    sys.stdout.flush()
-    while True:
-        tecla = msvcrt.getwch()
-        if tecla in ("\x00", "\xe0"):  # teclas extendidas: llegan en pares
-            msvcrt.getwch()
-            continue
-        if tecla in ("\r", "\n"):
-            print(por_defecto)
-            return por_defecto
-        if tecla == "\x03":
-            print("")
-            return "0"
-        if tecla.lower() in opciones:
-            print(tecla.lower())
-            return tecla.lower()
 
 
 def _nueva_pantalla() -> None:
@@ -433,6 +376,13 @@ def _nueva_pantalla() -> None:
     clear_screen()
     BannerWave(_BANNER).draw()
     print(paint(f"  HyMacro v{__version__}", BOLD, WHITE), "- Hypixel Garden Automation Tool")
+
+
+def _ruta_config(config_path: str | None) -> Path:
+    """Ruta del config.json que se va a editar, creandolo si aun no existe."""
+    ruta = resolve_config_path(config_path)
+    ensure_config_exists(ruta)
+    return ruta
 
 
 def _modo_color(config_path: str | None) -> str:
@@ -472,7 +422,7 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
         sys.stdout.write(bloque)
         debajo = bloque.count("\n")
 
-        if _consola_interactiva():
+        if consola_interactiva():
             sys.stdout.write("  > ")
             sys.stdout.flush()
             try:
@@ -482,7 +432,7 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
                 eleccion = "0"
             print(eleccion)
         else:
-            eleccion = _preguntar(opciones, "1")
+            eleccion = preguntar(opciones, "1")
 
         if eleccion == "0":
             print(paint("  Hasta luego!", GREY))
@@ -506,7 +456,8 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
             calibrate(config_path, macro_type)
         elif eleccion == "3":
             _nueva_pantalla()
-            check_config(config_path)
+            editar_configuracion(_ruta_config(config_path))
+            continue  # el editor ya tiene su propio 'Volver'
 
         try:
             input("\n  Pulsa Enter para volver al menu...")
@@ -524,47 +475,6 @@ def _load_for_diagnostic(config_path: str | None) -> ConfigManager | None:
     except ConfigError as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return None
-
-
-def _countdown(seconds: int) -> None:
-    print("  Pon Minecraft en primer plano AHORA.")
-    for remaining in range(seconds, 0, -1):
-        print(f"  {remaining}...", flush=True)
-        time.sleep(1)
-
-
-def test_move(config_path: str | None = None, key: str | None = None, seconds: float = 3.0) -> int:
-    """Mantiene una tecla de movimiento para ver si el juego la registra.
-
-    Separa dos fallos que se parecen: que la entrada no llegue a Minecraft, y
-    que llegue pero durante demasiado poco tiempo.
-    """
-    config = _load_for_diagnostic(config_path)
-    if config is None:
-        return 1
-
-    from .winput import foreground_window_title
-
-    key = key or str(config.get("macros", "cocoa_beans", "keys")[0])
-    button = config.get_str("general", "mouse_button")
-    backend = InputBackend()
-
-    print(f"Se mantendra '{key}' + click {button} durante {seconds:.1f} s seguidos.")
-    _countdown(5)
-    print(f"  ventana activa: {foreground_window_title()!r}")
-
-    try:
-        backend.mouse_down(button)
-        backend.key_down(key)
-        time.sleep(seconds)
-    finally:
-        backend.release_all()
-
-    print("")
-    print("Listo. Interpreta el resultado:")
-    print("  - No se movio nada        -> la entrada no llega al juego")
-    print("  - Se movio de forma fluida -> la entrada llega; el problema son los timings")
-    return 0
 
 
 def _esperar_pulsacion(keyboard: Any, key: str) -> float:
@@ -643,38 +553,4 @@ def calibrate(config_path: str | None = None, macro_type: str = "nether_wart") -
     print("=" * 58)
     print("\nSi la fila de vuelta te mide distinto, cronometrala aparte y cambia")
     print("solo return_seconds.")
-    return 0
-
-
-def test_chat(config_path: str | None = None) -> int:
-    """Abre el chat y escribe el comando de warp SIN enviarlo."""
-    config = _load_for_diagnostic(config_path)
-    if config is None:
-        return 1
-
-    from .winput import foreground_window_title
-
-    command = config.get_str("commands", "warp_garden")
-    chat_key = config.get_str("general", "chat_key")
-    open_delay = config.get_float("general", "chat_open_delay_ms") / 1000.0
-    mode = config.get_str("general", "command_input_mode")
-    backend = InputBackend()
-
-    print(f"Se abrira el chat con '{chat_key}' y se escribira {command!r}.")
-    print("NO se pulsa enter: el comando no se ejecuta, solo se queda escrito.")
-    _countdown(5)
-    print(f"  ventana activa: {foreground_window_title()!r}  (modo: {mode})")
-
-    try:
-        backend.tap(chat_key)
-        time.sleep(open_delay)
-        backend.type_text(command, mode=mode)
-    finally:
-        backend.release_all()
-
-    print("")
-    print("Mira la caja del chat:")
-    print(f"  - Aparece {command!r} entero -> la escritura funciona")
-    print("  - Aparece cortado           -> sube general.chat_open_delay_ms")
-    print("  - No aparece nada           -> prueba general.command_input_mode = 'scancode'")
     return 0

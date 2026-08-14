@@ -14,8 +14,6 @@ from .app import (
     enable_utf8_console,
     run_menu,
     setup_logging,
-    test_chat,
-    test_move,
 )
 from .config import ConfigError
 
@@ -43,25 +41,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     diag = parser.add_argument_group("diagnostico")
     diag.add_argument(
-        "--test-move",
-        nargs="?",
-        const="",
-        metavar="TECLA",
-        help="Mantiene una tecla de movimiento unos segundos para ver si el juego la registra",
-    )
-    diag.add_argument(
-        "--test-seconds",
-        type=float,
-        default=3.0,
-        metavar="N",
-        help="Duracion de --test-move (por defecto 3)",
-    )
-    diag.add_argument(
-        "--test-chat",
-        action="store_true",
-        help="Abre el chat y escribe el comando de warp sin enviarlo",
-    )
-    diag.add_argument(
         "--calibrate",
         nargs="?",
         const="nether_wart",
@@ -76,12 +55,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         return check_config(args.config)
-
-    if args.test_move is not None:
-        return test_move(args.config, args.test_move or None, args.test_seconds)
-
-    if args.test_chat:
-        return test_chat(args.config)
 
     if args.calibrate is not None:
         return calibrate(args.config, args.calibrate)

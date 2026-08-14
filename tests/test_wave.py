@@ -102,8 +102,8 @@ def test_el_salto_del_menu_coincide_con_las_filas_escritas(
 
     # Terminal alta: si no, salta el guardia de scroll y no se repinta nada.
     monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback=(80, 24): os.terminal_size((200, 200)))
-    monkeypatch.setattr(app, "_consola_interactiva", lambda: False)
-    monkeypatch.setattr(app, "_preguntar", lambda opciones, defecto: "0")
+    monkeypatch.setattr(app, "consola_interactiva", lambda: False)
+    monkeypatch.setattr(app, "preguntar", lambda opciones, defecto: "0")
 
     app.run_menu()  # ojo: por dentro llama a init_colors("auto")
     salida = capsys.readouterr().out
