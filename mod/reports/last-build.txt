@@ -1,5 +1,5 @@
 outcome: failure
-commit: a60c3a678a361698ac8cbec380fc1730fb6131cf
+commit: 952c5fe9f273357104967c1b8937690ca7c61548
 ----
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
@@ -39,7 +39,7 @@ import net.minecraft.client.renderer.RenderType;
   location: class LevelRenderer
 --
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786723876131.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724007477.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -94,7 +94,7 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 8 errors
 
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786723876131.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724007477.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -145,5 +145,22 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 > Check your code and dependencies to fix the compilation error(s)
 > Run with --scan to get full insights from a Build Scan (powered by Develocity).
 
-BUILD FAILED in 35s
+BUILD FAILED in 48s
 2 actionable tasks: 2 executed
+
+==== probe ====
+-- WorldRender
+-- ShapeRenderer
+   [minecraft-clientonly-deobf-26.1.2.jar]
+     net/minecraft/client/renderer/ShapeRenderer.class
+-- RenderType
+   [minecraft-clientonly-deobf-26.1.2.jar]
+     net/minecraft/client/renderer/rendertype/RenderTypes.class
+         public static final net.minecraft.client.renderer.rendertype.RenderType LINES;
+         public static final net.minecraft.client.renderer.rendertype.RenderType LINES_TRANSLUCENT;
+         public static final net.minecraft.client.renderer.rendertype.RenderType SECONDARY_BLOCK_OUTLINE;
+         public static net.minecraft.client.renderer.rendertype.RenderType lines();
+     net/minecraft/client/renderer/rendertype/RenderType.class
+         public static final int BIG_BUFFER_SIZE;
+         public static final int SMALL_BUFFER_SIZE;
+         public static final int TRANSIENT_BUFFER_SIZE;
