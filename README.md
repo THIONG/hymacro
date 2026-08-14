@@ -210,6 +210,13 @@ Measure it with the calibration stopwatch.
 
 Run with `--verbose` to see the details of a failure.
 
+## Running unattended
+
+The macro drives the global Windows input queue, so Minecraft has to stay in
+the foreground while it runs. Making it work in the background needs a mod
+running inside the game; [docs/fabric-mod.md](docs/fabric-mod.md) records what
+was investigated, including the verified toolchain versions for 26.1.2.
+
 ## Notes
 
 Automating gameplay may go against the Hypixel rules. Use at your own risk and
