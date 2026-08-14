@@ -64,25 +64,31 @@ jobs:
       - name: Probe the API
         if: steps.build.outcome != 'success'
         env:
-          # Class names to hunt for, edited alongside whatever the build could
-          # not resolve.
-          PROBE: WorldRender ShapeRenderer
+          # Paths to list, and classes to dump the signatures of. Edited
+          # alongside whatever the build could not resolve.
+          PROBE_LIST: "fabric/api/client/rendering/v1/[A-Za-z]+[.]class$"
+          PROBE_JAVAP: "net/minecraft/client/renderer/LevelRenderer[.]class$"
         run: |
+          jars=$(find ~/.gradle -name '*.jar' 2>/dev/null)
           {
             echo ""
             echo "==== probe ===="
-            for pattern in $PROBE; do
-              echo "-- $pattern"
-              for jar in $(find ~/.gradle -name '*.jar' 2>/dev/null); do
-                hits=$(unzip -Z1 "$jar" 2>/dev/null \
-                  | grep -E "/${pattern}[A-Za-z]*\.class$" | head -n 8 || true)
+            for pattern in $PROBE_LIST; do
+              echo "-- list $pattern"
+              for jar in $jars; do
+                hits=$(unzip -Z1 "$jar" 2>/dev/null | grep -E "$pattern" | head -n 60 || true)
                 [ -n "$hits" ] || continue
                 echo "   [$(basename "$jar")]"
-                for entry in $hits; do
-                  echo "     $entry"
-                  javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#\.class$##')" \
-                    2>/dev/null | head -n 40 | sed 's/^/       /' || true
-                done
+                echo "$hits" | sed 's/^/     /'
+              done
+            done
+            for pattern in $PROBE_JAVAP; do
+              echo "-- javap $pattern"
+              for jar in $jars; do
+                entry=$(unzip -Z1 "$jar" 2>/dev/null | grep -E "$pattern" | head -n 1 || true)
+                [ -n "$entry" ] || continue
+                echo "   [$(basename "$jar")] $entry"
+                javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#[.]class$##')" 2>/dev/null                   | grep -iE "box|line|outline" | head -n 20 | sed 's/^/     /' || true
                 break
               done
             done
