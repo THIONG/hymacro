@@ -37,6 +37,9 @@ public final class RoutePlayer {
 
 	private static final String[] MOVEMENT = {"w", "a", "s", "d"};
 
+	/** Long enough for the game to count a press as a click. */
+	private static final int CLICK_TICKS = 3;
+
 	private int index;
 	private int ticksInLeg;
 	private double startX;
@@ -79,7 +82,7 @@ public final class RoutePlayer {
 
 		ticksInLeg++;
 		steer();
-		spam();
+		work();
 
 		if (arrived() || ticksInLeg >= timeoutTicks) {
 			if (ticksInLeg >= timeoutTicks) {
@@ -166,14 +169,17 @@ public final class RoutePlayer {
 		Keys.set("a", side < -PRESS_ABOVE);
 	}
 
-	/** Toggles the keys that were recorded as repeated clicks rather than holds. */
-	private void spam() {
+	/**
+	 * Works the keys the tick loop owns: the ones clicked repeatedly, and the
+	 * ones clicked once as the leg begins.
+	 */
+	private void work() {
 		for (Route.Action action : route.waypoints.get(index).actions) {
-			if (!action.isSpam()) {
-				continue;
+			if (action.isOnce()) {
+				Keys.set(action.key, ticksInLeg <= CLICK_TICKS);
+			} else if (action.isSpam()) {
+				Keys.set(action.key, (ticksInLeg / action.intervalTicks) % 2 == 0);
 			}
-			boolean down = (ticksInLeg / action.intervalTicks) % 2 == 0;
-			Keys.set(action.key, down);
 		}
 	}
 
@@ -220,7 +226,7 @@ public final class RoutePlayer {
 			if (target.walk && isMovement(action.key)) {
 				continue;
 			}
-			if (action.isSpam()) {
+			if (action.isTimed()) {
 				held.add(action.key);
 			} else {
 				Keys.set(action.key, true);

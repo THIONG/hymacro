@@ -189,9 +189,11 @@ public final class RouteView {
 			if (i > 0) {
 				text.append(" + ");
 			}
-			text.append(action.isSpam()
-				? "spam " + action.key + " /" + action.intervalTicks + "t"
-				: "hold " + action.key);
+			text.append(switch (action.mode) {
+				case Route.SPAM -> "spam " + action.key + " /" + action.intervalTicks + "t";
+				case Route.ONCE -> "click " + action.key;
+				default -> "hold " + action.key;
+			});
 		}
 		if (point.sends()) {
 			text.append("  >> ").append(point.send);

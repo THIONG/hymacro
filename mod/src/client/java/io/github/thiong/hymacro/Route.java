@@ -20,6 +20,7 @@ import java.util.List;
 public final class Route {
 	public static final String HOLD = "hold";
 	public static final String SPAM = "spam";
+	public static final String ONCE = "once";
 
 	/** One key and how it is worked: held down, or clicked repeatedly. */
 	public static final class Action {
@@ -35,6 +36,15 @@ public final class Route {
 
 		public boolean isSpam() {
 			return SPAM.equals(mode);
+		}
+
+		public boolean isOnce() {
+			return ONCE.equals(mode);
+		}
+
+		/** True when the tick loop works the key rather than a plain hold. */
+		public boolean isTimed() {
+			return isSpam() || isOnce();
 		}
 	}
 

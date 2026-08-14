@@ -32,7 +32,8 @@ stand on the second block  /hymacro point
 | `/hymacro new <name>` | Start a macro |
 | `/hymacro point` | Marks where you stand, facing where you face |
 | `/hymacro hold <key>` | Hold a key on the way to the last point |
-| `/hymacro spam <key> [ticks]` | Click it repeatedly instead of holding |
+| `/hymacro spam <key> [ticks]` | Click it over and over |
+| `/hymacro once <key>` | Click it once as the leg starts |
 | `/hymacro look <yaw> <pitch>` | Aim that leg by numbers instead of by standing |
 | `/hymacro undo`, `clear` | Drop the last point, or start over |
 | `/hymacro radius <blocks>` | How close counts as arrived |
@@ -53,6 +54,15 @@ should not need undoing back from leg six:
 A leg's number is its end point's: leg 3 runs from point 2 to point 3. Leg 1 is
 the one that closes the loop, from the last point back to the first, which is
 also the leg a warp lands in.
+
+A key is worked in one of three ways, and all three take a mouse button as
+readily as a key: `attack` is left click, `use` is right click.
+
+| Mode | What it does |
+|------|--------------|
+| `hold` | Down for the whole leg |
+| `spam` | Down and up every few ticks, an autoclicker |
+| `once` | A single click as the leg begins |
 
 A point can only be marked once a macro exists. A point outside one means
 nothing, and inventing an unnamed macro to hold it just hides the mistake.

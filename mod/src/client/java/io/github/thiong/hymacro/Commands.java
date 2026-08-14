@@ -94,6 +94,9 @@ public final class Commands {
 						.then(literal("send")
 							.then(argument("text", StringArgumentType.greedyString())
 								.executes(context -> setSend(context, host, named(context)))))
+						.then(literal("once")
+							.then(argument("key", StringArgumentType.word())
+								.executes(context -> addAction(context, host, Route.ONCE, 1, named(context)))))
 						.then(literal("walk")
 							.executes(context -> setWalk(context, host, named(context), true))
 							.then(argument("on", BoolArgumentType.bool())
@@ -114,6 +117,9 @@ public final class Commands {
 				.then(literal("send")
 					.then(argument("text", StringArgumentType.greedyString())
 						.executes(context -> setSend(context, host, LAST))))
+				.then(literal("once")
+					.then(argument("key", StringArgumentType.word())
+						.executes(context -> addAction(context, host, Route.ONCE, 1, LAST))))
 				.then(literal("walk")
 					.executes(context -> setWalk(context, host, LAST, true))
 					.then(argument("on", BoolArgumentType.bool())
@@ -231,9 +237,11 @@ public final class Commands {
 			Chat.bullet(context.getSource(), "on arrival, sends " + point.send, false);
 		}
 		for (Route.Action action : point.actions) {
-			Chat.bullet(context.getSource(), action.isSpam()
-				? "spam " + action.key + " every " + action.intervalTicks + " ticks"
-				: "hold " + action.key, false);
+			Chat.bullet(context.getSource(), switch (action.mode) {
+				case Route.SPAM -> "spam " + action.key + " every " + action.intervalTicks + " ticks";
+				case Route.ONCE -> "click " + action.key + " once at the start";
+				default -> "hold " + action.key;
+			}, false);
 		}
 		return 1;
 	}
@@ -265,9 +273,10 @@ public final class Commands {
 		Chat.heading(source, "Build");
 		Chat.entry(source, "/hymacro new <name>", "start a macro");
 		Chat.entry(source, "/hymacro point", "mark where you stand and look");
-		Chat.entry(source, "/hymacro hold <key>", "hold it until that point");
+		Chat.entry(source, "/hymacro hold <key>", "hold it for the whole leg");
+		Chat.entry(source, "/hymacro spam <key> [ticks]", "click it over and over");
+		Chat.entry(source, "/hymacro once <key>", "click it once as the leg starts");
 		Chat.entry(source, "/hymacro walk", "steer to that point on its own");
-		Chat.entry(source, "/hymacro spam <key> [ticks]", "click it repeatedly instead");
 		Chat.entry(source, "/hymacro look <yaw> <pitch>", "aim that leg by numbers");
 		Chat.entry(source, "/hymacro undo", "drop the last point");
 		Chat.entry(source, "/hymacro clear", "start this macro over");
@@ -275,6 +284,7 @@ public final class Commands {
 		Chat.entry(source, "/hymacro leg <n>", "what that leg does");
 		Chat.entry(source, "/hymacro leg <n> clear", "make it only walk");
 		Chat.note(source, "Keys: w a s d space shift ctrl attack use");
+		Chat.note(source, "attack is left click, use is right click.");
 		Chat.note(source, "Mark the point first, then say what happens on the way to it.");
 		Chat.note(source, "A leg is numbered after where it ends: leg 2 runs from point 1 to 2.");
 
@@ -389,6 +399,7 @@ public final class Commands {
 		if (!Keys.isKnown(key)) {
 			Chat.error(context.getSource(), "Unknown key " + key + ".");
 			Chat.note(context.getSource(), "Try: w a s d space shift ctrl attack use");
+			Chat.note(context.getSource(), "attack is left click, use is right click.");
 			return 0;
 		}
 
@@ -400,9 +411,12 @@ public final class Commands {
 		route.waypoints.set(index, point.withActions(actions));
 		host.book().save();
 
-		Chat.ok(context.getSource(), Route.SPAM.equals(mode)
-			? "Leg " + legName(route, index) + ": spam " + key + " every " + interval + " ticks."
-			: "Leg " + legName(route, index) + ": hold " + key + ".");
+		String what = switch (mode) {
+			case Route.SPAM -> "spam " + key + " every " + interval + " ticks";
+			case Route.ONCE -> "click " + key + " once as it starts";
+			default -> "hold " + key;
+		};
+		Chat.ok(context.getSource(), "Leg " + legName(route, index) + ": " + what + ".");
 		return 1;
 	}
 
