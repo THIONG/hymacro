@@ -122,6 +122,11 @@ class BackgroundBackend:
         handle = self._handle
         return window_title(handle) if handle else ""
 
+    def ensure_target(self) -> str:
+        """Resolve the target window now, so failures surface before a route."""
+        self._window()
+        return self.target_title
+
     def _window(self) -> int:
         if _user32 is None:
             raise InputError("Background input is only available on Windows")

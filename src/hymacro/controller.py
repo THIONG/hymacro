@@ -83,6 +83,16 @@ class MacroController:
         self._wait_jitter_percent = config.number("general", "wait_jitter_percent", default=5.0)
         self._wait_jitter_max = config.number("general", "wait_jitter_max_seconds", default=0.5)
 
+    def _backend_preflight(self) -> str | None:
+        """Reason the backend cannot deliver input yet."""
+        if not isinstance(self.input, BackgroundBackend):
+            return None
+        try:
+            self.input.ensure_target()
+        except InputError as exc:
+            return str(exc)
+        return None
+
     def _make_backend(self) -> InputBackend | BackgroundBackend:
         if self.input_mode == "background":
             title = self.config.text("safety", "window_title_contains", default="Minecraft")
@@ -100,7 +110,7 @@ class MacroController:
             if self.is_running:
                 return False, "a macro is already running"
 
-            rejection = self._guard.preflight()
+            rejection = self._guard.preflight() or self._backend_preflight()
             if rejection is not None:
                 return False, rejection
 
@@ -153,6 +163,10 @@ class MacroController:
             self.stats.finished_at = time.monotonic()
             self._emit("stop", self._stop_reason or "macro finished")
             self._emit("stats", self.stats.summary())
+
+    def _announce_target(self) -> None:
+        if isinstance(self.input, BackgroundBackend):
+            self._emit("info", f"posting input to {self.input.target_title!r}")
 
     def _sleep(self, seconds: float) -> bool:
         """Interruptible sleep. False when a stop was requested."""
@@ -236,6 +250,7 @@ class MacroController:
         )
         if forward <= 0:
             self._emit("warn", "forward_seconds is 0, so the outward leg will not move you")
+        self._announce_target()
 
         while not self._stop.is_set():
             for _ in range(routes_per_warp):
@@ -260,6 +275,7 @@ class MacroController:
         warp_island = self.config.text("commands", "warp_island")
 
         self._emit("info", f"{mining:.0f}s of mining per cycle")
+        self._announce_target()
 
         while not self._stop.is_set():
             if not self._hold(key, mining):

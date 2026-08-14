@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -62,11 +63,21 @@ def test_the_key_lparam_follows_the_windows_layout() -> None:
     assert (_key_lparam(0x11, up=False, extended=True) >> 24) & 1 == 1
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="needs the Windows API")
 def test_a_missing_window_is_reported_clearly() -> None:
     from hymacro.winput import InputError
 
     backend = BackgroundBackend("a window that does not exist anywhere")
     with pytest.raises(InputError, match="No visible window"):
+        backend.key_down("w")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="checks the non Windows path")
+def test_outside_windows_it_says_so() -> None:
+    from hymacro.winput import InputError
+
+    backend = BackgroundBackend("anything")
+    with pytest.raises(InputError, match="only available on Windows"):
         backend.key_down("w")
 
 
@@ -79,3 +90,19 @@ def test_nothing_is_left_held_after_a_failure() -> None:
 
     assert not backend.has_pending_input
     backend.release_all()
+
+
+def test_the_target_is_checked_before_starting(tmp_path: Path) -> None:
+    """A missing window should be reported at start, not mid route."""
+    data = json.loads(json.dumps(DEFAULTS))
+    data["general"]["input_mode"] = "background"
+    data["safety"]["window_title_contains"] = "no such window anywhere"
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    controller = MacroController(Config(path, auto_create=False))
+    started, reason = controller.start("nether_wart")
+
+    assert not started
+    assert "window" in reason.lower()
+    assert not controller.is_running
