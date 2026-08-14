@@ -308,25 +308,36 @@ def check_config(config_path: str | None = None) -> int:
 _OPCIONES_MENU = [
     ("1", "Arrancar el macro", "teclas F8/F9/F10 para iniciar, F12 para parar"),
     ("2", "Calibrar los tiempos", "cronometro manual sobre tu propio plot"),
-    ("3", "Probar el movimiento", "comprueba que el juego recibe las teclas"),
-    ("4", "Probar el chat", "escribe el comando de warp sin enviarlo"),
-    ("5", "Ver la configuracion", "ruta del config.json y teclas asignadas"),
+    ("3", "Ver la configuracion", "ruta del config.json y teclas asignadas"),
     ("0", "Salir", ""),
 ]
 
+_OPCIONES_MACRO = [
+    ("1", "Nether Wart", ""),
+    ("2", "Cocoa Beans", ""),
+    ("0", "Volver", ""),
+]
+
+
+def _pintar_opciones(titulo: str, opciones: list[tuple[str, str, str]]) -> str:
+    """Dibuja una lista de opciones con el mismo estilo en todas las pantallas."""
+    ancho = max(len(nombre) for _, nombre, _ in opciones)
+    lineas = ["", paint(f"  {titulo}", BOLD, WHITE), ""]
+    for numero, nombre, ayuda in opciones:
+        color_num = GREY if numero == "0" else CYAN
+        color_txt = GREY if numero == "0" else WHITE
+        # Solo se rellena cuando hay ayuda que alinear a la derecha; si no, el
+        # relleno quedaria dentro del color sin pintar nada.
+        etiqueta = nombre.ljust(ancho) if ayuda else nombre
+        fila = f"    {paint(numero + ')', BOLD, color_num)} {paint(etiqueta, color_txt)}"
+        if ayuda:
+            fila += f"  {paint(ayuda, DIM, GREY)}"
+        lineas.append(fila)
+    return "\n".join(lineas)
+
 
 def _pintar_menu() -> str:
-    lineas = ["", paint("  Que quieres hacer?", BOLD, WHITE), ""]
-    for numero, titulo, ayuda in _OPCIONES_MENU:
-        color_num = GREY if numero == "0" else CYAN
-        color_tit = GREY if numero == "0" else WHITE
-        lineas.append(
-            f"    {paint(numero + ')', BOLD, color_num)} "
-            f"{paint(titulo.ljust(22), color_tit)} {paint(ayuda, DIM, GREY)}"
-        )
-    lineas.append("")
-    lineas.append(paint("  (Enter = 1)", DIM, GREY))
-    return "\n".join(lineas)
+    return _pintar_opciones("Que quieres hacer?", _OPCIONES_MENU)
 
 
 def _consola_interactiva() -> bool:
@@ -385,12 +396,43 @@ def _preguntar(opciones: set[str], por_defecto: str) -> str:
 
 
 def _elegir_macro() -> str | None:
-    """Pregunta que macro calibrar."""
-    print("\n  Que macro?")
-    print("    1) Nether Wart")
-    print("    2) Cocoa Beans")
-    print("    0) Volver")
-    return {"1": "nether_wart", "2": "cocoa_beans"}.get(_preguntar({"0", "1", "2"}, "1"))
+    """Pregunta que macro calibrar. Devuelve None si se elige volver."""
+    print(_pintar_opciones("Que macro?", _OPCIONES_MACRO))
+    print("")
+    eleccion = _leer_opcion({"0", "1", "2"}, "1")
+    return {"1": "nether_wart", "2": "cocoa_beans"}.get(eleccion)
+
+
+def _leer_opcion(opciones: set[str], por_defecto: str) -> str:
+    """Lee una opcion: de una tecla si hay consola, y si no por linea."""
+    if not _consola_interactiva():
+        return _preguntar(opciones, por_defecto)
+
+    import msvcrt
+
+    sys.stdout.write("  > ")
+    sys.stdout.flush()
+    while True:
+        tecla = msvcrt.getwch()
+        if tecla in ("\x00", "\xe0"):  # teclas extendidas: llegan en pares
+            msvcrt.getwch()
+            continue
+        if tecla in ("\r", "\n"):
+            print(por_defecto)
+            return por_defecto
+        if tecla == "\x03":
+            print("")
+            return "0"
+        if tecla.lower() in opciones:
+            print(tecla.lower())
+            return tecla.lower()
+
+
+def _nueva_pantalla() -> None:
+    """Limpia y vuelve a dibujar el banner: cada pantalla empieza de cero."""
+    clear_screen()
+    BannerWave(_BANNER).draw()
+    print(paint(f"  HyMacro v{__version__}", BOLD, WHITE), "- Hypixel Garden Automation Tool")
 
 
 def _modo_color(config_path: str | None) -> str:
@@ -416,7 +458,7 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
     setup_logging(verbose=verbose)
 
     init_colors(_modo_color(config_path))
-    opciones = {"0", "1", "2", "3", "4", "5"}
+    opciones = {numero for numero, _, _ in _OPCIONES_MENU}
 
     while True:
         clear_screen()
@@ -456,16 +498,14 @@ def run_menu(config_path: str | None = None, verbose: bool = False) -> int:
                 continue
             return codigo
         if eleccion == "2":
+            _nueva_pantalla()
             macro_type = _elegir_macro()
             if macro_type is None:
                 continue  # "Volver" vuelve directo, sin pedir otra tecla
-            clear_screen()
+            _nueva_pantalla()
             calibrate(config_path, macro_type)
         elif eleccion == "3":
-            test_move(config_path)
-        elif eleccion == "4":
-            test_chat(config_path)
-        elif eleccion == "5":
+            _nueva_pantalla()
             check_config(config_path)
 
         try:

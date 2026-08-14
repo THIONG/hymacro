@@ -87,16 +87,14 @@ Al abrir HyMacro (doble clic al `.exe` o `uv run hymacro`) sale un menú:
 ```
     1) Arrancar el macro          teclas F8/F9/F10 para iniciar, F12 para parar
     2) Calibrar los tiempos       cronometro manual sobre tu propio plot
-    3) Probar el movimiento       comprueba que el juego recibe las teclas
-    4) Probar el chat             escribe el comando de warp sin enviarlo
-    5) Ver la configuracion       ruta del config.json y teclas asignadas
+    3) Ver la configuracion       ruta del config.json y teclas asignadas
     0) Salir
-
-  (Enter = 1)
 ```
 
-Enter a secas arranca el macro, que es lo habitual. Las demás opciones son las
-herramientas de ajuste, que antes sólo existían como argumentos de terminal.
+Se elige con una sola tecla, sin Enter. Enter a secas arranca el macro, que es
+lo habitual. Cada pantalla limpia la anterior, así que no se van acumulando.
+`--test-move` y `--test-chat` siguen disponibles desde la terminal para
+diagnosticar, pero ya no ocupan sitio en el menú.
 
 La ola de arcoíris del banner sigue corriendo mientras el menú está abierto, y los mensajes van en
 color: verde al arrancar, amarillo al parar, rojo en los errores. Si la salida

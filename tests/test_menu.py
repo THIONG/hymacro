@@ -126,7 +126,7 @@ def test_se_limpia_la_pantalla_al_volver_al_menu(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Sin limpiar, cada vuelta apilaba otro banner debajo del anterior."""
-    _con_respuestas(monkeypatch, ["5", "", "0"])
+    _con_respuestas(monkeypatch, ["3", "", "0"])
     app.run_menu(str(_config_con(tmp_path, colors="always")))
 
     salida = capsys.readouterr().out
