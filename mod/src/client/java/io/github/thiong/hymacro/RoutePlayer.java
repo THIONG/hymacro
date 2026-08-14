@@ -40,18 +40,23 @@ public final class RoutePlayer {
 	/** Long enough for the game to count a press as a click. */
 	private static final int CLICK_TICKS = 3;
 
+	/** Getting this much closer counts as progress and clears the stall. */
+	private static final double PROGRESS = 0.5;
+
 	private int index;
 	private int ticksInLeg;
+	private int stalledTicks;
+	private double closestYet;
 	private double startX;
 	private double startZ;
 	private int pausing;
-	private final int timeoutTicks;
+	private final int stallTicks;
 	private boolean finished;
 
 	public RoutePlayer(Minecraft client, Route route) {
 		this.client = client;
 		this.route = route;
-		this.timeoutTicks = Math.max(20, (int) Math.round(route.segmentTimeoutSeconds * 20.0));
+		this.stallTicks = Math.max(40, (int) Math.round(route.stallSeconds * 20.0));
 		beginLeg();
 	}
 
@@ -84,12 +89,22 @@ public final class RoutePlayer {
 		steer();
 		work();
 
-		if (arrived() || ticksInLeg >= timeoutTicks) {
-			if (ticksInLeg >= timeoutTicks) {
-				HyMacroClient.LOGGER.warn(
-					"Waypoint {} not reached within {}s, moving on",
-					waypointNumber(), route.segmentTimeoutSeconds);
-			}
+		if (arrived()) {
+			advance();
+			return;
+		}
+
+		// Giving up on a leg is about being stuck, not about being slow. A long
+		// row honestly takes minutes; a player wedged against a block gets no
+		// closer at all, however long you wait.
+		double away = distanceToTarget();
+		if (away < closestYet - PROGRESS) {
+			closestYet = away;
+			stalledTicks = 0;
+		} else if (++stalledTicks >= stallTicks) {
+			Chat.client("Point " + waypointNumber() + " got no closer for "
+				+ Math.round(route.stallSeconds) + "s, skipping it.", true);
+			Chat.clientNote("Something is in the way, or the point cannot be reached from here.");
 			advance();
 		}
 	}
@@ -102,10 +117,14 @@ public final class RoutePlayer {
 	}
 
 	private boolean arrived() {
+		return distanceToTarget() <= route.arrivalRadius;
+	}
+
+	private double distanceToTarget() {
 		Route.Waypoint target = route.waypoints.get(index);
 		double dx = client.player.getX() - target.x;
 		double dz = client.player.getZ() - target.z;
-		return dx * dx + dz * dz <= route.arrivalRadius * route.arrivalRadius;
+		return Math.sqrt(dx * dx + dz * dz);
 	}
 
 	/**
@@ -218,6 +237,8 @@ public final class RoutePlayer {
 			startX = client.player.getX();
 			startZ = client.player.getZ();
 		}
+		stalledTicks = 0;
+		closestYet = client.player == null ? Double.MAX_VALUE : distanceToTarget();
 
 		for (Route.Action action : target.actions) {
 			if (!Keys.isKnown(action.key)) {

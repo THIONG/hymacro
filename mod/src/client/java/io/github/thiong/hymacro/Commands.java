@@ -130,6 +130,9 @@ public final class Commands {
 				.then(literal("radius")
 					.then(argument("blocks", IntegerArgumentType.integer(1, 10))
 						.executes(context -> setRadius(context, host))))
+				.then(literal("stall")
+					.then(argument("seconds", IntegerArgumentType.integer(2, 300))
+						.executes(context -> setStall(context, host))))
 				.then(literal("send")
 					.then(argument("text", StringArgumentType.greedyString())
 						.executes(context -> setSend(context, host, LAST))))
@@ -397,6 +400,7 @@ public final class Commands {
 		Chat.entry(source, "/hymacro send <text>", "put in chat on arriving there");
 		Chat.note(source, "A slash makes it a command: /hymacro send /warp garden");
 		Chat.entry(source, "/hymacro radius <blocks>", "how close counts as arrived");
+		Chat.entry(source, "/hymacro stall <seconds>", "how long stuck before it gives up");
 
 		Chat.heading(source, "Macros");
 		Chat.entry(source, "/hymacro list", "every macro you have");
@@ -641,6 +645,24 @@ public final class Commands {
 		if (on) {
 			Chat.note(context.getSource(), "It still faces where you set, and still spams what you set.");
 		}
+		return 1;
+	}
+
+	/**
+	 * How long a leg may get no closer before it is given up on.
+	 *
+	 * <p>Not how long the leg may take. A row that honestly runs two minutes is
+	 * normal; getting no closer for twenty seconds is being stuck.
+	 */
+	private static int setStall(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		route.stallSeconds = IntegerArgumentType.getInteger(context, "seconds");
+		host.book().save();
+		Chat.ok(context.getSource(), "A leg is given up on after "
+			+ Math.round(route.stallSeconds) + "s of getting no closer.");
 		return 1;
 	}
 

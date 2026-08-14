@@ -218,8 +218,22 @@ A leg now ends when the player reaches its point. There is nothing to measure an
 nothing to drift: falling short simply means holding the keys a moment longer.
 Speed, buffs, lag and being shoved by a mob all stop mattering.
 
-A leg that never arrives times out instead, because something stuck against a
-block or teleported away must not hold a key down forever.
+A leg that never arrives has to end somehow, because something wedged against a
+block or teleported away must not hold a key down forever. That was a fixed
+budget at first: ninety seconds, then give up.
+
+It was the wrong measure. A budget cannot tell a long row from a stuck player,
+and a row of nether wart honestly runs two minutes, so every one of them was cut
+short at the ninety second mark. The keys released mid row and the macro carried
+on to the next leg, which looked like the mining simply stopping.
+
+What matters is not how long a leg takes but whether it is still getting
+anywhere. A leg is now given up on only after twenty seconds of getting no
+closer, which a long row never triggers and a wedged player triggers at once.
+`/hymacro stall <seconds>` moves it.
+
+Giving up also says so in chat. It used to go to the log, where nobody reads it
+mid game, so the macro appeared to stop mining for no reason at all.
 
 ## Why declaring rather than recording
 

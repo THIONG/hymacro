@@ -110,7 +110,14 @@ public final class Route {
 
 	public final List<Waypoint> waypoints = new ArrayList<>();
 	public double arrivalRadius = 1.0;
-	public double segmentTimeoutSeconds = 90.0;
+	/**
+	 * Seconds of getting no closer before a leg is given up on.
+	 *
+	 * <p>This replaced a fixed budget for the whole leg, which could not tell a
+	 * long row from a stuck player and cut short every leg that honestly took
+	 * more than a minute and a half.
+	 */
+	public double stallSeconds = 20.0;
 	public boolean visible = true;
 
 	public boolean isEmpty() {
@@ -125,9 +132,8 @@ public final class Route {
 		if (root.has("arrivalRadius")) {
 			route.arrivalRadius = Math.max(0.2, root.get("arrivalRadius").getAsDouble());
 		}
-		if (root.has("segmentTimeoutSeconds")) {
-			route.segmentTimeoutSeconds =
-				Math.max(1.0, root.get("segmentTimeoutSeconds").getAsDouble());
+		if (root.has("stallSeconds")) {
+			route.stallSeconds = Math.max(2.0, root.get("stallSeconds").getAsDouble());
 		}
 		if (root.has("visible")) {
 			route.visible = root.get("visible").getAsBoolean();
@@ -201,7 +207,7 @@ public final class Route {
 
 		JsonObject root = new JsonObject();
 		root.addProperty("arrivalRadius", arrivalRadius);
-		root.addProperty("segmentTimeoutSeconds", segmentTimeoutSeconds);
+		root.addProperty("stallSeconds", stallSeconds);
 		root.addProperty("visible", visible);
 		root.add("waypoints", points);
 		return root;
