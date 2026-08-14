@@ -59,6 +59,36 @@ jobs:
           } > mod/reports/last-build.txt
           ls -la mod/build/libs 2>/dev/null >> mod/reports/last-build.txt || true
 
+      # This version publishes no mappings, so a renamed class can only be found
+      # by looking in the jars the build already downloaded.
+      - name: Probe the API
+        if: steps.build.outcome != 'success'
+        env:
+          # Class names to hunt for, edited alongside whatever the build could
+          # not resolve.
+          PROBE: WorldRender ShapeRenderer RenderType
+        run: |
+          {
+            echo ""
+            echo "==== probe ===="
+            for pattern in $PROBE; do
+              echo "-- $pattern"
+              for jar in $(find ~/.gradle -name '*.jar' -size +40k 2>/dev/null); do
+                hits=$(unzip -Z1 "$jar" 2>/dev/null \
+                  | grep -E "/${pattern}[A-Za-z]*\.class$" | head -n 8 || true)
+                [ -n "$hits" ] || continue
+                echo "   [$(basename "$jar")]"
+                for entry in $hits; do
+                  echo "     $entry"
+                  javap -cp "$jar" "$(echo "$entry" | sed 's#/#.#g; s#\.class$##')" \
+                    2>/dev/null | grep -E "renderLineBox|AFTER_|BEFORE_|END_|public static final|lines\(" \
+                    | head -n 12 | sed 's/^/       /' || true
+                done
+                break
+              done
+            done
+          } >> mod/reports/last-build.txt 2>&1 || true
+
       # Anything else pushed while this job runs would reject a plain push and
       # lose the report, which is the only window into what the build did.
       - name: Commit the report

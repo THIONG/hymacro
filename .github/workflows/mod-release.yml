@@ -88,10 +88,10 @@ jobs:
             ${{ steps.package.outputs.name }}
             ${{ steps.package.outputs.name }}.sha256
           body: |
-            Fabric mod for Minecraft 26.1.2. It runs the farming route from inside
-            the game, so the route keeps going while the computer is used for
-            something else. The Windows executable in the other releases cannot do
-            that, because it drives the global input queue.
+            Fabric mod for Minecraft 26.1.2. It runs the route from inside the
+            game, so it keeps going while the computer is used for something
+            else. The Windows executable in the other releases cannot do that,
+            because it drives the global input queue.
 
             ## Install
 
@@ -100,12 +100,28 @@ jobs:
                in your `mods` folder.
             3. Put `${{ steps.package.outputs.name }}` in the same folder.
 
-            ## Use
+            ## Build a route
 
-            **F9** starts and stops the route, **F12** stops it. Settings live in
-            `config/hymacro.json` inside your Minecraft folder, created on first
-            run, and use the same field names as the standalone tool so calibrated
-            timings can be copied straight across.
+            Stand where a leg should end, mark it, and say what happens on the way
+            there:
+
+            ```
+            /hymacro point
+            /hymacro hold d
+            /hymacro spam attack 4
+            ```
+
+            A leg ends when you arrive, not after a measured time, so there is
+            nothing to calibrate and nothing to drift.
+
+            The route is drawn in the world as you build it: a box on every point,
+            a trail between them, and each leg's work written above it. Green means
+            a key is held, orange means something is clicked repeatedly, grey means
+            nothing is set yet.
+
+            **F9** plays and **F12** stops. Routes are kept by name in
+            `config/hymacro-routes.json`; `/hymacro routes`, `new`, `load`,
+            `rename` and `delete` manage them.
 
             Verify the download with the attached `.sha256`.
 
