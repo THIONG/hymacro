@@ -29,22 +29,28 @@ import net.minecraft.world.phys.Vec3;
  * grey where nothing is set and the player only walks.
  */
 public final class RouteView {
-	private static final int GREY = 0xFFB0B0B0;
-	private static final int GREEN = 0xFF4CE066;
-	private static final int ORANGE = 0xFFFF9922;
-	private static final int RETURN = 0xFF6A7A8A;
-	private static final int FAINT = 0xFFD8D8D8;
+	private static final int GREY = 0xFFE4E4E4;
+	private static final int GREEN = 0xFF43F06B;
+	private static final int ORANGE = 0xFFFFA023;
+	private static final int RETURN = 0xFF7C8CA0;
+	private static final int FAINT = 0xFFCFCFCF;
 
 	private static final float STROKE = 2.0f;
-	private static final float ARROW = 0.22f;
-	private static final float RETURN_ARROW = 0.12f;
-	private static final float NUMBER_SCALE = 1.6f;
-	private static final float TEXT_SCALE = 0.75f;
+	private static final float PATH_WIDTH = 3.0f;
+	private static final float RETURN_PATH_WIDTH = 1.5f;
+	private static final float ARROW = 0.8f;
+	private static final float RETURN_ARROW = 0.45f;
+	private static final float NUMBER_SCALE = 1.2f;
+	private static final float TEXT_SCALE = 0.8f;
 
-	private static final double NUMBER_HEIGHT = 1.9;
-	private static final double TEXT_HEIGHT = 1.45;
-	private static final double SPACING = 3.0;
-	private static final double ARROW_LENGTH = 1.6;
+	/** Far enough apart that a tall number and its caption never touch. */
+	private static final double NUMBER_HEIGHT = 2.6;
+	private static final double TEXT_HEIGHT = 1.7;
+
+	/** Off the ground, or a flat line is invisible at a grazing angle. */
+	private static final double PATH_HEIGHT = 0.35;
+	private static final double SPACING = 3.5;
+	private static final double ARROW_LENGTH = 2.0;
 	private static final int MAX_ARROWS = 40;
 	private static final double MAX_LEG = 400.0;
 
@@ -83,7 +89,7 @@ public final class RouteView {
 			if (closing && from.sends()) {
 				continue;
 			}
-			flow(from, to, closing ? RETURN : colour, closing ? RETURN_ARROW : ARROW);
+			flow(from, to, closing);
 		}
 	}
 
@@ -99,11 +105,13 @@ public final class RouteView {
 	}
 
 	/**
-	 * Short arrows along the leg rather than one long one, so that a hundred
-	 * block row reads as a direction of travel instead of one enormous
-	 * arrowhead.
+	 * One line the length of the leg, with arrowheads repeated along it.
+	 *
+	 * <p>The line is what makes the path visible; the arrows are what make its
+	 * direction visible. Arrows alone were too thin to read across a field, and
+	 * one arrow the length of the leg would be a single enormous head.
 	 */
-	private static void flow(Route.Waypoint from, Route.Waypoint to, int colour, float width) {
+	private static void flow(Route.Waypoint from, Route.Waypoint to, boolean closing) {
 		double dx = to.x - from.x;
 		double dy = to.y - from.y;
 		double dz = to.z - from.z;
@@ -112,9 +120,15 @@ public final class RouteView {
 			return;
 		}
 
+		int colour = closing ? RETURN : colourFor(to);
+		Gizmos.line(along(from, dx, dy, dz, 0.0), along(from, dx, dy, dz, 1.0), colour,
+				closing ? RETURN_PATH_WIDTH : PATH_WIDTH)
+			.setAlwaysOnTop();
+
 		double spacing = Math.max(SPACING, length / MAX_ARROWS);
 		int steps = (int) Math.floor(length / spacing);
 		double head = Math.min(ARROW_LENGTH, spacing * 0.6) / length;
+		float width = closing ? RETURN_ARROW : ARROW;
 
 		for (int i = 0; i < steps; i++) {
 			double start = (i + 0.5) * spacing / length;
@@ -125,7 +139,7 @@ public final class RouteView {
 	}
 
 	private static Vec3 along(Route.Waypoint from, double dx, double dy, double dz, double t) {
-		return new Vec3(from.x + dx * t, from.y + dy * t + 0.15, from.z + dz * t);
+		return new Vec3(from.x + dx * t, from.y + dy * t + PATH_HEIGHT, from.z + dz * t);
 	}
 
 	private static int translucent(int colour) {
