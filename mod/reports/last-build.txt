@@ -1,5 +1,5 @@
 outcome: failure
-commit: c15188df0ac3975a0cc9c6170f73afa4a906ac70
+commit: 54715b75702fa7fd95164e4cd964ee7aa4674c0b
 ----
 /home/runner/work/hymacro/hymacro/mod/src/client/java/io/github/thiong/hymacro/Labels.java:6: error: cannot find symbol
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
@@ -29,7 +29,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
   location: class ShapeRenderer
 --
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724111969.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724231280.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -84,7 +84,7 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 6 errors
 
 > Task :compileClientJava FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724111969.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1786724231280.json
 
 [Incubating] Problems report is available at: file:///home/runner/work/hymacro/hymacro/mod/build/reports/problems/problems-report.html
 
@@ -125,16 +125,41 @@ Execution failed for task ':compileClientJava' (registered by plugin class 'org.
 > Check your code and dependencies to fix the compilation error(s)
 > Run with --scan to get full insights from a Build Scan (powered by Develocity).
 
-BUILD FAILED in 27s
+BUILD FAILED in 25s
 2 actionable tasks: 2 executed
 
 ==== probe ====
--- WorldRender
--- ShapeRenderer
-   [minecraft-clientonly-deobf-26.1.2.jar]
-     net/minecraft/client/renderer/ShapeRenderer.class
-       Compiled from "ShapeRenderer.java"
-       public class net.minecraft.client.renderer.ShapeRenderer {
-         public net.minecraft.client.renderer.ShapeRenderer();
-         public static void renderShape(com.mojang.blaze3d.vertex.PoseStack, com.mojang.blaze3d.vertex.VertexConsumer, net.minecraft.world.phys.shapes.VoxelShape, double, double, double, int, float);
-       }
+-- list fabric/api/client/rendering/v1/[A-Za-z]+[.]class$
+   [fabric-rendering-v1-23.3.1+e9207d814c.jar]
+     net/fabricmc/fabric/api/client/rendering/v1/ArmorRenderer.class
+     net/fabricmc/fabric/api/client/rendering/v1/AtlasRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/BlockColorRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/BlockEntityRendererRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/BlockTintsFactory.class
+     net/fabricmc/fabric/api/client/rendering/v1/BuiltInBlockModelsCallback.class
+     net/fabricmc/fabric/api/client/rendering/v1/ClientTooltipComponentCallback.class
+     net/fabricmc/fabric/api/client/rendering/v1/ColorResolverRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/EntityRendererRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/ExtractItemDecorationsCallback.class
+     net/fabricmc/fabric/api/client/rendering/v1/FabricModel.class
+     net/fabricmc/fabric/api/client/rendering/v1/FabricRenderPipeline.class
+     net/fabricmc/fabric/api/client/rendering/v1/FabricRenderState.class
+     net/fabricmc/fabric/api/client/rendering/v1/InvalidateRenderStateCallback.class
+     net/fabricmc/fabric/api/client/rendering/v1/LivingEntityFeatureRenderEvents.class
+     net/fabricmc/fabric/api/client/rendering/v1/LivingEntityRenderLayerRegistrationCallback.class
+     net/fabricmc/fabric/api/client/rendering/v1/ModelLayerRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/PictureInPictureRendererRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/RenderStateDataKey.class
+     net/fabricmc/fabric/api/client/rendering/v1/SpriteSourceRegistry.class
+     net/fabricmc/fabric/api/client/rendering/v1/TransformCopyingModel.class
+-- javap net/minecraft/client/renderer/LevelRenderer[.]class$
+   [minecraft-clientonly-deobf-26.1.2.jar] net/minecraft/client/renderer/LevelRenderer.class
+       public void initOutline();
+       public void doEntityOutline();
+       protected boolean shouldShowEntityOutlines();
+       public com.mojang.blaze3d.pipeline.RenderTarget entityOutlineTarget();
+       public com.mojang.blaze3d.pipeline.RenderTarget getTranslucentTarget();
+       public com.mojang.blaze3d.pipeline.RenderTarget getItemEntityTarget();
+       public com.mojang.blaze3d.pipeline.RenderTarget getParticlesTarget();
+       public com.mojang.blaze3d.pipeline.RenderTarget getWeatherTarget();
+       public com.mojang.blaze3d.pipeline.RenderTarget getCloudsTarget();
