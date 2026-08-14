@@ -267,7 +267,7 @@ public final class Commands {
 		FabricClientCommandSource source = context.getSource();
 		RouteBook book = host.book();
 
-		Chat.heading(source, "HyMacro");
+		Chat.banner(source);
 		Chat.note(source, "A leg ends when you arrive, so nothing needs timing.");
 
 		Chat.heading(source, "Build");

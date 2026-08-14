@@ -16,8 +16,51 @@ import net.minecraft.network.chat.MutableComponent;
  */
 public final class Chat {
 	private static final String PREFIX = "HyMacro";
+	private static final int HUE_PER_LETTER = 26;
+	private static final int HUE_PER_PRINT = 37;
+
+	/** Where the sweep starts, moved on each time so no two printings match. */
+	private static int phase;
 
 	private Chat() {
+	}
+
+	/**
+	 * The name, swept through the spectrum a letter at a time.
+	 *
+	 * <p>Carried over from the console tool, whose banner rolled a wave across
+	 * itself. Chat cannot animate, since a line is fixed once it is printed, so
+	 * the sweep starts a little further round on each printing instead.
+	 */
+	public static MutableComponent wordmark() {
+		MutableComponent text = Component.empty();
+		for (int i = 0; i < PREFIX.length(); i++) {
+			int rgb = spectrum(phase + i * HUE_PER_LETTER);
+			text.append(Component.literal(String.valueOf(PREFIX.charAt(i)))
+				.withStyle(style -> style.withColor(rgb).withBold(true)));
+		}
+		phase = (phase + HUE_PER_PRINT) % 360;
+		return text;
+	}
+
+	/** A hue, fully saturated, as packed RGB. */
+	private static int spectrum(int degrees) {
+		double scaled = Math.floorMod(degrees, 360) / 60.0;
+		int sector = (int) Math.floor(scaled);
+		int rise = (int) Math.round(255 * (scaled - sector));
+		int fall = 255 - rise;
+		return switch (sector) {
+			case 0 -> pack(255, rise, 0);
+			case 1 -> pack(fall, 255, 0);
+			case 2 -> pack(0, 255, rise);
+			case 3 -> pack(0, fall, 255);
+			case 4 -> pack(rise, 0, 255);
+			default -> pack(255, 0, fall);
+		};
+	}
+
+	private static int pack(int red, int green, int blue) {
+		return (red << 16) | (green << 8) | blue;
 	}
 
 	public static void ok(FabricClientCommandSource source, String message) {
@@ -30,6 +73,14 @@ public final class Chat {
 
 	public static void error(FabricClientCommandSource source, String message) {
 		source.sendFeedback(tagged(message, ChatFormatting.RED));
+	}
+
+	/** The name in colour, ruled off, to open a block of help. */
+	public static void banner(FabricClientCommandSource source) {
+		source.sendFeedback(Component.literal("")
+			.append(Component.literal("── ").withStyle(ChatFormatting.DARK_GRAY))
+			.append(wordmark())
+			.append(Component.literal(" " + "─".repeat(21)).withStyle(ChatFormatting.DARK_GRAY)));
 	}
 
 	/** A section title, ruled off so blocks of help stay apart. */

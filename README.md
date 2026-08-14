@@ -1,271 +1,123 @@
 # HyMacro
 
-![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![Minecraft](https://img.shields.io/badge/minecraft-26.1.2-brightgreen.svg)
+![Fabric](https://img.shields.io/badge/fabric-0.19.3+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-[![CI](https://github.com/THIONG/hymacro/actions/workflows/ci.yml/badge.svg)](https://github.com/THIONG/hymacro/actions/workflows/ci.yml)
+[![Mod](https://github.com/THIONG/hymacro/actions/workflows/mod.yml/badge.svg)](https://github.com/THIONG/hymacro/actions/workflows/mod.yml)
 
-Automation tool for the Hypixel Skyblock Garden: cocoa beans, nether wart and
-cobblestone.
+A Fabric mod for building farming macros in Minecraft, made for the Hypixel
+Skyblock Garden.
+
+You walk the plot once, marking where each stretch ends and saying what happens
+on the way there. The macro is drawn in the world as you build it, and it runs
+from inside the game, so the computer stays yours while it works.
 
 ## Install
 
-### Download the executable
+1. Fabric Loader 0.19.3 or newer for Minecraft 26.1.2.
+2. [Fabric API](https://modrinth.com/mod/fabric-api) `0.155.2+26.1.2` in `mods`.
+3. The `.jar` from the [latest release](https://github.com/THIONG/hymacro/releases),
+   in the same folder.
 
-Grab the `.zip` from the [latest release](https://github.com/THIONG/hymacro/releases),
-extract it and run `HyMacro.exe`. Python is not required.
-
-> **SmartScreen and antivirus warnings are expected.** The executable is not code
-> signed, and a program that installs a global keyboard hook looks a lot like a
-> keylogger to heuristic scanners. The full source is in this repository and the
-> binary is built in the open by [`release.yml`](.github/workflows/release.yml).
-> Every release ships a `.sha256` so the download can be verified.
-
-### Run from source with [uv](https://docs.astral.sh/uv/)
-
-```bash
-git clone https://github.com/THIONG/hymacro.git
-```
-
-```bash
-cd hymacro && uv run hymacro
-```
-
-## Usage
-
-Opening HyMacro shows a menu:
+## Build one
 
 ```
-  Home
-
-    1)   Start the macro
-    2)   Calibrate timings
-    3)   Settings
-    ESC) Exit
+                          /hymacro new wart
+stand where it begins     /hymacro point
+walk to the end of a row  /hymacro point
+                          /hymacro hold d
+                          /hymacro spam attack 4
 ```
 
-Options are picked with a single key press. **Escape** always goes back, and
-returns to the menu from the macro screen. Each screen clears the previous one.
+Repeat for each stretch, then press **F9**. **F12** stops it.
 
-### Hotkeys while the macro screen is open
+A leg ends when you arrive, not after a measured time, so there is nothing to
+calibrate and nothing that drifts out of step. `/hymacro` on its own prints
+every command, in colour, in game.
 
-| Key | Action |
-|-----|--------|
-| **F8** | Cocoa Beans |
-| **F9** | Nether Wart |
-| **F10** | Cobblestone |
-| **F12** | Stop the running macro |
-| **ESC** | Back to the menu (in the HyMacro window, not in the game) |
+### What a leg can do
 
-Stopping releases every key and mouse button that was held down and prints the
-session statistics.
+| Command | Effect |
+|---------|--------|
+| `/hymacro hold <key>` | Hold it for the whole leg |
+| `/hymacro spam <key> [ticks]` | Click it over and over |
+| `/hymacro once <key>` | Click it once as the leg starts |
+| `/hymacro walk` | Steer to the point on its own |
+| `/hymacro look <yaw> <pitch>` | Aim it by numbers |
+| `/hymacro send <text>` | Put in chat on arriving there |
 
-### Failsafes
+Keys are `w a s d space shift ctrl attack use`, where `attack` is left click and
+`use` is right click.
 
-The macro stops on its own when Minecraft loses focus, when the mouse is moved
-beyond a tolerance, or when the session limit is reached. A watchdog checks all
-of them ten times a second, including during the long holds of a route.
+Any of them can name a leg rather than the one just made, so a mistake on leg
+two does not need undoing back from leg six:
 
-The stop key is polled directly from Windows as well as through the hotkey hook,
-because a hook can silently stop delivering events and losing the ability to stop
-a running macro is the worst possible failure.
-
-## Configuration
-
-Settings live in `config.json` next to the executable, and can be edited from
-**Settings** inside the app. Values are validated before anything is written, so
-the file is never left in a state the program cannot load. Deleting the file
-recreates it with the defaults.
-
-**Every duration is expressed in seconds.**
-
-### Routes
-
-| Key | Meaning |
-|-----|---------|
-| `keys` | The four keys of the pattern: `[out, step, back, step]` |
-| `forward_seconds` | Length of the outward leg. This is what moves you |
-| `return_seconds` | Length of the return leg. `0` for a one way route |
-| `step_seconds` | Time spent moving to the next row |
-| `routes_per_warp` | Laps before warping. `4` means 8 rows, not 4 |
-
-There are two shapes of route.
-
-**Serpentine** (nether wart) — you face forward, mine, and travel sideways. The
-long leg is lateral and the step between rows goes forward:
-
-```json
-"keys": ["d", "w", "a", "w"],
-"forward_seconds": 120,
-"return_seconds": 120,
-"step_seconds": 2.0
+```
+/hymacro leg 2            what it does
+/hymacro leg 2 walk       change it
+/hymacro leg 2 clear      make it only walk
 ```
 
-Right along the row, step forward, left along the next one, step forward, repeat.
+A leg is numbered after where it ends: leg 2 runs from point 1 to point 2.
 
-**One way** (cocoa beans) — you advance, correct, and repeat, so the return leg
-has no long hold:
+## Seeing it
 
-```json
-"keys": ["w", "d", "s", "a"],
-"forward_seconds": 1,
-"return_seconds": 0
+The macro is drawn where it happens: a box on every point with its number above
+it, a line along the ground with arrows showing which way it travels, and what
+each leg does floating over the middle of that leg.
+
+| Colour | Meaning |
+|--------|---------|
+| Green | A key is held |
+| Orange | Something is clicked repeatedly |
+| Grey | Nothing set, it only walks |
+
+The leg from the last point back to the first is drawn faintly. It is real, the
+macro loops, but it is the way back rather than more of the same work.
+`/hymacro show false` turns the drawing off.
+
+## Several macros
+
+```
+/hymacro list             every macro, marking the current one
+/hymacro new <name>
+/hymacro load <name>
+/hymacro rename <name>
+/hymacro delete <name>
 ```
 
-### Calibration
+Everything is written as it changes, in `config/hymacro-routes.json`. There is
+no save step.
 
-The timings depend on plot size, movement speed and buffs, so they cannot be
-guessed. **Calibrate timings** is a manual stopwatch: nothing is automated, you
-walk the route and press the stop key twice, once at each end. It measures a full
-row and the step to the next one, then prints the values to apply.
-
-### Other settings
-
-| Section | Key | Default | Meaning |
-|---------|-----|---------|---------|
-| `general` | `mouse_button` | `left` | Button held down while farming |
-| | `chat_key` | `t` | Key that opens the chat |
-| | `chat_open_seconds` | `0.12` | Pause before typing a command |
-| | `command_input_mode` | `unicode` | `unicode` or `scancode` |
-| | `step_jitter_seconds` | `0.008` | Random variation on short steps |
-| | `wait_jitter_percent` | `5` | Random variation on long holds |
-| | `wait_jitter_max_seconds` | `0.5` | Cap on that variation |
-| | `suppress_hotkeys` | `true` | Keep F8 to F12 from reaching the game |
-| | `colors` | `auto` | `auto`, `always` or `never` |
-| | `banner_animation` | `true` | Animate the banner |
-| `safety` | `require_window_focus` | `true` | Stop when Minecraft loses focus |
-| | `window_title_contains` | `Minecraft` | Text to look for in the window title |
-| | `mouse_failsafe` | `true` | Stop when the mouse moves |
-| | `mouse_failsafe_px` | `100` | Mouse tolerance |
-| | `max_session_seconds` | `0` | Session limit, `0` for none |
-
-`NO_COLOR` is honoured, and `HYMACRO_CONFIG` overrides the configuration path.
-
-## Command line
-
-| Flag | Description |
-|------|-------------|
-| `--config PATH` | Use a different `config.json` |
-| `--check` | Validate the configuration and exit |
-| `--calibrate [MACRO]` | Run the calibration stopwatch |
-| `--no-menu` | Go straight to the macro screen |
-| `--verbose` | Show debug logs on the console |
-| `--version` | Print the version |
+`/hymacro share` copies the current one to your clipboard as a single line to
+send to someone, and `/hymacro import <name>` reads one back.
 
 ## Development
 
-```bash
-uv sync --all-groups
-```
-
-| Command | Purpose |
-|---------|---------|
-| `uv run ruff check .` | Lint |
-| `uv run ruff format .` | Format |
-| `uv run mypy` | Type check, in strict mode |
-| `uv run pytest` | Tests |
-| `uv run pyinstaller packaging/hymacro.spec --noconfirm` | Build the executable |
-
-### Layout
-
-```
-mod/              Fabric client mod, for running unattended
-src/hymacro/
-  winput.py       SendInput via ctypes: scancodes, mouse, window focus
-  config.py       Loading, validation and persistence
-  console.py      Colour output and the animated banner
-  ui.py           Menu primitives shared by every screen
-  safety.py       Watchdog and failsafes
-  controller.py   Route execution on a worker thread
-  screen.py       Banner and shared header
-  app.py          The running macro screen
-  menu.py         Main menu
-  calibration.py  Manual stopwatch
-  settings.py     In-app settings editor
-```
-
-### Releasing
-
-Bump the version in `pyproject.toml` and `src/hymacro/__init__.py`, then push a
-tag. The workflow verifies the tag matches the package version, builds the
-executable, checks that it starts, generates the SHA256 and publishes the release.
+The mod is in [`mod/`](mod) and builds with a JDK 25 and nothing else:
 
 ```bash
-git tag v1.0.0 && git push origin v1.0.0
+cd mod && ./gradlew build
 ```
 
-## Troubleshooting
+The jar lands in `mod/build/libs`. [`mod.yml`](.github/workflows/mod.yml) builds
+every push, and [`mod-release.yml`](.github/workflows/mod-release.yml) publishes
+a release from a `mod-v*` tag, reusing the jar CI already built.
 
-**The hotkeys do nothing.** Run HyMacro as administrator. Global keyboard hooks
-cannot intercept input aimed at elevated processes.
-
-**It refuses to start, saying the active window is not Minecraft.** That is the
-focus failsafe. Press the hotkey with Minecraft in the foreground, or adjust
-`safety.window_title_contains` to match your launcher.
-
-**It stops after a few seconds.** Usually the mouse failsafe. Raise
-`safety.mouse_failsafe_px` or turn it off.
-
-**It changes rows before reaching the end.** `forward_seconds` is too low.
-Measure it with the calibration stopwatch.
-
-Run with `--verbose` to see the details of a failure.
-
-## Running unattended
-
-The executable drives the global Windows input queue, so Minecraft has to stay
-in the foreground while it runs.
-
-The Fabric mod in [`mod/`](mod) removes that limitation. It runs inside the
-game and sets the key state directly, so the route keeps going while the
-computer is used for something else.
-
-To install it, take the `.jar` from a
-[`mod-v*` release](https://github.com/THIONG/hymacro/releases) and drop it in
-your `mods` folder alongside
-[Fabric API](https://modrinth.com/mod/fabric-api) `0.155.2+26.1.2`, on Fabric
-Loader 0.19.3 or newer for Minecraft 26.1.2.
-
-A route is built by standing somewhere and saying what happens on the way there:
-
-```
-                           /hymacro new wart
-stand on the first block   /hymacro point
-stand on the second block  /hymacro point
-                           /hymacro hold d
-                           /hymacro spam attack 4
-                           F9
-```
-
-`/hymacro` on its own prints every command, in colour, in game.
-
-A leg ends when you reach its point, not after a measured time, so there is
-nothing to calibrate and nothing to drift.
-
-The route is drawn in the world as you build it: a box on every point, a trail
-along the ground between them, and the work of each leg written above it. Green
-means a key is held, orange means something is clicked repeatedly, grey means
-nothing is set yet.
-
-Routes are kept by name, so a plot of a different shape does not cost you the
-last one:
-
-```
-/hymacro new orchard
-/hymacro list
-/hymacro load wart
-```
-
-`/hymacro share` copies one to your clipboard as a single line to send to
-someone, and `/hymacro import <name>` reads one back.
-
-See [docs/fabric-mod.md](docs/fabric-mod.md).
+[docs/fabric-mod.md](docs/fabric-mod.md) records the verified toolchain for this
+Minecraft version, which publishes no mappings, along with the reasoning behind
+how the macro engine works.
 
 ## Notes
 
 Automating gameplay may go against the Hypixel rules. Use at your own risk and
-keep an eye on the macro while it runs; the failsafes reduce accidents but do not
-replace supervision.
+keep an eye on it while it runs.
+
+This began as a Windows executable driving the game through the global input
+queue, which meant Minecraft had to stay in the foreground and the computer
+could not be used for anything else. The mod replaced it: running inside the
+game, there is no operating system input to route anywhere. Those releases are
+still on the releases page, and their code is in the history.
 
 ## Licence
 

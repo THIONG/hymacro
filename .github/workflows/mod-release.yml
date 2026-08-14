@@ -130,10 +130,9 @@ jobs:
             ${{ steps.package.outputs.name }}
             ${{ steps.package.outputs.name }}.sha256
           body: |
-            Fabric mod for Minecraft 26.1.2. It runs the route from inside the
+            Fabric mod for Minecraft 26.1.2. It runs the macro from inside the
             game, so it keeps going while the computer is used for something
-            else. The Windows executable in the other releases cannot do that,
-            because it drives the global input queue.
+            else.
 
             ## Install
 
