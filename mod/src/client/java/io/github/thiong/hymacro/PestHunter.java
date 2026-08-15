@@ -114,6 +114,12 @@ public final class PestHunter {
 	/** Below this much still to climb, it is close enough to set off. */
 	private static final double CLIMB_FIRST = 2.0;
 
+	/** Ticks of holding jump and going nowhere before the height is given up on. */
+	private static final int CLIMB_PATIENCE = 10;
+
+	/** Less rise than this in a tick is not rising. */
+	private static final double RISING = 0.05;
+
 	/** How often the way through is worked out again, and how near counts as reached. */
 	private static final int REPLAN_TICKS = 20;
 	private static final double CORNER_REACHED = 1.6;
@@ -176,6 +182,8 @@ public final class PestHunter {
 
 	private List<Vec3> path;
 	private int pathAge;
+	private double lastY = Double.MAX_VALUE;
+	private int blockedTicks;
 
 	public PestHunter(Pests pests) {
 		this.pests = pests;
@@ -380,18 +388,37 @@ public final class PestHunter {
 	}
 
 	/**
-	 * Works the two keys that change height, and says whether it is still
-	 * climbing towards what it was given.
+	 * Works the two keys that change height, and says whether it is worth still
+	 * waiting to get there before setting off.
 	 *
 	 * <p>Flying forward in this game is flat: where the camera points decides
 	 * which way, never whether up or down. Height is jump and sneak, and it is
 	 * left to this so that aiming stays free to point at the pest.
+	 *
+	 * <p>Waiting is only worth it while the climb is working. Hovering three
+	 * above a pest is impossible under a low ceiling, and holding the forward key
+	 * off until an impossible height is reached is a player pressing jump into a
+	 * roof for ever. Half a second of jumping without rising is taken as an
+	 * answer: this is as high as it goes, get on with it.
 	 */
-	private static boolean hold(Minecraft client, double wantedY) {
-		double rise = wantedY - client.player.getY();
+	private boolean hold(Minecraft client, double wantedY) {
+		double now = client.player.getY();
+		double rise = wantedY - now;
 		Keys.set("space", rise > HEIGHT_ENOUGH);
 		Keys.set("shift", rise < -HEIGHT_ENOUGH);
-		return rise > CLIMB_FIRST;
+
+		if (rise <= CLIMB_FIRST) {
+			blockedTicks = 0;
+			lastY = now;
+			return false;
+		}
+		if (now > lastY + RISING || lastY == Double.MAX_VALUE) {
+			blockedTicks = 0;
+		} else {
+			blockedTicks++;
+		}
+		lastY = now;
+		return blockedTicks < CLIMB_PATIENCE;
 	}
 
 	/**
@@ -558,6 +585,8 @@ public final class PestHunter {
 	private void clearProgress() {
 		closestYet = Double.MAX_VALUE;
 		stalledTicks = 0;
+		blockedTicks = 0;
+		lastY = Double.MAX_VALUE;
 	}
 
 	/** Arrived: the clock stops and the height it needed is no longer owed. */

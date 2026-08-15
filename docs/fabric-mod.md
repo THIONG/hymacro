@@ -473,6 +473,17 @@ Height is worked by jump and sneak rather than by pointing the camera, because
 flying forward in this game is flat: where you look decides which way, never
 whether up or down.
 
+Getting to height comes before setting off, so that the crossing happens over
+the obstacle rather than into it. That reasoning has a hole in it: a height that
+cannot be reached never arrives, and the forward key stays off for ever. It
+showed up as the hunt rising to a ceiling and staring at a pest it could see,
+because hovering three blocks above one is impossible in a room three blocks
+tall.
+
+Waiting is now only worth it while the climb is working. Half a second of
+holding jump without rising is taken as an answer: this is as high as it goes,
+get on with it.
+
 ## Sticking to one pest
 
 The target used to be worked out fresh every tick, always the nearest. That
