@@ -3,7 +3,9 @@ package io.github.thiong.hymacro;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -249,13 +251,16 @@ public final class PestHunter {
 		// two several times a second.
 		closingIn = closingIn ? flat <= STILL_OVERHEAD : flat <= OVERHEAD;
 
-		// Far off: cross the ground between here and there. In the air that
-		// means over it, at a height read from what is underneath.
+		// Far off: get to it. Over the ground between if something is in the way,
+		// straight at it if nothing is.
 		if (!closingIn) {
 			firing = false;
 			Keys.set("use", false);
+			boolean overTheTop = false;
 			if (flying) {
-				boolean climbing = hold(client, crossingHeight(client, target));
+				overTheTop = climbNeeded(client, target);
+				boolean climbing = hold(client,
+					overTheTop ? crossingHeight(client, target) : target.y + HOVER);
 				Keys.set("w", !climbing);
 				if (climbing) {
 					// Going up is not going nowhere. The clock starts once it
@@ -267,7 +272,7 @@ public final class PestHunter {
 				Keys.set("w", true);
 				level();
 			}
-			creep(away);
+			creep(away, overTheTop);
 			return;
 		}
 
@@ -303,7 +308,7 @@ public final class PestHunter {
 		if (away > (firing ? KEEP_REACH : REACH)) {
 			firing = false;
 			Keys.set("use", false);
-			creep(away);
+			creep(away, false);
 			return;
 		}
 
@@ -330,6 +335,33 @@ public final class PestHunter {
 		Keys.set("space", rise > HEIGHT_ENOUGH);
 		Keys.set("shift", rise < -HEIGHT_ENOUGH);
 		return rise > CLIMB_FIRST;
+	}
+
+	/**
+	 * Whether getting there means going over something.
+	 *
+	 * <p>Climbing above the world is right in the open and wrong indoors. The
+	 * height comes from the heightmap, which inside a building is the roof, so
+	 * the crossing aims for a point on the far side of the ceiling, never
+	 * arrives, and the answer to being stuck was to climb further into it.
+	 *
+	 * <p>Two things say not to climb: a clear line to the pest, which means there
+	 * is nothing to climb over, and a ceiling overhead, which means there is
+	 * nowhere to climb to.
+	 */
+	private static boolean climbNeeded(Minecraft client, Vec3 target) {
+		Vec3 eye = client.player.getEyePosition();
+		if (clear(client, eye, target)) {
+			return false;
+		}
+		return clear(client, eye, eye.add(0.0, CLEARANCE, 0.0));
+	}
+
+	/** Whether nothing solid stands between two points. */
+	private static boolean clear(Minecraft client, Vec3 from, Vec3 to) {
+		return client.level.clip(new ClipContext(
+			from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, client.player))
+			.getType() == HitResult.Type.MISS;
 	}
 
 	/**
@@ -379,7 +411,7 @@ public final class PestHunter {
 	 * was. Only when it runs out of room does it give up, and then it says so,
 	 * because a hunt that quietly stops looks exactly like one that is working.
 	 */
-	private void creep(double away) {
+	private void creep(double away, boolean overTheTop) {
 		if (away < closestYet - PROGRESS) {
 			closestYet = away;
 			stalledTicks = 0;
@@ -388,7 +420,9 @@ public final class PestHunter {
 		if (++stalledTicks < STALL_TICKS) {
 			return;
 		}
-		if (lift + MORE_LIFT <= MOST_LIFT) {
+		// Going higher is only an answer when it was going over something to
+		// begin with. Under a roof it is the reason it is stuck.
+		if (overTheTop && lift + MORE_LIFT <= MOST_LIFT) {
 			lift += MORE_LIFT;
 			clearProgress();
 			Chat.clientNote("Something in the way. Going " + (int) MORE_LIFT + " blocks higher.");

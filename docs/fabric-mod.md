@@ -428,6 +428,27 @@ moment after the chunks do, so it waits five seconds before deciding, then
 leaves that plot alone and tries the next. When every plot has come up empty the
 slate is cleared, because a pest that moved is not a pest that is gone.
 
+## Going over, and going straight
+
+Climbing above everything and crossing is the right way to reach a pest across
+the Garden, and the wrong way to reach one in the same room.
+
+The crossing height comes from the heightmap, which indoors is the roof. Inside
+the Greenhouse that aims for a point on the far side of the ceiling: it never
+arrives, and the answer to being stuck was to climb four blocks further into the
+thing stopping it.
+
+Two questions settle it, both a single ray. Is the line to the pest clear, in
+which case there is nothing to climb over? Is there a ceiling overhead, in which
+case there is nowhere to climb to? Either way it flies straight at the pest
+instead, and going higher is no longer offered as the answer to being stuck when
+it was never going over anything.
+
+This is not pathfinding, and does not pretend to be. It handles the shapes the
+Garden actually has, which are plots with walls around them and buildings you
+can see across. A pest genuinely walled off from every direction still ends in
+giving up, and giving up says so.
+
 ## Sticking to one pest
 
 The target used to be worked out fresh every tick, always the nearest. That
