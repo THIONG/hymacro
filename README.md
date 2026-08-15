@@ -72,7 +72,8 @@ Points can be moved after the fact, so one being a block out is not a rebuild:
 ## Pests
 
 Pests are outlined in red where the client knows about them, with a line to each
-so a few pixels the colour of the ground can be found at all. Where one was last
+so a few pixels the colour of the ground can be found at all. Hunting picks the
+vacuum off your hotbar by name, wherever on it you keep one. Where one was last
 seen is kept and drawn faintly, since out of range is exactly when the mark is
 wanted. **F10** walks up to each one and vacuums it.
 

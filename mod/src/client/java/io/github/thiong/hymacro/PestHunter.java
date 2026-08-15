@@ -1,7 +1,10 @@
 package io.github.thiong.hymacro;
 
 import java.util.List;
+import java.util.Locale;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -34,8 +37,15 @@ import net.minecraft.world.phys.Vec3;
  * it gone and drops the memory.
  */
 public final class PestHunter {
-	/** The vacuum is in the first slot, which is slot zero to everything here. */
-	private static final int SLOT = 0;
+	/**
+	 * What the tool is called, near enough.
+	 *
+	 * <p>Looked for by name rather than kept in a chosen slot. A slot is a thing
+	 * to remember, get wrong and have to say out loud; the vacuum is already
+	 * labelled, and a bar it is not on is a bar it cannot be used from whatever
+	 * anyone has configured.
+	 */
+	private static final String VACUUM = "vacuum";
 
 	/**
 	 * How close before it stops walking.
@@ -248,6 +258,25 @@ public final class PestHunter {
 	}
 
 	/**
+	 * Says what it will be hunting with, or that it found nothing to hunt with.
+	 *
+	 * <p>Worth saying at the start rather than leaving to be discovered: a hunt
+	 * that walks up to every pest and clicks a hoe at it looks from the outside
+	 * exactly like a hunt that is broken.
+	 */
+	private void announce(Minecraft client) {
+		int slot = client.player == null ? -1 : vacuumSlot(client);
+		if (slot < 0) {
+			Chat.client("No vacuum on your hotbar. Using whatever is in hand.", true);
+			Chat.clientNote("Put one on the bar and it will pick it up by itself.");
+			return;
+		}
+		Chat.client("Hunting with " + client.player.getInventory().getItem(slot)
+			.getHoverName().getString() + " from slot " + (slot + 1) + ".", false);
+		Chat.clientNote("It goes to the plots the tab list names, then vacuums what it finds.");
+	}
+
+	/**
 	 * Flies if it may, and remembers whether that was its doing.
 	 *
 	 * <p>Whether flight is allowed is not a thing to work out from a cookie or a
@@ -314,9 +343,23 @@ public final class PestHunter {
 		emptyPlots.clear();
 		settledTicks = 0;
 		forgetTarget();
-		Chat.client("Hunting pests with slot 1.", false);
-		Chat.clientNote("It goes to the plots the tab list names, then vacuums what it finds.");
+		announce(Minecraft.getInstance());
 		takeOff(Minecraft.getInstance());
+	}
+
+	/** Where the vacuum is on the hotbar, or -1 if it is not on it. */
+	private static int vacuumSlot(Minecraft client) {
+		Inventory inventory = client.player.getInventory();
+		for (int slot = 0; slot < 9; slot++) {
+			ItemStack stack = inventory.getItem(slot);
+			if (stack.isEmpty()) {
+				continue;
+			}
+			if (stack.getHoverName().getString().toLowerCase(Locale.ROOT).contains(VACUUM)) {
+				return slot;
+			}
+		}
+		return -1;
 	}
 
 	/** Releases everything. Stopping must never leave the trigger held. */
@@ -384,8 +427,9 @@ public final class PestHunter {
 		}
 		waiting = false;
 
-		if (client.player.getInventory().getSelectedSlot() != SLOT) {
-			client.player.getInventory().setSelectedSlot(SLOT);
+		int slot = vacuumSlot(client);
+		if (slot >= 0 && client.player.getInventory().getSelectedSlot() != slot) {
+			client.player.getInventory().setSelectedSlot(slot);
 		}
 
 		boolean flying = client.player.getAbilities().flying;

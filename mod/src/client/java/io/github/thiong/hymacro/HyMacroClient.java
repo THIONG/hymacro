@@ -88,7 +88,12 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	@Override
 	public void play() {
 		Minecraft client = Minecraft.getInstance();
-		if (player != null) {
+
+		// A macro that has stood aside for a hunt, or is waiting to be warped
+		// back, is still a macro that is on. Play stops all of it, or pressing
+		// it during a hunt would start the route as well and leave two things
+		// working the same keys.
+		if (player != null || resumeAfterHunt || resumeWhenLanded || resumeWhenBack) {
 			stop();
 			return;
 		}
