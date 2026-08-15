@@ -476,6 +476,97 @@ public final class Pests {
 		return lines;
 	}
 
+	/**
+	 * The plots the server says have pests, from the tab list.
+	 *
+	 * <p>Read by the shape of the line rather than by where it sits. The tab
+	 * list arrives as a collection with no promised order, so anything that
+	 * counted lines or looked underneath a heading would work until the day it
+	 * quietly did not.
+	 */
+	public static List<Integer> plotsWithPests(Minecraft client) {
+		List<Integer> plots = new ArrayList<>();
+		String line = tabLineStarting(client, "Plots:");
+		if (line == null) {
+			return plots;
+		}
+		for (String piece : line.substring("Plots:".length()).split(",")) {
+			String trimmed = piece.trim();
+			if (trimmed.isEmpty()) {
+				continue;
+			}
+			try {
+				plots.add(Integer.parseInt(trimmed));
+			} catch (NumberFormatException notANumber) {
+				// A plot list with a word in it is not one this understands.
+			}
+		}
+		return plots;
+	}
+
+	/** How many the server says are alive, across the whole Garden. */
+	public static int aliveEverywhere(Minecraft client) {
+		String line = tabLineStarting(client, "Alive:");
+		if (line == null) {
+			return 0;
+		}
+		try {
+			return Integer.parseInt(line.substring("Alive:".length()).trim());
+		} catch (NumberFormatException notANumber) {
+			return 0;
+		}
+	}
+
+	/** Which plot the sidebar says you are standing on, or -1. */
+	public static int plotFromSidebar(Minecraft client) {
+		if (client.level == null) {
+			return -1;
+		}
+		Scoreboard board = client.level.getScoreboard();
+		Objective side = board.getDisplayObjective(DisplaySlot.SIDEBAR);
+		if (side == null) {
+			return -1;
+		}
+		for (PlayerScoreEntry entry : board.listPlayerScores(side)) {
+			PlayerTeam team = board.getPlayersTeam(entry.owner());
+			String text = team == null
+				? entry.owner()
+				: plain(PlayerTeam.formatNameForTeam(team, Component.literal(entry.owner()))
+					.getString());
+			text = text.trim();
+			if (!text.startsWith("Plot")) {
+				continue;
+			}
+			String number = text.replaceAll("[^0-9-]", "").replace("-", "").trim();
+			if (number.isEmpty()) {
+				continue;
+			}
+			try {
+				return Integer.parseInt(number);
+			} catch (NumberFormatException notANumber) {
+				return -1;
+			}
+		}
+		return -1;
+	}
+
+	private static String tabLineStarting(Minecraft client, String prefix) {
+		if (client.getConnection() == null) {
+			return null;
+		}
+		for (PlayerInfo info : client.getConnection().getOnlinePlayers()) {
+			Component shown = info.getTabListDisplayName();
+			if (shown == null) {
+				continue;
+			}
+			String text = plain(shown.getString()).trim();
+			if (text.startsWith(prefix)) {
+				return text;
+			}
+		}
+		return null;
+	}
+
 	/** Only the lines that could plausibly be about this. */
 	private static boolean interesting(String text) {
 		String lowered = text.toLowerCase(Locale.ROOT);
