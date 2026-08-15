@@ -143,10 +143,6 @@ public final class Commands {
 					}))
 				.then(literal("pests")
 					.executes(context -> pestsStatus(context, host))
-					.then(literal("plot")
-						.executes(context -> pestsPlot(context, host)))
-					.then(literal("source")
-						.executes(context -> pestsSource(context, host)))
 					.then(literal("scan")
 						.executes(context -> pestsScan(context, host)))
 					.then(argument("marked", BoolArgumentType.bool())
@@ -456,9 +452,8 @@ public final class Commands {
 		Chat.entry(source, "/hymacro show <true|false>", "draw it in the world");
 
 		Chat.heading(source, "Pests");
-		Chat.entry(source, "/hymacro pests", "whether they are marked, and how many");
+		Chat.entry(source, "/hymacro pests", "where they are, and how many");
 		Chat.entry(source, "/hymacro pests <true|false>", "outline them in red, or stop");
-		Chat.entry(source, "/hymacro pests scan", "what is around you, by name");
 		Chat.note(source, "A line runs from you to each one, since finding it is the hard part.");
 		Chat.entry(source, "F10 /hymacro hunt", "walk up to each one and vacuum it");
 		Chat.note(source, "The vacuum goes in slot 1. It holds right click until the pest is gone.");
@@ -648,19 +643,26 @@ public final class Commands {
 		int seen = host.pests().count();
 		int kept = host.pests().remembered().size();
 
+		Minecraft client = Minecraft.getInstance();
+		List<Integer> plots = Pests.plotsWithPests(client);
+		int here = GardenPlots.plotAt(source.getPlayer().getX(), source.getPlayer().getZ());
+
 		Chat.heading(source, "Pests");
 		Chat.bullet(source, host.book().pests ? "marked in red" : "not marked", true);
-		Chat.bullet(source,
-			seen == 0 ? "none in front of you" : seen + " in front of you", false);
-		if (kept > 0) {
-			Chat.bullet(source, kept + " remembered, drawn where last seen", false);
-		}
+		Chat.bullet(source, seen == 0 ? "none in sight" : seen + " in sight"
+			+ (kept > 0 ? ", " + kept + " remembered" : ""), false);
+		Chat.bullet(source, plots.isEmpty()
+			? "the server reports none in the Garden"
+			: Pests.aliveEverywhere(client) + " in the Garden, in plots " + plots, false);
+		Chat.bullet(source, switch (here) {
+			case -1 -> "you are outside the plots";
+			case 0 -> "you are at the barn";
+			default -> "you are on plot " + here;
+		}, false);
+
 		Chat.entry(source, "/hymacro pests <true|false>", "mark them, or stop");
-		Chat.entry(source, "/hymacro pests scan", "what is actually around you");
-		Chat.entry(source, "/hymacro pests source", "what the server writes about plots");
-		Chat.entry(source, "/hymacro pests plot", "check the plot grid where you stand");
-		Chat.note(source, "The outline is hidden by walls like the mob is; the line to it is not.");
-		Chat.note(source, "Out of range the server stops sending one, so its last place is kept.");
+		Chat.entry(source, "F10  /hymacro hunt", "go and clear them");
+		Chat.entry(source, "/hymacro pests scan", "name what is around you, if one goes unmarked");
 		return 1;
 	}
 
@@ -678,64 +680,6 @@ public final class Commands {
 	 * of text on the screen. This prints the places that text arrives in, so
 	 * reading it can be written against what is actually sent.
 	 */
-	/**
-	 * Checks the plot grid against the one thing that can settle it.
-	 *
-	 * <p>Where the plots are is a table written from what the plot menu shows,
-	 * not something the game hands over, so it is a guess until something
-	 * disagrees with it. The server says which plot you are standing on. Standing
-	 * somewhere and comparing the two is the whole test.
-	 */
-	private static int pestsPlot(CommandContext<FabricClientCommandSource> context, Host host) {
-		Minecraft client = Minecraft.getInstance();
-		FabricClientCommandSource source = context.getSource();
-		double x = source.getPlayer().getX();
-		double z = source.getPlayer().getZ();
-
-		int mine = GardenPlots.plotAt(x, z);
-		int theirs = Pests.plotFromSidebar(client);
-
-		Chat.heading(source, "Plot");
-		Chat.note(source, "you are at " + Math.round(x) + ", " + Math.round(z));
-		Chat.note(source, "the server says: " + (theirs < 0 ? "nothing" : "plot " + theirs));
-		Chat.note(source, "this table says: " + switch (mine) {
-			case -1 -> "off the grid";
-			case 0 -> "the barn";
-			default -> "plot " + mine;
-		});
-
-		if (theirs > 0 && mine == theirs) {
-			Chat.ok(source, "They agree.");
-		} else if (theirs > 0) {
-			Chat.error(source, "They disagree. The table is wrong here.");
-			double[] centre = GardenPlots.centreOf(theirs);
-			Chat.note(source, centre == null
-				? "plot " + theirs + " is not in the table at all"
-				: "it puts plot " + theirs + " at " + Math.round(centre[0]) + ", "
-					+ Math.round(centre[1]));
-		}
-
-		List<Integer> withPests = Pests.plotsWithPests(client);
-		Chat.note(source, "tab list: " + Pests.aliveEverywhere(client) + " alive, plots "
-			+ (withPests.isEmpty() ? "none" : withPests.toString()));
-		return 1;
-	}
-
-	private static int pestsSource(CommandContext<FabricClientCommandSource> context, Host host) {
-		Minecraft client = Minecraft.getInstance();
-		List<String> lines = host.pests().sources(client);
-		Chat.heading(context.getSource(), "Where the server says it");
-		if (lines.isEmpty()) {
-			Chat.note(context.getSource(), "Nothing readable. Are you connected?");
-			return 0;
-		}
-		for (String line : lines) {
-			Chat.note(context.getSource(), line);
-		}
-		Chat.note(context.getSource(), "Copy this to whoever is writing the parsing.");
-		return 1;
-	}
-
 	private static int pestsScan(CommandContext<FabricClientCommandSource> context, Host host) {
 		FabricClientCommandSource source = context.getSource();
 		List<String> around = host.pests().nearby(Minecraft.getInstance());

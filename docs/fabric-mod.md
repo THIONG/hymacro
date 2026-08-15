@@ -414,8 +414,14 @@ Turning a plot number into somewhere to fly needs the Garden's spiral, which the
 game never tells the client. Written out from what the plot menu looks like, it
 was wrong in twelve of its twenty five squares. The one in `GardenPlots` is
 [SkyHanni's](https://github.com/hannibal002/SkyHanni), which has had it right for
-years, and `/hymacro pests plot` checks it against the plot the server says you
-are standing on rather than asking to be believed.
+years.
+
+Two commands existed to answer those questions while this was being built: one
+printed every place the server writes text, the other checked the grid against
+the plot the server said you were standing on. Both were scaffolding. They found
+the tab list and they proved the table, and keeping them afterwards would be
+leaving the scaffolding up: `/hymacro pests` now answers what is worth knowing,
+which is how many are about, in which plots, and which one you are on.
 
 Standing in a named plot and finding nothing is not a failure: entities arrive a
 moment after the chunks do, so it waits five seconds before deciding, then
