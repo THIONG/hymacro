@@ -31,6 +31,18 @@ public final class Share {
 	 */
 	private static final int FORMAT = 1;
 
+	/**
+	 * How much a code may unpack to.
+	 *
+	 * <p>Gzip expands, and a stranger chooses what is inside. A line of chat can
+	 * hold a few hundred bytes of zeros that come out as gigabytes, and reading
+	 * it whole would take the game with it before any of the checking below ever
+	 * ran. The largest macro this mod can hold, 512 points with everything set,
+	 * is a few hundred kilobytes of JSON, so a megabyte refuses only what was
+	 * never a macro.
+	 */
+	private static final int MAX_UNPACKED = 1024 * 1024;
+
 	private Share() {
 	}
 
@@ -62,9 +74,12 @@ public final class Share {
 
 		byte[] json;
 		try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(packed))) {
-			json = gzip.readAllBytes();
+			json = gzip.readNBytes(MAX_UNPACKED + 1);
 		} catch (IOException truncated) {
 			throw new IOException("the code is damaged, copy the whole line again");
+		}
+		if (json.length > MAX_UNPACKED) {
+			throw new IOException("that code unpacks to far more than any macro could be");
 		}
 
 		// Everything past here is parsing what a stranger wrote, so a fault in it
