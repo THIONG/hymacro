@@ -284,8 +284,19 @@ public final class PestHunter {
 			}
 			if (flying) {
 				overTheTop = climbNeeded(client, target);
-				boolean climbing = hold(client,
-					overTheTop ? crossingHeight(client, target) : target.y + HOVER);
+				// A plot has no height of its own: the one it carries is the
+				// player's, read again every tick. Holding three above it would
+				// be holding three above wherever the climb had got to, which
+				// climbs for ever and never sets off.
+				double wantedY;
+				if (!chasingPest) {
+					wantedY = crossingHeight(client, target);
+				} else if (overTheTop) {
+					wantedY = Math.max(crossingHeight(client, target), target.y + HOVER);
+				} else {
+					wantedY = target.y + HOVER;
+				}
+				boolean climbing = hold(client, wantedY);
 				Keys.set("w", !climbing);
 				if (climbing) {
 					// Going up is not going nowhere. The clock starts once it
@@ -303,7 +314,7 @@ public final class PestHunter {
 
 		// Overhead. Come down to hovering height and vacuum from above it.
 		Keys.set("w", false);
-		if (flying) {
+		if (flying && chasingPest) {
 			hold(client, target.y + HOVER);
 		} else {
 			level();
@@ -438,6 +449,11 @@ public final class PestHunter {
 	 *
 	 * <p>Only as high as it has to be. Climbing to the sky for a pest across a
 	 * flat plot would spend the whole trip going up and coming back down.
+	 *
+	 * <p>Read from the world and nothing else. It used to be floored at the
+	 * target's own height, which is right for a pest and ruinous for a plot,
+	 * whose height is the player's read afresh each tick: the floor rose with
+	 * every block climbed and the climb never ended.
 	 */
 	private double crossingHeight(Minecraft client, Vec3 target) {
 		double px = client.player.getX();
@@ -452,7 +468,7 @@ public final class PestHunter {
 			double along = (double) i / steps;
 			highest = Math.max(highest, groundAt(client, px + dx * along, pz + dz * along));
 		}
-		return Math.max(highest + CLEARANCE + lift, target.y + HOVER);
+		return highest + CLEARANCE + lift;
 	}
 
 	private static int groundAt(Minecraft client, double x, double z) {

@@ -460,6 +460,21 @@ round a corner; it finds a hole in a ceiling, which is the shape this world
 actually has. A pest genuinely walled off from every direction still ends in
 giving up, and giving up says so.
 
+## A height that chased itself
+
+Flying to a plot climbed for ever and never set off, while flying to a pest was
+fine and walking to either was fine. Three symptoms, one cause.
+
+A pest sits at a fixed height in the world. A plot has no height of its own, so
+the one it carried was the player's, read again every tick. The crossing height
+was floored at three above the target, which for a plot meant three above
+wherever the climb had got to by now: every block gained raised the bar by the
+same block. Since climbing holds the forward key off until it is at height, it
+never took a step.
+
+The floor belongs to a pest and to nothing else. The crossing height is now read
+from the world alone.
+
 ## Sticking to one pest
 
 The target used to be worked out fresh every tick, always the nearest. That
