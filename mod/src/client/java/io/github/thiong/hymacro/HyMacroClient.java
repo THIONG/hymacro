@@ -51,6 +51,11 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	/** The hunt is over and the macro takes over once it has landed. */
 	private boolean resumeWhenLanded;
 
+	/** Ticks left before carrying on, so a warp has time to land. */
+	private int resumeIn;
+
+	private static final int AFTER_SEND = 20;
+
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
 	private final Pests pests = new Pests();
@@ -93,7 +98,8 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// back, is still a macro that is on. Play stops all of it, or pressing
 		// it during a hunt would start the route as well and leave two things
 		// working the same keys.
-		if (player != null || resumeAfterHunt || resumeWhenLanded || resumeWhenBack) {
+		if (player != null || resumeAfterHunt || resumeWhenLanded || resumeWhenBack
+			|| resumeIn > 0) {
 			stop();
 			return;
 		}
@@ -139,6 +145,29 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		}
 		player = new RoutePlayer(client, route);
 		Chat.client("Back to '" + book.activeName() + "'.", false);
+	}
+
+	/**
+	 * What the macro asked for once a hunt is over.
+	 *
+	 * <p>Sending something is the useful case, and a warp in particular: coming
+	 * back on foot from wherever the last pest happened to be is the shakiest
+	 * part of the whole business, and one command replaces it.
+	 */
+	private void afterHunt(Minecraft client) {
+		Route route = route();
+		Route.When after = route == null ? null : route.rule(Route.When.HUNTED);
+		if (after == null) {
+			resume();
+			return;
+		}
+		if (Route.When.STOP.equals(after.then)) {
+			Chat.client("Hunt over. Stopping, as this macro asks.", false);
+			return;
+		}
+		Chat.client("Hunt over, sending " + after.text, false);
+		RoutePlayer.sendChat(client, after.text);
+		resumeIn = AFTER_SEND;
 	}
 
 	/**
@@ -277,6 +306,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		}
 		resumeWhenBack = false;
 		resumeWhenLanded = false;
+		resumeIn = 0;
 
 		// Rules judge again from scratch next time. Starting a macro is asking
 		// for it to be dealt with as it is now, not as it was when something
@@ -348,6 +378,9 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// sneak to come down and the macro holding forward to set off.
 		if (resumeWhenLanded && !hunter.isBusy()) {
 			resumeWhenLanded = false;
+			afterHunt(client);
+		}
+		if (resumeIn > 0 && --resumeIn == 0) {
 			resume();
 		}
 		if (++ruleTick >= RULE_EVERY) {

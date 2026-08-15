@@ -63,6 +63,7 @@ public final class Route {
 	public static final class When {
 		public static final String PESTS = "pests";
 		public static final String AWAY = "away";
+		public static final String HUNTED = "hunted";
 		public static final String HUNT = "hunt";
 		public static final String SEND = "send";
 		public static final String STOP = "stop";
@@ -87,7 +88,14 @@ public final class Route {
 			return AWAY.equals(watch);
 		}
 
+		public boolean watchesHunt() {
+			return HUNTED.equals(watch);
+		}
+
 		public String describe() {
+			if (watchesHunt()) {
+				return SEND.equals(then) ? "after a hunt, send " + text : "after a hunt, stop";
+			}
 			String what = watchesPlace() ? "leaving " + place : atLeast + " " + watch;
 			return switch (then) {
 				case HUNT -> "on " + what + ", hunt them and come back";

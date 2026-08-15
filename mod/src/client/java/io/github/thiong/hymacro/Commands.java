@@ -164,6 +164,13 @@ public final class Commands {
 								.then(argument("text", StringArgumentType.greedyString())
 									.executes(context -> setRule(context, host, Route.When.SEND,
 										StringArgumentType.getString(context, "text")))))))
+					.then(literal("hunted")
+						.then(literal("stop")
+							.executes(context -> setHuntedRule(context, host, Route.When.STOP, "")))
+						.then(literal("send")
+							.then(argument("text", StringArgumentType.greedyString())
+								.executes(context -> setHuntedRule(context, host, Route.When.SEND,
+									StringArgumentType.getString(context, "text"))))))
 					.then(literal("away")
 						.then(literal("stop")
 							.executes(context -> setAwayRule(context, host, Route.When.STOP, "")))
@@ -449,7 +456,8 @@ public final class Commands {
 		Chat.entry(source, "/hymacro stall <seconds>", "how long stuck before it gives up");
 		Chat.entry(source, "/hymacro when pests <n> hunt", "pause, clear them, carry on");
 		Chat.entry(source, "/hymacro when away send <text>", "sent if you end up elsewhere");
-		Chat.note(source, "Also: when pests <n> send|stop, when away stop, when off");
+		Chat.entry(source, "/hymacro when hunted send <text>", "sent once a hunt is over");
+		Chat.note(source, "Also: when pests <n> send|stop, when away stop, when hunted stop, when off");
 
 		Chat.heading(source, "Macros");
 		Chat.entry(source, "/hymacro list", "every macro you have");
@@ -948,6 +956,31 @@ public final class Commands {
 		for (String line : lines) {
 			Chat.bullet(source, line, false);
 		}
+	}
+
+	/**
+	 * What to do once a hunt is over.
+	 *
+	 * <p>The rules already read as "when this, do that", so finishing a hunt is
+	 * simply another thing to watch rather than an extra clause bolted onto the
+	 * rule that starts one. It also happens to answer the awkward part of coming
+	 * back: a warp is a surer way home than walking from wherever the last pest
+	 * happened to be.
+	 */
+	private static int setHuntedRule(CommandContext<FabricClientCommandSource> context, Host host,
+			String then, String text) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		Route.When rule = new Route.When(Route.When.HUNTED, 1, then, text, "");
+		route.setRule(rule);
+		host.book().save();
+		Chat.ok(context.getSource(), "Rule set: " + rule.describe() + ".");
+		if (Route.When.SEND.equals(then)) {
+			Chat.note(context.getSource(), "It waits a second afterwards, then carries on.");
+		}
+		return 1;
 	}
 
 	private static int clearRule(CommandContext<FabricClientCommandSource> context, Host host) {
