@@ -138,11 +138,28 @@ public final class PestHunter {
 	/** Near enough into a plot to be told about what lives there. */
 	private static final double PLOT_ARRIVED = 20.0;
 
-	/** How long to stand in a plot before deciding its pest is not here. */
+	/** How long to wait at one spot in a plot before moving along it. */
 	private static final int SETTLE_TICKS = 100;
+
+	/**
+	 * Where to stand in a plot, in order.
+	 *
+	 * <p>A plot is ninety six across and the server only sends what is near you,
+	 * so its far corners are outside what standing in the middle can see. The
+	 * pest is somewhere in it; this walks the middle and the four quarters until
+	 * something is sent, which is what a person does when told a plot has one.
+	 */
+	private static final double[][] SWEEP = {
+		{0.0, 0.0}, {-24.0, -24.0}, {24.0, -24.0}, {24.0, 24.0}, {-24.0, 24.0},
+	};
+
+	/** How far ahead it plans when the pest is further off than that. */
+	private static final double PATH_AHEAD = 48.0;
 
 	private final java.util.Set<Integer> emptyPlots = new java.util.HashSet<>();
 	private int settledTicks;
+	private int sweepingPlot = -1;
+	private int sweepStep;
 
 	private boolean on;
 	private double closestYet;
@@ -206,6 +223,8 @@ public final class PestHunter {
 		lift = 0.0;
 		forgetTarget();
 		path = null;
+		sweepingPlot = -1;
+		sweepStep = 0;
 		release();
 		if (wasOn && why != null) {
 			Chat.client(why, false);
@@ -331,9 +350,10 @@ public final class PestHunter {
 			clearStall();
 			if (flat <= PLOT_ARRIVED && ++settledTicks > SETTLE_TICKS) {
 				settledTicks = 0;
-				if (travellingTo > 0) {
+				if (++sweepStep >= SWEEP.length && travellingTo > 0) {
 					emptyPlots.add(travellingTo);
-					Chat.clientNote("Nothing in plot " + travellingTo + ". Trying the next one.");
+					sweepStep = 0;
+					Chat.clientNote("Nothing found in plot " + travellingTo + ". Trying the next.");
 				}
 			}
 			return;
@@ -392,9 +412,13 @@ public final class PestHunter {
 			path = null;
 			return null;
 		}
-		if (eye.distanceTo(target) > Flightpath.RANGE) {
-			path = null;
-			return null;
+		// A plot is hundreds of blocks off, which used to mean no searching at
+		// all and straight back to climbing into whatever was overhead. It plans
+		// as far ahead as it can instead, and plans again as it gets there.
+		Vec3 goal = target;
+		double away = eye.distanceTo(target);
+		if (away > PATH_AHEAD) {
+			goal = eye.add(target.subtract(eye).normalize().scale(PATH_AHEAD));
 		}
 
 		while (path != null && !path.isEmpty()
@@ -406,7 +430,7 @@ public final class PestHunter {
 		}
 		if (path == null || ++pathAge >= REPLAN_TICKS) {
 			pathAge = 0;
-			path = Flightpath.between(client.level, eye, target);
+			path = Flightpath.between(client.level, eye, goal);
 		}
 		return path == null || path.isEmpty() ? null : path.get(0);
 	}
@@ -579,19 +603,27 @@ public final class PestHunter {
 			}
 			double dx = centre[0] - px;
 			double dz = centre[1] - pz;
-			double away = Math.sqrt(dx * dx + dz * dz);
-			if (plot == standingIn) {
-				// Already here and it has shown nothing, or a pest would have
-				// been the target instead.
-				continue;
-			}
+			double away = plot == standingIn ? -1.0 : Math.sqrt(dx * dx + dz * dz);
 			if (away < nearest) {
 				nearest = away;
 				best = new Vec3(centre[0], client.player.getY(), centre[1]);
 				travellingTo = plot;
 			}
 		}
-		return best;
+		if (best == null) {
+			return null;
+		}
+
+		// Being in the plot is when to start looking round it, not when to
+		// decide it is empty: nothing has been sent yet at the moment of
+		// arriving.
+		if (travellingTo != sweepingPlot) {
+			sweepingPlot = travellingTo;
+			sweepStep = 0;
+			settledTicks = 0;
+		}
+		double[] corner = SWEEP[Math.min(sweepStep, SWEEP.length - 1)];
+		return new Vec3(best.x + corner[0], best.y, best.z + corner[1]);
 	}
 
 	/**

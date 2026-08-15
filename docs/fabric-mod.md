@@ -423,9 +423,17 @@ the tab list and they proved the table, and keeping them afterwards would be
 leaving the scaffolding up: `/hymacro pests` now answers what is worth knowing,
 which is how many are about, in which plots, and which one you are on.
 
-Standing in a named plot and finding nothing is not a failure: entities arrive a
-moment after the chunks do, so it waits five seconds before deciding, then
-leaves that plot alone and tries the next. When every plot has come up empty the
+Standing in a named plot and finding nothing is not a failure, and it took two
+goes to stop treating it as one. The first version skipped whichever plot you
+were standing in, reasoning that being there and seeing nothing meant nothing
+was there. That is true a minute after arriving and false at the instant of it,
+which is the only instant it was ever asked: the hunt landed, wrote the plot
+off, and left for the next one.
+
+A plot is ninety six across and the server sends only what is near you, so its
+far corners cannot be seen from the middle of it. It now stands in the middle
+and then in each of the four quarters, five seconds apiece, and only calls a plot
+empty once all five have shown nothing. When every plot has come up empty the
 slate is cleared, because a pest that moved is not a pest that is gone.
 
 ## Finding a way through
@@ -445,6 +453,12 @@ Two things keep it honest inside a running game. It searches a box around the
 two ends rather than the world, so the cost has a ceiling however far off the
 pest is; and it stops after six thousand blocks looked at, so a sealed room
 costs a known amount and then hands back nothing rather than hunting for ever.
+
+A plot on the far side of the Garden is further than any box worth searching, so
+what is searched for is a point along the way, as far ahead as it plans, worked
+out again as it gets there. Skipping the search when the goal was far was the
+same as having none, since being far away is exactly when there is a roof in the
+way.
 When it finds nothing, what happens is the climbing and crossing that came
 before, and a pest that truly cannot be reached still ends in giving up out
 loud.
