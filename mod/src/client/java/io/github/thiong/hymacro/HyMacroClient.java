@@ -48,6 +48,9 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	/** The macro is waiting to be back where it belongs. */
 	private boolean resumeWhenBack;
 
+	/** The hunt is over and the macro takes over once it has landed. */
+	private boolean resumeWhenLanded;
+
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
 	private final Pests pests = new Pests();
@@ -268,6 +271,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			hunter.stop("Stopped hunting: the macro was stopped.");
 		}
 		resumeWhenBack = false;
+		resumeWhenLanded = false;
 
 		// Rules judge again from scratch next time. Starting a macro is asking
 		// for it to be dealt with as it is now, not as it was when something
@@ -332,6 +336,13 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		if (resumeAfterHunt && hunter.isIdle()) {
 			resumeAfterHunt = false;
 			hunter.stop(null);
+			resumeWhenLanded = true;
+		}
+		// Not until it is down. Handing the keys back mid descent gives a macro
+		// that walks its route a player still in the air, with the hunt holding
+		// sneak to come down and the macro holding forward to set off.
+		if (resumeWhenLanded && !hunter.isBusy()) {
+			resumeWhenLanded = false;
 			resume();
 		}
 		if (++ruleTick >= RULE_EVERY) {

@@ -232,6 +232,11 @@ public final class PestHunter {
 		return on && waiting;
 	}
 
+	/** Hunting, or still coming down from having hunted. */
+	public boolean isBusy() {
+		return on || landing;
+	}
+
 	/** Starts without the message, for when a macro is doing the starting. */
 	public void start() {
 		on = true;
