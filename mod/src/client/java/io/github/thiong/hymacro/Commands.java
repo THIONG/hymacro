@@ -143,6 +143,8 @@ public final class Commands {
 					}))
 				.then(literal("pests")
 					.executes(context -> pestsStatus(context, host))
+					.then(literal("source")
+						.executes(context -> pestsSource(context, host)))
 					.then(literal("scan")
 						.executes(context -> pestsScan(context, host)))
 					.then(argument("marked", BoolArgumentType.bool())
@@ -653,6 +655,7 @@ public final class Commands {
 		}
 		Chat.entry(source, "/hymacro pests <true|false>", "mark them, or stop");
 		Chat.entry(source, "/hymacro pests scan", "what is actually around you");
+		Chat.entry(source, "/hymacro pests source", "what the server writes about plots");
 		Chat.note(source, "The outline is hidden by walls like the mob is; the line to it is not.");
 		Chat.note(source, "Out of range the server stops sending one, so its last place is kept.");
 		return 1;
@@ -665,6 +668,28 @@ public final class Commands {
 	 * what Hypixel sends until somebody stands next to one and looks. This is
 	 * how you look, so an unmarked pest is a name to add rather than a mystery.
 	 */
+	/**
+	 * What the server writes, rather than what it spawns.
+	 *
+	 * <p>A pest three plots away is not an entity the client has: it is a line
+	 * of text on the screen. This prints the places that text arrives in, so
+	 * reading it can be written against what is actually sent.
+	 */
+	private static int pestsSource(CommandContext<FabricClientCommandSource> context, Host host) {
+		Minecraft client = Minecraft.getInstance();
+		List<String> lines = host.pests().sources(client);
+		Chat.heading(context.getSource(), "Where the server says it");
+		if (lines.isEmpty()) {
+			Chat.note(context.getSource(), "Nothing readable. Are you connected?");
+			return 0;
+		}
+		for (String line : lines) {
+			Chat.note(context.getSource(), line);
+		}
+		Chat.note(context.getSource(), "Copy this to whoever is writing the parsing.");
+		return 1;
+	}
+
 	private static int pestsScan(CommandContext<FabricClientCommandSource> context, Host host) {
 		FabricClientCommandSource source = context.getSource();
 		List<String> around = host.pests().nearby(Minecraft.getInstance());

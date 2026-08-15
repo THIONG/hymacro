@@ -8,7 +8,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.PlayerScoreEntry;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
@@ -407,6 +413,73 @@ public final class Pests {
 			lines.add("and " + (around.size() - SCAN_LINES) + " more");
 		}
 		return lines;
+	}
+
+	/**
+	 * Everywhere the server writes text, for finding where it says what.
+	 *
+	 * <p>Entities only exist near you, so a pest three plots away is nothing the
+	 * client has been told about as a thing in the world. It has been told in
+	 * words, though: the count per plot is on screen the whole time, which is how
+	 * the other mods draw a box over a plot that is not even loaded.
+	 *
+	 * <p>Which of the several places it arrives in is not something to guess at.
+	 * This prints them, so the parsing is written against what the server
+	 * actually sends rather than against a hope.
+	 */
+	public List<String> sources(Minecraft client) {
+		List<String> lines = new ArrayList<>();
+		if (client.getConnection() == null) {
+			return lines;
+		}
+
+		lines.add("-- tab list --");
+		int quiet = 0;
+		for (PlayerInfo info : client.getConnection().getOnlinePlayers()) {
+			Component shown = info.getTabListDisplayName();
+			String text = shown == null ? "" : plain(shown.getString()).trim();
+			if (text.isEmpty()) {
+				quiet++;
+				continue;
+			}
+			if (interesting(text)) {
+				lines.add("  " + text);
+			} else {
+				quiet++;
+			}
+		}
+		lines.add("  (" + quiet + " more with nothing about pests or plots)");
+
+		if (client.level == null) {
+			return lines;
+		}
+
+		Scoreboard board = client.level.getScoreboard();
+		Objective side = board.getDisplayObjective(DisplaySlot.SIDEBAR);
+		lines.add("-- sidebar --");
+		if (side == null) {
+			lines.add("  (none)");
+			return lines;
+		}
+		lines.add("  title: " + plain(side.getDisplayName().getString()));
+		for (PlayerScoreEntry entry : board.listPlayerScores(side)) {
+			PlayerTeam team = board.getPlayersTeam(entry.owner());
+			String text = team == null
+				? entry.owner()
+				: plain(PlayerTeam.formatNameForTeam(team, Component.literal(entry.owner()))
+					.getString());
+			text = text.trim();
+			if (!text.isEmpty()) {
+				lines.add("  " + text);
+			}
+		}
+		return lines;
+	}
+
+	/** Only the lines that could plausibly be about this. */
+	private static boolean interesting(String text) {
+		String lowered = text.toLowerCase(Locale.ROOT);
+		return lowered.contains("pest") || lowered.contains("plot");
 	}
 
 	private static double away(Entity entity, double x, double y, double z) {
