@@ -3,6 +3,7 @@ package io.github.thiong.hymacro;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
@@ -35,7 +36,15 @@ public final class Skyblock {
 	private Skyblock() {
 	}
 
-	/** The island the player is on, or null when the board does not say. */
+	/**
+	 * The island the player is on, or null when nothing says.
+	 *
+	 * <p>Two places are asked, because one of them turned out not to be reliable.
+	 * The scoreboard carries the island after a marker of its own, which is the
+	 * obvious answer and was missing from the board entirely on one occasion; the
+	 * tab list carries it as a plain "Area:" line, which is duller and has been
+	 * there every time. Either will do, so both are tried.
+	 */
 	public static String location(Minecraft client) {
 		for (String line : sidebar(client)) {
 			int mark = line.indexOf(AREA);
@@ -45,6 +54,42 @@ public final class Skyblock {
 			String name = tidy(line.substring(mark + 1));
 			if (!name.isEmpty()) {
 				return name;
+			}
+		}
+
+		String area = tabLine(client, "Area:");
+		if (area != null) {
+			String name = tidy(area.substring("Area:".length()));
+			if (!name.isEmpty()) {
+				return name;
+			}
+		}
+		return null;
+	}
+
+	/** Every line of the tab list that has anything on it. */
+	public static List<String> tabList(Minecraft client) {
+		List<String> lines = new ArrayList<>();
+		if (client.getConnection() == null) {
+			return lines;
+		}
+		for (PlayerInfo info : client.getConnection().getOnlinePlayers()) {
+			Component shown = info.getTabListDisplayName();
+			if (shown == null) {
+				continue;
+			}
+			String line = plain(shown.getString()).trim();
+			if (!line.isEmpty()) {
+				lines.add(line);
+			}
+		}
+		return lines;
+	}
+
+	private static String tabLine(Minecraft client, String prefix) {
+		for (String line : tabList(client)) {
+			if (line.startsWith(prefix)) {
+				return line;
 			}
 		}
 		return null;

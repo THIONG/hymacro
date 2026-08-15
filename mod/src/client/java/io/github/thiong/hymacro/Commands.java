@@ -947,15 +947,21 @@ public final class Commands {
 	 * that costs somebody an afternoon.
 	 */
 	private static void showSidebar(FabricClientCommandSource source) {
-		List<String> lines = Skyblock.sidebar(Minecraft.getInstance());
-		if (lines.isEmpty()) {
-			Chat.note(source, "It has no scoreboard at all right now.");
-			return;
-		}
-		Chat.note(source, "What it does say:");
-		for (String line : lines) {
+		Minecraft client = Minecraft.getInstance();
+		Chat.note(source, "The scoreboard says:");
+		for (String line : Skyblock.sidebar(client)) {
 			Chat.bullet(source, line, false);
 		}
+		Chat.note(source, "The tab list says:");
+		int quiet = 0;
+		for (String line : Skyblock.tabList(client)) {
+			if (line.contains(":") && line.length() < 40) {
+				Chat.bullet(source, line, false);
+			} else {
+				quiet++;
+			}
+		}
+		Chat.note(source, "and " + quiet + " lines that are names or too long.");
 	}
 
 	/**
