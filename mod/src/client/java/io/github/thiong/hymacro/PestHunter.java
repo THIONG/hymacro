@@ -229,6 +229,9 @@ public final class PestHunter {
 	private boolean weStartedFlying;
 	private boolean landing;
 
+	/** What was in hand before the vacuum, or -1 if nothing was taken out of it. */
+	private int slotBefore = -1;
+
 	public PestHunter(Pests pests) {
 		this.pests = pests;
 	}
@@ -254,7 +257,31 @@ public final class PestHunter {
 		landing = false;
 		forgetTarget();
 		clearStall();
+		rememberHand(Minecraft.getInstance());
 		takeOff(Minecraft.getInstance());
+	}
+
+	/**
+	 * Notes what was in hand, to give it back afterwards.
+	 *
+	 * <p>The hunt takes the vacuum out, and a macro that farms goes back to work
+	 * with whatever is held: a hoe if it was left as it was found, and otherwise
+	 * a vacuum being swung at nether wart. Putting a tool away is part of
+	 * finishing with it.
+	 */
+	private void rememberHand(Minecraft client) {
+		slotBefore = client.player == null ? -1 : client.player.getInventory().getSelectedSlot();
+	}
+
+	private void restoreHand(Minecraft client) {
+		if (slotBefore < 0 || client.player == null) {
+			slotBefore = -1;
+			return;
+		}
+		if (client.player.getInventory().getSelectedSlot() != slotBefore) {
+			client.player.getInventory().setSelectedSlot(slotBefore);
+		}
+		slotBefore = -1;
 	}
 
 	/**
@@ -343,6 +370,7 @@ public final class PestHunter {
 		emptyPlots.clear();
 		settledTicks = 0;
 		forgetTarget();
+		rememberHand(Minecraft.getInstance());
 		announce(Minecraft.getInstance());
 		takeOff(Minecraft.getInstance());
 	}
@@ -375,6 +403,7 @@ public final class PestHunter {
 		sweepingPlot = -1;
 		sweepStep = 0;
 		release();
+		restoreHand(Minecraft.getInstance());
 		if (wasOn && why != null) {
 			Chat.client(why, false);
 		}

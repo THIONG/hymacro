@@ -117,7 +117,8 @@ found by name anywhere on your hotbar.
 
 It flies if the server lets you, since a pest four plots away is a minute of
 walking and a few seconds of flight, and lands again afterwards if the flight
-was its doing. Where the way is blocked it searches for one, so a roof built to
+was its doing. What was in your hand before goes back in it, so a macro that
+farms carries on with the hoe rather than the vacuum. Where the way is blocked it searches for one, so a roof built to
 make pests spawn on top of it is no different to a wall or a row of cocoa.
 
 A pest three plots away is not something the client has been told about as a
