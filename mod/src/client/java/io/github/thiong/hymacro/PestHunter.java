@@ -63,6 +63,17 @@ public final class PestHunter {
 	/** Getting this much closer counts as progress and clears the stall. */
 	private static final double PROGRESS = 0.5;
 
+	/**
+	 * How much nearer another pest must be before it is worth abandoning this one.
+	 *
+	 * <p>Without it, two pests a similar distance away swap places as nearest
+	 * every time the player moves, and the aim turns towards whichever won this
+	 * tick. The result is a camera swinging between the two and arriving at
+	 * neither. Finishing the one it picked is faster than being right about which
+	 * was closest.
+	 */
+	private static final double WORTH_SWITCHING = 8.0;
+
 	/** Ten seconds of getting no closer means something is in the way. */
 	private static final int STALL_TICKS = 200;
 
@@ -136,6 +147,10 @@ public final class PestHunter {
 	private double lift;
 	private int travellingTo = -1;
 
+	/** The one it settled on: an entity id, or a remembered spot. */
+	private int lockedId = -1;
+	private double[] lockedMark;
+
 	public PestHunter(Pests pests) {
 		this.pests = pests;
 	}
@@ -153,6 +168,7 @@ public final class PestHunter {
 	public void start() {
 		on = true;
 		waiting = false;
+		forgetTarget();
 		clearStall();
 	}
 
@@ -166,6 +182,7 @@ public final class PestHunter {
 		clearStall();
 		emptyPlots.clear();
 		settledTicks = 0;
+		forgetTarget();
 		Chat.client("Hunting pests with slot 1.", false);
 		Chat.clientNote("It flies to the plots the tab list names, then vacuums what it finds.");
 	}
@@ -178,6 +195,7 @@ public final class PestHunter {
 		firing = false;
 		closingIn = false;
 		lift = 0.0;
+		forgetTarget();
 		release();
 		if (wasOn && why != null) {
 			Chat.client(why, false);
@@ -472,24 +490,26 @@ public final class PestHunter {
 	 */
 	private Vec3 nearest(Minecraft client) {
 		Vec3 eye = client.player.getEyePosition();
+
 		Vec3 best = null;
 		double nearest = Double.MAX_VALUE;
+		int bestId = -1;
+		double[] bestMark = null;
 
 		List<Pests.Tracked> tracked = pests.tracked();
 		for (int i = 0; i < tracked.size(); i++) {
-			Entity entity = client.level.getEntity(tracked.get(i).id());
+			int id = tracked.get(i).id();
+			Entity entity = client.level.getEntity(id);
 			if (entity == null) {
 				continue;
 			}
-			AABB box = entity.getBoundingBox();
-			Vec3 at = new Vec3(
-				(box.minX + box.maxX) / 2.0,
-				(box.minY + box.maxY) / 2.0,
-				(box.minZ + box.maxZ) / 2.0);
+			Vec3 at = middleOf(entity);
 			double away = eye.distanceTo(at);
 			if (away < nearest) {
 				nearest = away;
 				best = at;
+				bestId = id;
+				bestMark = null;
 			}
 		}
 
@@ -501,9 +521,54 @@ public final class PestHunter {
 			if (away < nearest) {
 				nearest = away;
 				best = at;
+				bestId = -1;
+				bestMark = new double[] {mark.x(), mark.y(), mark.z()};
 			}
 		}
+
+		// Stay on the one it picked unless something is clearly better. Two of
+		// them a similar way off would otherwise trade places as nearest every
+		// time the player shifts, and the aim would chase the swap rather than
+		// either pest.
+		Vec3 held = lockedPosition(client);
+		if (held != null && nearest > eye.distanceTo(held) - WORTH_SWITCHING) {
+			return held;
+		}
+
+		lockedId = bestId;
+		lockedMark = bestMark;
 		return best;
+	}
+
+	/** Where the pest it settled on is now, or null if it is gone. */
+	private Vec3 lockedPosition(Minecraft client) {
+		if (lockedId >= 0) {
+			Entity entity = client.level.getEntity(lockedId);
+			return entity == null ? null : middleOf(entity);
+		}
+		if (lockedMark == null) {
+			return null;
+		}
+		for (Pests.Mark mark : pests.remembered()) {
+			if (Math.abs(mark.x() - lockedMark[0]) < 0.001
+				&& Math.abs(mark.z() - lockedMark[2]) < 0.001) {
+				return new Vec3(mark.x(), mark.y() + 0.3, mark.z());
+			}
+		}
+		return null;
+	}
+
+	private static Vec3 middleOf(Entity entity) {
+		AABB box = entity.getBoundingBox();
+		return new Vec3(
+			(box.minX + box.maxX) / 2.0,
+			(box.minY + box.maxY) / 2.0,
+			(box.minZ + box.maxZ) / 2.0);
+	}
+
+	private void forgetTarget() {
+		lockedId = -1;
+		lockedMark = null;
 	}
 
 	/**

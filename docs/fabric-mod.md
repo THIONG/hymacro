@@ -428,6 +428,21 @@ moment after the chunks do, so it waits five seconds before deciding, then
 leaves that plot alone and tries the next. When every plot has come up empty the
 slate is cleared, because a pest that moved is not a pest that is gone.
 
+## Sticking to one pest
+
+The target used to be worked out fresh every tick, always the nearest. That
+reads as a virtue: one that dies or one that turns out to be closer costs
+nothing to switch to.
+
+It costs everything when two are a similar distance away. Each step the player
+takes swaps which is nearest, the aim turns towards whichever won this tick, and
+the camera swings between the two and reaches neither. Two pests in one plot is
+ordinary, so this was not a corner case.
+
+It now stays on the one it picked until that pest is gone or another is nearer
+by eight blocks. Finishing the one it chose beats being right about which was
+closest.
+
 ## Being interrupted
 
 A macro can be told to watch for something and act on it:
