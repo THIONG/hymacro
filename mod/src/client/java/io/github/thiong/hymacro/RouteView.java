@@ -66,6 +66,11 @@ public final class RouteView {
 	 */
 	private static final double ARROW_RANGE = 128.0;
 
+	/** Arrowheads for the whole macro, shared out, rather than per leg. */
+	private static final int MOST_ARROWS = 96;
+
+	private static final Vec3[] NO_ARROWS = new Vec3[0];
+
 	/**
 	 * The styles, built once.
 	 *
@@ -82,6 +87,45 @@ public final class RouteView {
 	private static final TextGizmo.Style CAPTION = caption(FAINT);
 	private static final TextGizmo.Style RETURN_CAPTION = caption(RETURN);
 
+	/**
+	 * Everything the macro draws, worked out once.
+	 *
+	 * <p>Nothing here depends on the frame: a macro is a fixed set of points, and
+	 * its shapes and its words are the same this frame as last. Building them
+	 * again a hundred times a second was making a heap of rubbish for the
+	 * collector to sweep, which is felt as the game hitching rather than as
+	 * memory running out.
+	 *
+	 * <p>Arrows are the bulk of it. They are shared out across the legs rather
+	 * than counted per leg, so a macro with more legs does not cost more to look
+	 * at than one with fewer.
+	 */
+	private static final class Drawing {
+		AABB[] boxes;
+		GizmoStyle[] boxStyles;
+		Vec3[] numberAt;
+		TextGizmo.Style[] numberStyles;
+		String[] numbers;
+
+		Vec3[] captionAt;
+		String[] captions;
+		TextGizmo.Style[] captionStyles;
+
+		Vec3[] lineFrom;
+		Vec3[] lineTo;
+		int[] lineColour;
+		float[] lineWidth;
+
+		Vec3[] midpoint;
+		Vec3[][] arrowFrom;
+		Vec3[][] arrowTo;
+		int[] arrowColour;
+		float[] arrowWidth;
+	}
+
+	private static Drawing drawing;
+	private static long stamp;
+
 	private RouteView() {
 	}
 
@@ -94,52 +138,153 @@ public final class RouteView {
 			return;
 		}
 
-		// Where it is being looked at from, for deciding what is too far away to
-		// be worth building. Without a player there is nothing to measure from,
-		// so everything is drawn, which is what always happened.
+		long now = stampOf(route);
+		if (drawing == null || stamp != now) {
+			drawing = build(route);
+			stamp = now;
+		}
+
 		var viewer = Minecraft.getInstance().player;
 		boolean measurable = viewer != null;
 		double viewX = measurable ? viewer.getX() : 0.0;
 		double viewZ = measurable ? viewer.getZ() : 0.0;
 
-		List<Route.Waypoint> points = route.waypoints;
-		for (int i = 0; i < points.size(); i++) {
-			Route.Waypoint to = points.get(i);
-			int colour = colourFor(to);
-
-			Gizmos.cuboid(stand(to), boxStyle(colour)).setAlwaysOnTop();
-			Gizmos.billboardText(String.valueOf(i + 1), over(to, NUMBER_HEIGHT), numberStyle(colour))
+		Drawing shapes = drawing;
+		for (int i = 0; i < shapes.boxes.length; i++) {
+			Gizmos.cuboid(shapes.boxes[i], shapes.boxStyles[i]).setAlwaysOnTop();
+			Gizmos.billboardText(shapes.numbers[i], shapes.numberAt[i], shapes.numberStyles[i])
+				.setAlwaysOnTop();
+			if (shapes.captionAt[i] != null) {
+				Gizmos.billboardText(shapes.captions[i], shapes.captionAt[i],
+						shapes.captionStyles[i])
+					.setAlwaysOnTop();
+			}
+			if (shapes.lineFrom[i] == null) {
+				continue;
+			}
+			Gizmos.line(shapes.lineFrom[i], shapes.lineTo[i], shapes.lineColour[i],
+					shapes.lineWidth[i])
 				.setAlwaysOnTop();
 
-			if (points.size() < 2) {
-				Gizmos.billboardText(label(to), over(to, TEXT_HEIGHT), CAPTION).setAlwaysOnTop();
+			if (measurable && far(shapes.midpoint[i], viewX, viewZ)) {
+				continue;
+			}
+			Vec3[] from = shapes.arrowFrom[i];
+			Vec3[] to = shapes.arrowTo[i];
+			for (int a = 0; a < from.length; a++) {
+				Gizmos.arrow(from[a], to[a], shapes.arrowColour[i], shapes.arrowWidth[i])
+					.setAlwaysOnTop();
+			}
+		}
+	}
+
+	/**
+	 * A number that changes exactly when the macro does.
+	 *
+	 * <p>Points are replaced rather than edited, so their identities answer the
+	 * question. A handful of lookups a frame to avoid five hundred allocations is
+	 * a trade worth making without thinking about it.
+	 */
+	private static long stampOf(Route route) {
+		long value = route.waypoints.size();
+		for (int i = 0; i < route.waypoints.size(); i++) {
+			value = value * 31L + System.identityHashCode(route.waypoints.get(i));
+		}
+		return value;
+	}
+
+	private static Drawing build(Route route) {
+		List<Route.Waypoint> points = route.waypoints;
+		int count = points.size();
+
+		Drawing made = new Drawing();
+		made.boxes = new AABB[count];
+		made.boxStyles = new GizmoStyle[count];
+		made.numberAt = new Vec3[count];
+		made.numberStyles = new TextGizmo.Style[count];
+		made.numbers = new String[count];
+		made.captionAt = new Vec3[count];
+		made.captions = new String[count];
+		made.captionStyles = new TextGizmo.Style[count];
+		made.lineFrom = new Vec3[count];
+		made.lineTo = new Vec3[count];
+		made.lineColour = new int[count];
+		made.lineWidth = new float[count];
+		made.midpoint = new Vec3[count];
+		made.arrowFrom = new Vec3[count][];
+		made.arrowTo = new Vec3[count][];
+		made.arrowColour = new int[count];
+		made.arrowWidth = new float[count];
+
+		int budget = Math.max(1, MOST_ARROWS / Math.max(1, count));
+
+		for (int i = 0; i < count; i++) {
+			Route.Waypoint to = points.get(i);
+			int colour = colourFor(to);
+			made.boxes[i] = stand(to);
+			made.boxStyles[i] = boxStyle(colour);
+			made.numberAt[i] = over(to, NUMBER_HEIGHT);
+			made.numberStyles[i] = numberStyle(colour);
+			made.numbers[i] = String.valueOf(i + 1);
+			made.arrowFrom[i] = NO_ARROWS;
+			made.arrowTo[i] = NO_ARROWS;
+
+			if (count < 2) {
+				made.captionAt[i] = over(to, TEXT_HEIGHT);
+				made.captions[i] = describe(to);
+				made.captionStyles[i] = CAPTION;
 				continue;
 			}
 
-			Route.Waypoint from = points.get((i + points.size() - 1) % points.size());
+			Route.Waypoint from = points.get((i + count - 1) % count);
 			boolean closing = i == 0;
 			if (closing && from.sends()) {
 				continue;
 			}
 
-			// Over the middle of the stretch it describes, not over its end. A
-			// caption above a point reads as belonging to the point, and the leg
-			// that ends there is the one before it.
-			Gizmos.billboardText(label(to), middle(from, to),
-					closing ? RETURN_CAPTION : CAPTION)
-				.setAlwaysOnTop();
-			flow(from, to, closing, measurable, viewX, viewZ);
+			made.captionAt[i] = middle(from, to);
+			made.captions[i] = describe(to);
+			made.captionStyles[i] = closing ? RETURN_CAPTION : CAPTION;
+			buildLeg(made, i, from, to, closing, budget);
 		}
+		return made;
 	}
 
-	/** The caption for a point, worked out once and kept on the point. */
-	private static String label(Route.Waypoint point) {
-		String text = point.label;
-		if (text == null) {
-			text = describe(point);
-			point.label = text;
+	private static void buildLeg(Drawing made, int i, Route.Waypoint from, Route.Waypoint to,
+			boolean closing, int budget) {
+		double dx = to.x - from.x;
+		double dy = to.y - from.y;
+		double dz = to.z - from.z;
+		double length = Math.sqrt(dx * dx + dz * dz);
+		if (length < 1.0 || length > MAX_LEG) {
+			return;
 		}
-		return text;
+
+		int colour = closing ? RETURN : colourFor(to);
+		made.lineFrom[i] = along(from, dx, dy, dz, 0.0);
+		made.lineTo[i] = along(from, dx, dy, dz, 1.0);
+		made.lineColour[i] = colour;
+		made.lineWidth[i] = closing ? RETURN_PATH_WIDTH : PATH_WIDTH;
+		made.midpoint[i] = along(from, dx, dy, dz, 0.5);
+		made.arrowColour[i] = colour;
+		made.arrowWidth[i] = closing ? RETURN_ARROW : ARROW;
+
+		double spacing = Math.max(SPACING, length / budget);
+		int steps = (int) Math.floor(length / spacing);
+		if (steps <= 0) {
+			return;
+		}
+		double head = Math.min(ARROW_LENGTH, spacing * 0.6) / length;
+
+		Vec3[] starts = new Vec3[steps];
+		Vec3[] ends = new Vec3[steps];
+		for (int a = 0; a < steps; a++) {
+			double at = (a + 0.5) * spacing / length;
+			starts[a] = along(from, dx, dy, dz, at);
+			ends[a] = along(from, dx, dy, dz, Math.min(1.0, at + head));
+		}
+		made.arrowFrom[i] = starts;
+		made.arrowTo[i] = ends;
 	}
 
 	/** A full block at the point itself, so it reads as somewhere to stand. */
@@ -160,59 +305,14 @@ public final class RouteView {
 			(from.z + to.z) / 2.0);
 	}
 
-	/**
-	 * One line the length of the leg, with arrowheads repeated along it.
-	 *
-	 * <p>The line is what makes the path visible; the arrows are what make its
-	 * direction visible. Arrows alone were too thin to read across a field, and
-	 * one arrow the length of the leg would be a single enormous head.
-	 */
-	private static void flow(Route.Waypoint from, Route.Waypoint to, boolean closing,
-			boolean measurable, double viewX, double viewZ) {
-		double dx = to.x - from.x;
-		double dy = to.y - from.y;
-		double dz = to.z - from.z;
-		double length = Math.sqrt(dx * dx + dz * dz);
-		if (length < 1.0 || length > MAX_LEG) {
-			return;
-		}
-
-		int colour = closing ? RETURN : colourFor(to);
-		Gizmos.line(along(from, dx, dy, dz, 0.0), along(from, dx, dy, dz, 1.0), colour,
-				closing ? RETURN_PATH_WIDTH : PATH_WIDTH)
-			.setAlwaysOnTop();
-
-		if (measurable && beyond(from, to, viewX, viewZ)) {
-			return;
-		}
-
-		double spacing = Math.max(SPACING, length / MAX_ARROWS);
-		int steps = (int) Math.floor(length / spacing);
-		double head = Math.min(ARROW_LENGTH, spacing * 0.6) / length;
-		float width = closing ? RETURN_ARROW : ARROW;
-
-		for (int i = 0; i < steps; i++) {
-			double start = (i + 0.5) * spacing / length;
-			double end = Math.min(1.0, start + head);
-			Gizmos.arrow(along(from, dx, dy, dz, start), along(from, dx, dy, dz, end), colour, width)
-				.setAlwaysOnTop();
-		}
-	}
-
 	private static Vec3 along(Route.Waypoint from, double dx, double dy, double dz, double t) {
 		return new Vec3(from.x + dx * t, from.y + dy * t + PATH_HEIGHT, from.z + dz * t);
 	}
 
-	/** True when neither end of a leg is close enough to make out an arrowhead. */
-	private static boolean beyond(Route.Waypoint from, Route.Waypoint to,
-			double viewX, double viewZ) {
-		return away(from, viewX, viewZ) > ARROW_RANGE && away(to, viewX, viewZ) > ARROW_RANGE;
-	}
-
-	private static double away(Route.Waypoint point, double viewX, double viewZ) {
-		double dx = point.x - viewX;
-		double dz = point.z - viewZ;
-		return Math.sqrt(dx * dx + dz * dz);
+	private static boolean far(Vec3 at, double viewX, double viewZ) {
+		double dx = at.x - viewX;
+		double dz = at.z - viewZ;
+		return dx * dx + dz * dz > ARROW_RANGE * ARROW_RANGE;
 	}
 
 	private static int translucent(int colour) {

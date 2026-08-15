@@ -134,8 +134,7 @@ public final class PestView {
 			Gizmos.line(from, new Vec3(mark.x(), mark.y() + MARK_SIZE, mark.z()),
 					REMEMBERED, LINE_WIDTH)
 				.setAlwaysOnTop();
-			Gizmos.billboardText(
-					mark.name() + "  ~" + away(px, py, pz, mark.x(), mark.y(), mark.z()) + "m",
+			Gizmos.billboardText(mark.label(),
 					new Vec3(mark.x(), mark.y() + MARK_SIZE * 2.0 + LABEL_HEIGHT, mark.z()), FADED)
 				.setAlwaysOnTop();
 		}

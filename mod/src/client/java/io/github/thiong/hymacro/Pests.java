@@ -99,12 +99,30 @@ public final class Pests {
 	/** Ten minutes. Long enough to cross the Garden and come back. */
 	private static final int REMEMBER_TICKS = 12000;
 
+	/**
+	 * How many sightings are worth keeping at once.
+	 *
+	 * <p>A memory lives ten minutes unless you walk through where it was, so an
+	 * hour of pests coming and going across the Garden leaves a heap of them,
+	 * each costing three shapes and a line of text on every frame. Far more than
+	 * this and the oldest stop being useful anyway: the point of a mark is to
+	 * walk to it.
+	 */
+	private static final int MOST_REMEMBERED = 32;
+
 	/** A pest the server is still sending, to be looked up and drawn on. */
 	public record Tracked(int id, String name) {
 	}
 
-	/** A pest, and the last place it was actually seen. */
-	public record Mark(String name, double x, double y, double z) {
+	/**
+	 * A pest, and the last place it was actually seen.
+	 *
+	 * <p>Carries the words to draw over it, built when the world is searched
+	 * rather than when it is drawn. The drawing runs a hundred times a second and
+	 * the search four, and a distance rounded to the metre does not change often
+	 * enough to be worth building a string for on every frame.
+	 */
+	public record Mark(String name, double x, double y, double z, String label) {
 	}
 
 	private static final class Sighting {
@@ -258,14 +276,31 @@ public final class Pests {
 			}
 		}
 
+		// Oldest first when there are too many. Keeping the freshest is keeping
+		// the ones most likely still to be there.
+		if (seen.size() > MOST_REMEMBERED) {
+			List<Sighting> byAge = new ArrayList<>(seen.values());
+			byAge.sort(Comparator.comparingInt(sighting -> -sighting.unseenTicks));
+			for (int i = 0; i < byAge.size() - MOST_REMEMBERED; i++) {
+				if (!byAge.get(i).live) {
+					seen.remove(byAge.get(i).id);
+				}
+			}
+		}
+
 		live.clear();
 		marks.clear();
 		for (Sighting sighting : seen.values()) {
 			if (sighting.live) {
 				live.add(new Tracked(sighting.id, sighting.name));
-			} else {
-				marks.add(new Mark(sighting.name, sighting.x, sighting.y, sighting.z));
+				continue;
 			}
+			long metres = Math.round(Math.sqrt(
+				(sighting.x - px) * (sighting.x - px)
+					+ (sighting.y - py) * (sighting.y - py)
+					+ (sighting.z - pz) * (sighting.z - pz)));
+			marks.add(new Mark(sighting.name, sighting.x, sighting.y, sighting.z,
+				sighting.name + "  ~" + metres + "m"));
 		}
 	}
 
