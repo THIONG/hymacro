@@ -58,6 +58,16 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
+
+	/**
+	 * Whether this macro is on, which is not the same as walking.
+	 *
+	 * <p>A macro with no points is a set of rules and nothing else, and that is a
+	 * reasonable thing to want: watch for pests, clear them, warp back if a
+	 * restart moves me. Tying "on" to having a route to walk made that
+	 * impossible to say.
+	 */
+	private boolean running;
 	private final Pests pests = new Pests();
 	private final PestHunter hunter = new PestHunter(pests);
 
@@ -98,18 +108,33 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// back, is still a macro that is on. Play stops all of it, or pressing
 		// it during a hunt would start the route as well and leave two things
 		// working the same keys.
-		if (player != null || resumeAfterHunt || resumeWhenLanded || resumeWhenBack
-			|| resumeIn > 0) {
+		if (running || resumeAfterHunt || resumeWhenLanded || resumeWhenBack || resumeIn > 0) {
 			stop();
 			return;
 		}
 
 		Route route = route();
-		if (route == null || route.isEmpty()) {
+		if (route == null) {
 			Chat.client("No macro to play. Build one with /hymacro", true);
 			return;
 		}
 		if (client.player == null) {
+			return;
+		}
+
+		if (route.isEmpty()) {
+			if (route.rules.isEmpty()) {
+				Chat.client("'" + book.activeName() + "' has no points and no rules.", true);
+				Chat.clientNote("Mark some with /hymacro point, or give it a /hymacro when rule.");
+				return;
+			}
+			confirmTicks = 0;
+			fired.clear();
+			running = true;
+			Chat.client("Watching for '" + book.activeName() + "'.", false);
+			for (Route.When rule : route.rules) {
+				Chat.clientNote(rule.describe());
+			}
 			return;
 		}
 
@@ -124,6 +149,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 
 		confirmTicks = 0;
 		fired.clear();
+		running = true;
 		player = new RoutePlayer(client, route);
 		Chat.client("Following '" + book.activeName() + "', "
 			+ route.waypoints.size() + " points.", false);
@@ -140,7 +166,12 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	private void resume() {
 		Minecraft client = Minecraft.getInstance();
 		Route route = route();
-		if (route == null || route.isEmpty() || client.player == null) {
+		if (route == null || client.player == null) {
+			return;
+		}
+		running = true;
+		if (route.isEmpty()) {
+			// Nothing to walk, so being on is the whole of carrying on.
 			return;
 		}
 		player = new RoutePlayer(client, route);
@@ -196,7 +227,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	 */
 	@Override
 	public void hunt() {
-		if (!hunter.isOn() && player != null) {
+		if (!hunter.isOn() && running) {
 			stop();
 			Chat.clientNote("The macro was stopped: it and the hunt cannot both hold the keys.");
 		}
@@ -221,7 +252,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// Only while something is running. A rule is about a macro being
 		// interrupted, and warping a player who is simply out doing their
 		// shopping back to the plot is not an interruption, it is a nuisance.
-		if (player == null || !fired.add(Route.When.AWAY)) {
+		if (!running || !fired.add(Route.When.AWAY)) {
 			return;
 		}
 
@@ -266,7 +297,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			fired.remove(Route.When.PESTS);
 			return;
 		}
-		if (player == null || !fired.add(Route.When.PESTS)) {
+		if (!running || !fired.add(Route.When.PESTS)) {
 			return;
 		}
 
@@ -296,6 +327,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	@Override
 	public void stop() {
 		confirmTicks = 0;
+		running = false;
 
 		// A hunt the macro started belongs to the macro. Stopping the macro and
 		// leaving something flying around the Garden on its behalf is not

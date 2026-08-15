@@ -936,6 +936,9 @@ public final class Commands {
 		Chat.entry(source, "/hymacro when away send <text>", "if you end up anywhere else");
 		Chat.entry(source, "/hymacro when pests <n> hunt", "if pests turn up");
 		Chat.entry(source, "/hymacro when off", "remove it");
+		if (route.isEmpty()) {
+			Chat.note(source, "This macro has no points: F9 just watches, which is allowed.");
+		}
 		return 1;
 	}
 
