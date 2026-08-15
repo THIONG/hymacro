@@ -484,6 +484,13 @@ Waiting is now only worth it while the climb is working. Half a second of
 holding jump without rising is taken as an answer: this is as high as it goes,
 get on with it.
 
+That half second took two goes to actually elapse. Climbing clears the distance
+clock every tick, because going up is not going nowhere, and the climb's own
+clock had been put in the same place: it counted to one, was wiped, counted to
+one again. A timer reset by the thing it is timing never fires. The two clocks
+are separate now, and the climb's is cleared only when it reaches the height it
+was after.
+
 ## Flying, and putting things back
 
 Whether flight is allowed is not something to work out from a cookie or a bowl

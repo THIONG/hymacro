@@ -661,9 +661,20 @@ public final class PestHunter {
 		Keys.set("ctrl", forward);
 	}
 
+	/**
+	 * Starts the distance clock again.
+	 *
+	 * <p>Deliberately says nothing about the climb. Climbing calls this every
+	 * tick, since going up is not going nowhere, so anything reset here is reset
+	 * before it can count to anything. The climb has its own clock, cleared when
+	 * it reaches the height it was after.
+	 */
 	private void clearProgress() {
 		closestYet = Double.MAX_VALUE;
 		stalledTicks = 0;
+	}
+
+	private void forgetClimb() {
 		blockedTicks = 0;
 		lastY = Double.MAX_VALUE;
 	}
@@ -671,6 +682,7 @@ public final class PestHunter {
 	/** Arrived: the clock stops and the height it needed is no longer owed. */
 	private void clearStall() {
 		clearProgress();
+		forgetClimb();
 		lift = 0.0;
 	}
 
