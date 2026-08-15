@@ -117,6 +117,31 @@ public final class PestHunter {
 	/** Close enough to the ground to stop flying without falling. */
 	private static final double LANDED = 1.5;
 
+	/**
+	 * How far off the ground it stays while it means to keep flying.
+	 *
+	 * <p>Touching down cancels flight, which the game does for you and is
+	 * ordinarily what you want. It is not what you want mid hunt: the way through
+	 * is worked out in blocks and a corner at ground level is a corner on the
+	 * floor, so following one exactly meant flying for a second and then walking
+	 * the rest of the Garden.
+	 */
+	private static final double FLY_CLEARANCE = 1.6;
+
+	/**
+	 * Ticks the jump key stays up before it may go down again.
+	 *
+	 * <p>Two taps of jump is how a player tells the game to stop flying, and the
+	 * game does not care that a mod did the tapping. Holding it by a threshold
+	 * means letting go the moment the height is nearly right and grabbing it
+	 * again a tick later, which is a double tap however it was meant. Vanilla
+	 * counts seven ticks; this leaves ten.
+	 */
+	private static final int TAP_GUARD = 10;
+
+	/** Let go only once well past the height, so the key does not chatter. */
+	private static final double STOP_RISING = 0.15;
+
 	/** Ticks of holding jump and going nowhere before the height is given up on. */
 	private static final int CLIMB_PATIENCE = 10;
 
@@ -187,6 +212,8 @@ public final class PestHunter {
 	private int pathAge;
 	private double lastY = Double.MAX_VALUE;
 	private int blockedTicks;
+	private boolean jumpHeld;
+	private int jumpGuard;
 
 	/** Whether the flying was ours to turn off again afterwards. */
 	private boolean weStartedFlying;
@@ -475,8 +502,13 @@ public final class PestHunter {
 	 */
 	private boolean hold(Minecraft client, double wantedY) {
 		double now = client.player.getY();
-		double rise = wantedY - now;
-		Keys.set("space", rise > HEIGHT_ENOUGH);
+		double aim = wantedY;
+		if (client.player.getAbilities().flying) {
+			aim = Math.max(aim,
+				groundAt(client, client.player.getX(), client.player.getZ()) + FLY_CLEARANCE);
+		}
+		double rise = aim - now;
+		rise(rise > (jumpHeld ? STOP_RISING : HEIGHT_ENOUGH));
 		Keys.set("shift", rise < -HEIGHT_ENOUGH);
 
 		if (rise <= CLIMB_FIRST) {
@@ -636,23 +668,41 @@ public final class PestHunter {
 
 	/** Starts the clock again without forgetting how high it has had to go. */
 	/**
+	 * Works the jump key without ever tapping it twice.
+	 *
+	 * <p>Everything that presses jump goes through here, because the rule it
+	 * keeps is about the gaps between presses rather than about any one of them.
+	 */
+	private void rise(boolean wanted) {
+		if (jumpGuard > 0) {
+			jumpGuard--;
+			wanted = false;
+		}
+		if (jumpHeld && !wanted) {
+			jumpGuard = TAP_GUARD;
+		}
+		jumpHeld = wanted;
+		Keys.set("space", wanted);
+	}
+
+	/**
 	 * Lets go of the height keys, for when there is no flying to do.
 	 *
 	 * <p>Landing part way through a hunt would otherwise leave jump or sneak
 	 * held from the last tick that was in the air.
 	 */
-	private static void level() {
-		Keys.set("space", false);
+	private void level() {
+		rise(false);
 		Keys.set("shift", false);
 	}
 
 	/** Every key this touches, up. Nothing may be left held. */
-	private static void release() {
+	private void release() {
 		Keys.set("w", false);
 		Keys.set("use", false);
-		Keys.set("space", false);
 		Keys.set("shift", false);
 		Keys.set("ctrl", false);
+		rise(false);
 	}
 
 	/** Forward, and at a run. Sprinting is faster on foot and in the air alike. */

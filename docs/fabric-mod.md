@@ -503,6 +503,22 @@ a few seconds of flight, and because the way there is over things rather than
 round them. Sprint is held whenever it moves, which is faster in the air as well
 as on foot.
 
+Two things then turned the flight off again a second after it began, and neither
+was the mod deciding to.
+
+Two taps of jump is how a player tells the game to stop flying, and the game
+does not care that a mod did the tapping. Working the height by a threshold
+means letting go the moment it is nearly right and taking hold again a tick
+later, which is a double tap however it was meant. Every press now goes through
+one place that will not press again within ten ticks of letting go, and lets go
+only well past the height rather than at it.
+
+Touching down cancels flight as well, which is ordinarily what you want and
+never what you want mid hunt. The way through is worked out in blocks, so a
+corner at ground level is a corner on the floor and following one exactly is
+landing on purpose. While it means to keep flying it stays a block and a half
+clear of the ground whatever it was aiming for.
+
 What it turned on it turns off. A macro that walks its route cannot be handed
 back a player in the air, and switching flight off up there is a fall rather
 than a landing, so it comes down first and only stops flying once there is
