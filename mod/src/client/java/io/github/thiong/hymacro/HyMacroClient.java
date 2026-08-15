@@ -21,25 +21,33 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	private static final int PLAY_KEY = GLFW.GLFW_KEY_F9;
 	private static final int STOP_KEY = GLFW.GLFW_KEY_F12;
 
+	/** F10 is bound to nothing in the game, and sits next to the other two. */
+	private static final int HUNT_KEY = GLFW.GLFW_KEY_F10;
+
 	/** How far from point 1 counts as being somewhere else entirely. */
 	private static final double START_TOLERANCE = 10.0;
 	private static final int CONFIRM_TICKS = 100;
 
 	private boolean playWasDown;
 	private boolean stopWasDown;
+	private boolean huntWasDown;
 	private int confirmTicks;
 
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
+	private final Pests pests = new Pests();
+	private final PestHunter hunter = new PestHunter(pests);
 
 	@Override
 	public void onInitializeClient() {
 		book = RouteBook.load();
 		Commands.register(this);
 		RouteView.register(this::route);
+		PestView.register(() -> book.pests ? pests : null);
 		ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
 
-		LOGGER.info("HyMacro ready. Run /hymacro for the commands, F9 plays, F12 stops.");
+		LOGGER.info("HyMacro ready. Run /hymacro for the commands. "
+			+ "F9 plays, F10 hunts pests, F12 stops both.");
 		if (route() != null) {
 			LOGGER.info("Macro '{}' has {} points", book.activeName(), route().waypoints.size());
 		}
@@ -48,6 +56,11 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	@Override
 	public RouteBook book() {
 		return book;
+	}
+
+	@Override
+	public Pests pests() {
+		return pests;
 	}
 
 	private Route route() {
@@ -86,6 +99,28 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			+ route.waypoints.size() + " points.", false);
 	}
 
+	/**
+	 * Hunting and running a macro are the same two hands.
+	 *
+	 * <p>Both work the movement keys and the right button every tick, so the two
+	 * of them at once is a fight neither wins. Starting a hunt stops the macro
+	 * and says so, rather than producing a player that walks nowhere in
+	 * particular.
+	 */
+	@Override
+	public void hunt() {
+		if (!hunter.isOn() && player != null) {
+			stop();
+			Chat.clientNote("The macro was stopped: it and the hunt cannot both hold the keys.");
+		}
+		hunter.toggle();
+	}
+
+	@Override
+	public PestHunter hunter() {
+		return hunter;
+	}
+
 	@Override
 	public void stop() {
 		confirmTicks = 0;
@@ -117,12 +152,29 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		}
 		if (pressed(STOP_KEY, stopWasDown)) {
 			stop();
+			hunter.stop("Stopped hunting.");
+		}
+		if (pressed(HUNT_KEY, huntWasDown)) {
+			hunt();
 		}
 		playWasDown = Keys.isKeyDown(PLAY_KEY);
 		stopWasDown = Keys.isKeyDown(STOP_KEY);
+		huntWasDown = Keys.isKeyDown(HUNT_KEY);
 		if (confirmTicks > 0) {
 			confirmTicks--;
 		}
+
+		// Looking for pests is not part of running a macro: they eat the plot
+		// whether or not anything is walking it, and the mark is as useful to
+		// somebody farming by hand.
+		// The hunt is fed by the same search that draws them, so turning the
+		// drawing off must not leave it hunting nothing.
+		if (book.pests || hunter.isOn()) {
+			pests.tick(client);
+		} else {
+			pests.forget();
+		}
+		hunter.tick(client);
 
 		if (player != null) {
 			player.tick();

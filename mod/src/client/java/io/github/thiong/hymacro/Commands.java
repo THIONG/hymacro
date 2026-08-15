@@ -40,9 +40,15 @@ public final class Commands {
 	public interface Host {
 		RouteBook book();
 
+		Pests pests();
+
+		PestHunter hunter();
+
 		void play();
 
 		void stop();
+
+		void hunt();
 	}
 
 	private static LiteralArgumentBuilder<FabricClientCommandSource> literal(String name) {
@@ -130,6 +136,17 @@ public final class Commands {
 				.then(literal("show")
 					.then(argument("visible", BoolArgumentType.bool())
 						.executes(context -> setVisible(context, host))))
+				.then(literal("hunt")
+					.executes(context -> {
+						host.hunt();
+						return 1;
+					}))
+				.then(literal("pests")
+					.executes(context -> pestsStatus(context, host))
+					.then(literal("scan")
+						.executes(context -> pestsScan(context, host)))
+					.then(argument("marked", BoolArgumentType.bool())
+						.executes(context -> setPests(context, host))))
 				.then(literal("radius")
 					.then(argument("blocks", FloatArgumentType.floatArg(0.15f, 10.0f))
 						.executes(context -> setRadius(context, host))))
@@ -419,6 +436,15 @@ public final class Commands {
 		Chat.entry(source, "/hymacro import <name>", "paste one from your clipboard");
 		Chat.entry(source, "/hymacro show <true|false>", "draw it in the world");
 
+		Chat.heading(source, "Pests");
+		Chat.entry(source, "/hymacro pests", "whether they are marked, and how many");
+		Chat.entry(source, "/hymacro pests <true|false>", "outline them in red, or stop");
+		Chat.entry(source, "/hymacro pests scan", "what is around you, by name");
+		Chat.note(source, "A line runs from you to each one, since finding it is the hard part.");
+		Chat.entry(source, "F10 /hymacro hunt", "walk up to each one and vacuum it");
+		Chat.note(source, "The vacuum goes in slot 1. It holds right click until the pest is gone.");
+		Chat.note(source, "It stops the macro while it hunts: both want the same keys.");
+
 		Route route = book.active();
 		Chat.heading(source, "Now");
 		if (route == null) {
@@ -572,6 +598,68 @@ public final class Commands {
 		host.book().save();
 		Chat.ok(context.getSource(),
 			route.visible ? "Drawn in the world." : "Hidden.");
+		return 1;
+	}
+
+	/**
+	 * Marking what is eating the plot.
+	 *
+	 * <p>Not a property of a macro. A pest is on the ground you are standing on
+	 * whether or not anything is running, so loading another macro must not turn
+	 * it off.
+	 */
+	private static int setPests(CommandContext<FabricClientCommandSource> context, Host host) {
+		RouteBook book = host.book();
+		book.pests = BoolArgumentType.getBool(context, "marked");
+		if (!book.pests) {
+			host.pests().forget();
+		}
+		book.save();
+		Chat.ok(context.getSource(), book.pests
+			? "Pests are outlined in red, with a line from you to each one."
+			: "Pests are not marked.");
+		return 1;
+	}
+
+	private static int pestsStatus(CommandContext<FabricClientCommandSource> context, Host host) {
+		FabricClientCommandSource source = context.getSource();
+		int seen = host.pests().count();
+		int kept = host.pests().remembered().size();
+
+		Chat.heading(source, "Pests");
+		Chat.bullet(source, host.book().pests ? "marked in red" : "not marked", true);
+		Chat.bullet(source,
+			seen == 0 ? "none in front of you" : seen + " in front of you", false);
+		if (kept > 0) {
+			Chat.bullet(source, kept + " remembered, drawn where last seen", false);
+		}
+		Chat.entry(source, "/hymacro pests <true|false>", "mark them, or stop");
+		Chat.entry(source, "/hymacro pests scan", "what is actually around you");
+		Chat.note(source, "The outline is hidden by walls like the mob is; the line to it is not.");
+		Chat.note(source, "Out of range the server stops sending one, so its last place is kept.");
+		return 1;
+	}
+
+	/**
+	 * What is around you and what the server calls it.
+	 *
+	 * <p>A pest is recognised by its name, and the list of names is a guess at
+	 * what Hypixel sends until somebody stands next to one and looks. This is
+	 * how you look, so an unmarked pest is a name to add rather than a mystery.
+	 */
+	private static int pestsScan(CommandContext<FabricClientCommandSource> context, Host host) {
+		FabricClientCommandSource source = context.getSource();
+		List<String> around = host.pests().nearby(Minecraft.getInstance());
+
+		Chat.heading(source, "Around you");
+		if (around.isEmpty()) {
+			Chat.note(source, "Nothing at all. Wrong world, or nothing has loaded yet.");
+			return 1;
+		}
+		for (String line : around) {
+			Chat.bullet(source, line, line.endsWith("pest"));
+		}
+		Chat.note(source, "Anything marked 'pest' is outlined. Report the rest if one is missing.");
 		return 1;
 	}
 
