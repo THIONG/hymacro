@@ -62,6 +62,7 @@ public final class Route {
 	 */
 	public static final class When {
 		public static final String PESTS = "pests";
+		public static final String AWAY = "away";
 		public static final String HUNT = "hunt";
 		public static final String SEND = "send";
 		public static final String STOP = "stop";
@@ -71,18 +72,26 @@ public final class Route {
 		public final String then;
 		public final String text;
 
-		public When(String watch, int atLeast, String then, String text) {
+		/** Where the macro belongs, for a rule about no longer being there. */
+		public final String place;
+
+		public When(String watch, int atLeast, String then, String text, String place) {
 			this.watch = watch;
 			this.atLeast = Math.max(1, atLeast);
 			this.then = then;
 			this.text = text == null ? "" : text;
+			this.place = place == null ? "" : place;
+		}
+
+		public boolean watchesPlace() {
+			return AWAY.equals(watch);
 		}
 
 		public String describe() {
-			String what = atLeast + " " + watch;
+			String what = watchesPlace() ? "leaving " + place : atLeast + " " + watch;
 			return switch (then) {
 				case HUNT -> "on " + what + ", hunt them and come back";
-				case SEND -> "on " + what + ", send " + text;
+				case SEND -> "on " + what + ", send " + text + " and carry on when back";
 				default -> "on " + what + ", stop";
 			};
 		}
@@ -236,7 +245,8 @@ public final class Route {
 					when.get("watch").getAsString(),
 					when.has("atLeast") ? when.get("atLeast").getAsInt() : 1,
 					when.get("then").getAsString(),
-					when.has("text") ? when.get("text").getAsString() : "");
+					when.has("text") ? when.get("text").getAsString() : "",
+					when.has("place") ? when.get("place").getAsString() : "");
 			}
 		}
 		return route;
@@ -298,6 +308,9 @@ public final class Route {
 			rule.addProperty("then", when.then);
 			if (!when.text.isBlank()) {
 				rule.addProperty("text", when.text);
+			}
+			if (!when.place.isBlank()) {
+				rule.addProperty("place", when.place);
 			}
 			root.add("when", rule);
 		}

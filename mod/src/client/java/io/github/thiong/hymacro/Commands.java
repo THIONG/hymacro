@@ -162,7 +162,14 @@ public final class Commands {
 							.then(literal("send")
 								.then(argument("text", StringArgumentType.greedyString())
 									.executes(context -> setRule(context, host, Route.When.SEND,
-										StringArgumentType.getString(context, "text"))))))))
+										StringArgumentType.getString(context, "text")))))))
+					.then(literal("away")
+						.then(literal("stop")
+							.executes(context -> setAwayRule(context, host, Route.When.STOP, "")))
+						.then(literal("send")
+							.then(argument("text", StringArgumentType.greedyString())
+								.executes(context -> setAwayRule(context, host, Route.When.SEND,
+									StringArgumentType.getString(context, "text")))))))
 				.then(literal("stall")
 					.then(argument("seconds", IntegerArgumentType.integer(2, 300))
 						.executes(context -> setStall(context, host))))
@@ -440,7 +447,8 @@ public final class Commands {
 		Chat.note(source, "Takes decimals, and /hymacro leg <n> radius sets just one.");
 		Chat.entry(source, "/hymacro stall <seconds>", "how long stuck before it gives up");
 		Chat.entry(source, "/hymacro when pests <n> hunt", "pause, clear them, carry on");
-		Chat.note(source, "Also: when pests <n> send <text>, when pests <n> stop, when off");
+		Chat.entry(source, "/hymacro when away send <text>", "sent if you end up elsewhere");
+		Chat.note(source, "Also: when pests <n> send|stop, when away stop, when off");
 
 		Chat.heading(source, "Macros");
 		Chat.entry(source, "/hymacro list", "every macro you have");
@@ -837,7 +845,7 @@ public final class Commands {
 		}
 
 		int count = IntegerArgumentType.getInteger(context, "count");
-		route.when = new Route.When(Route.When.PESTS, count, then, text);
+		route.when = new Route.When(Route.When.PESTS, count, then, text, "");
 		host.book().save();
 		Chat.ok(context.getSource(), "This macro will " + route.when.describe() + ".");
 
@@ -848,6 +856,40 @@ public final class Commands {
 			Chat.note(context.getSource(),
 				"After a hunt it starts there from wherever the pests were. /hymacro leg 1 walk");
 		}
+		return 1;
+	}
+
+	/**
+	 * What to do about no longer being where the macro belongs.
+	 *
+	 * <p>Where it belongs is not typed in. It is wherever you are standing when
+	 * the rule is made, which is the island the macro was built on by definition,
+	 * and means the same command works for a garden, a mine or anywhere else.
+	 *
+	 * <p>A restart to the Hub is the case worth having, but nothing here knows
+	 * that: it knows the island changed. Coming back is noticed the same way, so
+	 * the macro starts again by itself once the warp has landed.
+	 */
+	private static int setAwayRule(CommandContext<FabricClientCommandSource> context, Host host,
+			String then, String text) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+
+		String here = Skyblock.location(Minecraft.getInstance());
+		if (here == null) {
+			Chat.error(context.getSource(), "Cannot tell where this is from the scoreboard.");
+			Chat.note(context.getSource(), "Try it on Skyblock, where the island is written on it.");
+			return 0;
+		}
+
+		route.when = new Route.When(Route.When.AWAY, 1, then, text, here);
+		host.book().save();
+		Chat.ok(context.getSource(), "This macro belongs to " + here + ".");
+		Chat.note(context.getSource(), Route.When.SEND.equals(then)
+			? "Leaving it sends " + text + ", and it carries on once back."
+			: "Leaving it stops the macro.");
 		return 1;
 	}
 

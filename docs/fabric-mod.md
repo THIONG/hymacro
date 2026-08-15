@@ -556,6 +556,28 @@ and what happens next. Pests are the first thing worth watching, not the only
 shape this can ever have, so a second one later is a name in a list rather than
 a rewrite.
 
+```
+/hymacro when away send /warp garden
+/hymacro when away stop
+```
+
+Where a macro belongs is not typed in: it is wherever you stand when the rule is
+made, which is the island it was built on by definition. The same command
+therefore works for a garden, a mine or anywhere else, and nothing in the mod
+knows what a Garden is.
+
+A restart to the Hub is the case worth having and the one interruption a macro
+cannot ride out, since its points are on an island it is no longer on. Coming
+back is noticed the same way it left, so the macro starts itself again once the
+warp has landed.
+
+The island is read from the scoreboard, where Skyblock writes it after a marker
+of its own. Nothing is sent to ask, which matters: the moment worth noticing is
+a restart, and a restart is a poor time to be waiting on a reply from the server
+that has just gone away. Not knowing is kept apart from being elsewhere, because
+the board is blank for a moment between worlds and reading that as elsewhere
+would fire on every loading screen.
+
 It fires on the way past the number rather than for as long as it is above it.
 A rule that fired every tick would stop, hunt, resume and stop again before the
 macro took a step.

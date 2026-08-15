@@ -34,10 +34,17 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	private int confirmTicks;
 
 	/** True while the rule is already satisfied, so it fires on the way past. */
+	/** Rules are checked four times a second: none of them changes faster. */
+	private static final int RULE_EVERY = 5;
+
+	private int ruleTick;
 	private boolean ruleFired;
 
 	/** The macro is paused for a hunt and wants to be started again after. */
 	private boolean resumeAfterHunt;
+
+	/** The macro is waiting to be back where it belongs. */
+	private boolean resumeWhenBack;
 
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
@@ -130,6 +137,45 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	 * than for as long as it is above it: a rule that fired every tick would stop
 	 * and start the macro faster than it could take a step.
 	 */
+	/**
+	 * Notices being somewhere the macro does not belong, and getting back.
+	 *
+	 * <p>A restart puts you in the Hub with a macro still walking a route whose
+	 * points are on another island: it is the one interruption that cannot be
+	 * ridden out. Not knowing where you are is a third answer and treated as
+	 * neither, since the board is blank for a moment between worlds and reading
+	 * that as elsewhere would fire on every loading screen.
+	 */
+	private void watchPlace(Minecraft client, Route route) {
+		String here = Skyblock.location(client);
+		if (here == null) {
+			return;
+		}
+
+		if (here.equalsIgnoreCase(route.when.place)) {
+			if (resumeWhenBack && player == null) {
+				resumeWhenBack = false;
+				ruleFired = false;
+				Chat.client("Back on " + here + ".", false);
+				resume();
+			}
+			ruleFired = false;
+			return;
+		}
+		if (ruleFired) {
+			return;
+		}
+		ruleFired = true;
+
+		Chat.client("This is " + here + ", not " + route.when.place + ".", true);
+		stop();
+		if (Route.When.SEND.equals(route.when.then)) {
+			RoutePlayer.sendChat(client, route.when.text);
+			resumeWhenBack = true;
+			Chat.clientNote("Sent " + route.when.text + ". It carries on once back.");
+		}
+	}
+
 	private void watchRule(Minecraft client) {
 		Route route = route();
 		if (route == null || route.when == null) {
@@ -140,6 +186,11 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// What the server says is alive across the Garden, not only what is close
 		// enough to be an entity. A rule that counted the ones in range would
 		// almost never fire, since they are rarely on the plot being farmed.
+		if (route.when.watchesPlace()) {
+			watchPlace(client, route);
+			return;
+		}
+
 		int seen = Route.When.PESTS.equals(route.when.watch)
 			? Math.max(pests.count(), Pests.aliveEverywhere(client))
 			: 0;
@@ -257,7 +308,10 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			hunter.stop(null);
 			resume();
 		}
-		watchRule(client);
+		if (++ruleTick >= RULE_EVERY) {
+			ruleTick = 0;
+			watchRule(client);
+		}
 
 		if (player != null) {
 			player.tick();
