@@ -158,9 +158,24 @@ public final class PestHunter {
 	/** Less rise than this in a tick is not rising. */
 	private static final double RISING = 0.05;
 
-	/** How often the way through is worked out again, and how near counts as reached. */
-	private static final int REPLAN_TICKS = 20;
+	/** How near a corner counts as reached. */
 	private static final double CORNER_REACHED = 1.6;
+
+	/**
+	 * How far the pest may move before the way to it is worked out again.
+	 *
+	 * <p>Planning on a timer threw away a good path every second and asked for
+	 * another. A* breaks ties differently from a different starting block, so
+	 * the next corner would jump from one side to the other and the flying
+	 * weaved between two answers that were both fine.
+	 */
+	private static final double GOAL_MOVED = 8.0;
+
+	/** A plan older than this is replaced whatever it says, as a backstop. */
+	private static final int PLAN_LIFE = 100;
+
+	/** Corners looked ahead at, so the raycasting has a ceiling. */
+	private static final int LOOKAHEAD = 8;
 
 	/** How often the ground under the way is read, and at most how many times. */
 	private static final double SAMPLE_EVERY = 4.0;
@@ -219,7 +234,8 @@ public final class PestHunter {
 	private double[] lockedMark;
 
 	private List<Vec3> path;
-	private int pathAge;
+	private Vec3 planned;
+	private int planAge;
 	private double lastY = Double.MAX_VALUE;
 	private int blockedTicks;
 	private boolean jumpHeld;
@@ -399,7 +415,7 @@ public final class PestHunter {
 		closingIn = false;
 		lift = 0.0;
 		forgetTarget();
-		path = null;
+		forgetPath();
 		sweepingPlot = -1;
 		sweepStep = 0;
 		release();
@@ -627,30 +643,60 @@ public final class PestHunter {
 	private Vec3 corner(Minecraft client, Vec3 target) {
 		Vec3 eye = client.player.getEyePosition();
 		if (clear(client, eye, target)) {
-			path = null;
+			forgetPath();
 			return null;
 		}
-		// A plot is hundreds of blocks off, which used to mean no searching at
-		// all and straight back to climbing into whatever was overhead. It plans
-		// as far ahead as it can instead, and plans again as it gets there.
-		Vec3 goal = target;
-		double away = eye.distanceTo(target);
-		if (away > PATH_AHEAD) {
-			goal = eye.add(target.subtract(eye).normalize().scale(PATH_AHEAD));
+
+		// A plot is hundreds of blocks off, so the plan is made towards a point
+		// along the way. That point is fixed in the world once chosen rather
+		// than measured from wherever the player has got to, because a goal that
+		// slides forward as you approach it is a different goal every time and
+		// guarantees a different path every time.
+		boolean stale = path == null || path.isEmpty()
+			|| planned == null
+			|| planned.distanceTo(target) > GOAL_MOVED
+			|| eye.distanceTo(planned) < CORNER_REACHED
+			|| ++planAge > PLAN_LIFE;
+
+		if (stale) {
+			double away = eye.distanceTo(target);
+			planned = away > PATH_AHEAD
+				? eye.add(target.subtract(eye).normalize().scale(PATH_AHEAD))
+				: target;
+			planAge = 0;
+			path = Flightpath.between(client.level, eye, planned);
+			if (path == null || path.isEmpty()) {
+				forgetPath();
+				return null;
+			}
 		}
 
-		while (path != null && !path.isEmpty()
-			&& eye.distanceTo(path.get(0)) < CORNER_REACHED) {
+		while (!path.isEmpty() && eye.distanceTo(path.get(0)) < CORNER_REACHED) {
 			path.remove(0);
 		}
-		if (path != null && path.isEmpty()) {
-			path = null;
+		if (path.isEmpty()) {
+			forgetPath();
+			return null;
 		}
-		if (path == null || ++pathAge >= REPLAN_TICKS) {
-			pathAge = 0;
-			path = Flightpath.between(client.level, eye, goal);
+
+		// Steer at the furthest corner still in sight rather than the next one.
+		// A* returns a staircase; flown a step at a time that is a stairway, and
+		// overshooting one at flying speed drags you back towards a corner you
+		// have already passed. Aiming past them makes it a straight line.
+		int look = Math.min(path.size() - 1, LOOKAHEAD);
+		for (int i = look; i > 0; i--) {
+			if (clear(client, eye, path.get(i))) {
+				path.subList(0, i).clear();
+				break;
+			}
 		}
-		return path == null || path.isEmpty() ? null : path.get(0);
+		return path.get(0);
+	}
+
+	private void forgetPath() {
+		path = null;
+		planned = null;
+		planAge = 0;
 	}
 
 	/**

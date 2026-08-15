@@ -68,6 +68,23 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	 * impossible to say.
 	 */
 	private boolean running;
+
+	/**
+	 * Whether the macro was flying when it was started.
+	 *
+	 * <p>Not a rule that a macro must be walked. Movement keys work in the air
+	 * too, so a route flown along a wall of crops is a reasonable thing to
+	 * build, and coming down would ruin it. What is restored is how it was
+	 * found, which needs no setting and cannot be set wrongly.
+	 */
+	private boolean startedFlying;
+
+	/** Coming down before carrying on, because that is how it began. */
+	private boolean settling;
+	private int settlingTicks;
+
+	/** Long enough to fall from anywhere sensible; then it carries on regardless. */
+	private static final int SETTLE_LIMIT = 200;
 	private final Pests pests = new Pests();
 	private final PestHunter hunter = new PestHunter(pests);
 
@@ -108,7 +125,8 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// back, is still a macro that is on. Play stops all of it, or pressing
 		// it during a hunt would start the route as well and leave two things
 		// working the same keys.
-		if (running || resumeAfterHunt || resumeWhenLanded || resumeWhenBack || resumeIn > 0) {
+		if (running || resumeAfterHunt || resumeWhenLanded || resumeWhenBack || resumeIn > 0
+			|| settling) {
 			stop();
 			return;
 		}
@@ -131,6 +149,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			confirmTicks = 0;
 			fired.clear();
 			running = true;
+			startedFlying = client.player.getAbilities().flying;
 			Chat.client("Watching for '" + book.activeName() + "'.", false);
 			for (Route.When rule : route.rules) {
 				Chat.clientNote(rule.describe());
@@ -150,6 +169,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		confirmTicks = 0;
 		fired.clear();
 		running = true;
+		startedFlying = client.player.getAbilities().flying;
 		player = new RoutePlayer(client, route);
 		Chat.client("Following '" + book.activeName() + "', "
 			+ route.waypoints.size() + " points.", false);
@@ -172,6 +192,16 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		running = true;
 		if (route.isEmpty()) {
 			// Nothing to walk, so being on is the whole of carrying on.
+			return;
+		}
+
+		// A warp can land you in the air, and a route walked from the air is a
+		// route farming nothing. Coming down is enough on its own: touching the
+		// ground is what ends flight, so nothing here has to know who started it.
+		if (!startedFlying && client.player.getAbilities().flying) {
+			settling = true;
+			settlingTicks = 0;
+			Chat.client("Coming down before carrying on.", false);
 			return;
 		}
 		player = new RoutePlayer(client, route);
@@ -339,6 +369,10 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		resumeWhenBack = false;
 		resumeWhenLanded = false;
 		resumeIn = 0;
+		if (settling) {
+			settling = false;
+			Keys.set("shift", false);
+		}
 
 		// Rules judge again from scratch next time. Starting a macro is asking
 		// for it to be dealt with as it is now, not as it was when something
@@ -420,12 +454,38 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			watchRule(client);
 		}
 
+		if (settling) {
+			settle(client);
+			return;
+		}
+
 		if (player != null) {
 			player.tick();
 			if (player.isFinished()) {
 				player = null;
 			}
 		}
+	}
+
+	/**
+	 * Holds sneak until there is ground under the player, then starts the route.
+	 *
+	 * <p>Flight ends by itself on touching down, so this never asks whether it
+	 * may fly or who turned it on. If somewhere refuses to be landed on it gives
+	 * up waiting and carries on: a macro walking badly beats a macro stopped.
+	 */
+	private void settle(Minecraft client) {
+		if (client.player == null) {
+			settling = false;
+			return;
+		}
+		if (!client.player.getAbilities().flying || ++settlingTicks > SETTLE_LIMIT) {
+			Keys.set("shift", false);
+			settling = false;
+			resume();
+			return;
+		}
+		Keys.set("shift", true);
 	}
 
 	/** True only on the tick the key goes down, so holding it does not repeat. */
