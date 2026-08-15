@@ -162,7 +162,10 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			ruleFired = false;
 			return;
 		}
-		if (ruleFired) {
+		// Only while something is running. A rule is about a macro being
+		// interrupted, and warping a player who is simply out doing their
+		// shopping back to the plot is not an interruption, it is a nuisance.
+		if (ruleFired || player == null) {
 			return;
 		}
 		ruleFired = true;
