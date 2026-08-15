@@ -347,6 +347,15 @@ public final class PestHunter {
 			return;
 		}
 
+		// Turning flight on while stood on the ground does not stick: touching
+		// down cancels it, and it was on the ground when it was told to fly. So
+		// it is asserted every tick until it is actually off the floor.
+		if (weStartedFlying && !client.player.getAbilities().flying
+			&& client.player.getAbilities().mayfly) {
+			client.player.getAbilities().flying = true;
+			client.player.onUpdateAbilities();
+		}
+
 		Vec3 pest = nearest(client);
 		Vec3 target = pest == null ? plotToTry(client) : pest;
 		boolean chasingPest = pest != null;

@@ -109,6 +109,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		}
 
 		confirmTicks = 0;
+		fired.clear();
 		player = new RoutePlayer(client, route);
 		Chat.client("Following '" + book.activeName() + "', "
 			+ route.waypoints.size() + " points.", false);
@@ -258,7 +259,20 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	@Override
 	public void stop() {
 		confirmTicks = 0;
-		resumeAfterHunt = false;
+
+		// A hunt the macro started belongs to the macro. Stopping the macro and
+		// leaving something flying around the Garden on its behalf is not
+		// stopping it.
+		if (resumeAfterHunt) {
+			resumeAfterHunt = false;
+			hunter.stop("Stopped hunting: the macro was stopped.");
+		}
+		resumeWhenBack = false;
+
+		// Rules judge again from scratch next time. Starting a macro is asking
+		// for it to be dealt with as it is now, not as it was when something
+		// last fired.
+		fired.clear();
 		if (player == null) {
 			return;
 		}
