@@ -114,6 +114,14 @@ public final class PestHunter {
 	/** Below this much still to climb, it is close enough to set off. */
 	private static final double CLIMB_FIRST = 2.0;
 
+	/** Above this much higher than the player, getting up is the whole problem. */
+	private static final double ABOVE_ME = 2.5;
+
+	/** How far out to look for somewhere with open sky, and how finely. */
+	private static final double GAP_REACH = 24.0;
+	private static final double GAP_STEP = 2.0;
+	private static final int GAP_ANGLES = 12;
+
 	/** How often the ground under the way is read, and at most how many times. */
 	private static final double SAMPLE_EVERY = 4.0;
 	private static final int SAMPLES = 40;
@@ -240,8 +248,15 @@ public final class PestHunter {
 			client.player.getInventory().setSelectedSlot(SLOT);
 		}
 
-		float off = aim(client, target);
 		boolean flying = client.player.getAbilities().flying;
+
+		// Under a roof with the pest above it, the job is not to reach the pest
+		// but to reach somewhere the sky is open. Everything else follows once
+		// it is out.
+		Vec3 gap = flying ? wayUp(client, target) : null;
+		Vec3 heading = gap == null ? target : gap;
+
+		float off = aim(client, heading);
 		double away = client.player.getEyePosition().distanceTo(target);
 		double flat = flatTo(client, target);
 
@@ -249,7 +264,9 @@ public final class PestHunter {
 		// has to drift well back out before that is undone: three of the pests
 		// fly, and one hovering on the line would otherwise flip between the
 		// two several times a second.
-		closingIn = closingIn ? flat <= STILL_OVERHEAD : flat <= OVERHEAD;
+		closingIn = gap != null
+			? false
+			: closingIn ? flat <= STILL_OVERHEAD : flat <= OVERHEAD;
 
 		// Far off: get to it. Over the ground between if something is in the way,
 		// straight at it if nothing is.
@@ -257,6 +274,14 @@ public final class PestHunter {
 			firing = false;
 			Keys.set("use", false);
 			boolean overTheTop = false;
+			if (gap != null) {
+				// Making for the opening. Height is left alone: pressing up into
+				// the roof is what this is getting away from.
+				level();
+				Keys.set("w", true);
+				creep(client.player.getEyePosition().distanceTo(gap), false);
+				return;
+			}
 			if (flying) {
 				overTheTop = climbNeeded(client, target);
 				boolean climbing = hold(client,
@@ -335,6 +360,45 @@ public final class PestHunter {
 		Keys.set("space", rise > HEIGHT_ENOUGH);
 		Keys.set("shift", rise < -HEIGHT_ENOUGH);
 		return rise > CLIMB_FIRST;
+	}
+
+	/**
+	 * Somewhere nearby it can actually climb from, or null if none is needed.
+	 *
+	 * <p>The roofs over a plot are built so pests spawn on top of them, which
+	 * makes the usual case a pest directly overhead with a ceiling in between.
+	 * Climbing is impossible and flying at it is flying into the roof, so the
+	 * only move is sideways: out from under the roof, then up.
+	 *
+	 * <p>Rings of rays going outwards, taking the first opening it finds, and
+	 * sweeping each ring from the direction of the pest outwards so the way out
+	 * chosen is the one that also makes progress. This is not a path and cannot
+	 * follow one round a corner; it finds a hole in a ceiling, which is the
+	 * shape this world actually has.
+	 */
+	private static Vec3 wayUp(Minecraft client, Vec3 target) {
+		Vec3 eye = client.player.getEyePosition();
+		if (target.y < client.player.getY() + ABOVE_ME) {
+			return null;
+		}
+		if (clear(client, eye, eye.add(0.0, CLEARANCE, 0.0))) {
+			return null;
+		}
+
+		double towards = Math.atan2(target.z - eye.z, target.x - eye.x);
+		for (double out = GAP_STEP; out <= GAP_REACH; out += GAP_STEP) {
+			for (int i = 0; i < GAP_ANGLES; i++) {
+				// 0, +30, -30, +60, -60 ... so the nearest opening towards the
+				// pest wins over one behind.
+				int step = (i + 1) / 2;
+				double angle = towards + Math.toRadians(30.0 * step * (i % 2 == 0 ? 1 : -1));
+				Vec3 at = eye.add(Math.cos(angle) * out, 0.0, Math.sin(angle) * out);
+				if (clear(client, eye, at) && clear(client, at, at.add(0.0, CLEARANCE, 0.0))) {
+					return at;
+				}
+			}
+		}
+		return null;
 	}
 
 	/**

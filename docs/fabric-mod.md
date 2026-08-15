@@ -444,9 +444,20 @@ case there is nowhere to climb to? Either way it flies straight at the pest
 instead, and going higher is no longer offered as the answer to being stuck when
 it was never going over anything.
 
-This is not pathfinding, and does not pretend to be. It handles the shapes the
-Garden actually has, which are plots with walls around them and buildings you
-can see across. A pest genuinely walled off from every direction still ends in
+That still left the case those roofs exist to create. They are built over a plot
+so pests spawn on top of them, which makes the ordinary situation a pest
+directly overhead with a ceiling in between: climbing is impossible and flying
+straight at it is flying into the roof. Neither ray helps, because both are
+answering the wrong question.
+
+The only move is sideways. Rings of rays go outwards looking for a column with
+open sky, each ring swept from the pest's direction outwards so the way out
+chosen also makes progress, and it heads for the first opening it finds. Out
+from under the roof, then up.
+
+This is not pathfinding, and does not pretend to be. It cannot follow a route
+round a corner; it finds a hole in a ceiling, which is the shape this world
+actually has. A pest genuinely walled off from every direction still ends in
 giving up, and giving up says so.
 
 ## Sticking to one pest
