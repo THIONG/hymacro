@@ -114,6 +114,9 @@ public final class PestHunter {
 	/** Below this much still to climb, it is close enough to set off. */
 	private static final double CLIMB_FIRST = 2.0;
 
+	/** Close enough to the ground to stop flying without falling. */
+	private static final double LANDED = 1.5;
+
 	/** Ticks of holding jump and going nowhere before the height is given up on. */
 	private static final int CLIMB_PATIENCE = 10;
 
@@ -185,6 +188,10 @@ public final class PestHunter {
 	private double lastY = Double.MAX_VALUE;
 	private int blockedTicks;
 
+	/** Whether the flying was ours to turn off again afterwards. */
+	private boolean weStartedFlying;
+	private boolean landing;
+
 	public PestHunter(Pests pests) {
 		this.pests = pests;
 	}
@@ -202,8 +209,65 @@ public final class PestHunter {
 	public void start() {
 		on = true;
 		waiting = false;
+		landing = false;
 		forgetTarget();
 		clearStall();
+		takeOff(Minecraft.getInstance());
+	}
+
+	/**
+	 * Flies if it may, and remembers whether that was its doing.
+	 *
+	 * <p>Whether flight is allowed is not a thing to work out from a cookie or a
+	 * bowl of soup. Hypixel grants it, and granting it is a flag on the player
+	 * that the client is told about: asking that is asking the game rather than
+	 * guessing at the reason.
+	 *
+	 * <p>Flying is preferred because a pest four plots away is a minute of
+	 * walking and a few seconds of flight, and because the way there is over
+	 * things rather than round them.
+	 */
+	private void takeOff(Minecraft client) {
+		if (client.player == null) {
+			return;
+		}
+		if (client.player.getAbilities().flying || !client.player.getAbilities().mayfly) {
+			weStartedFlying = false;
+			return;
+		}
+		client.player.getAbilities().flying = true;
+		client.player.onUpdateAbilities();
+		weStartedFlying = true;
+		Chat.clientNote("Flying to get round faster. It lands again when it is done.");
+	}
+
+	/**
+	 * Puts the player back on the ground, then back to walking.
+	 *
+	 * <p>A macro that walks its route cannot be handed back a player in the air,
+	 * and switching flight off up there is a fall rather than a landing. So it
+	 * comes down first and only stops flying once there is nothing to fall.
+	 */
+	private void land(Minecraft client) {
+		if (client.player == null) {
+			landing = false;
+			weStartedFlying = false;
+			return;
+		}
+
+		boolean low = client.player.getY()
+			- groundAt(client, client.player.getX(), client.player.getZ()) <= LANDED;
+		if (!client.player.getAbilities().flying || low) {
+			if (client.player.getAbilities().flying) {
+				client.player.getAbilities().flying = false;
+				client.player.onUpdateAbilities();
+			}
+			Keys.set("shift", false);
+			landing = false;
+			weStartedFlying = false;
+			return;
+		}
+		Keys.set("shift", true);
 	}
 
 	public void toggle() {
@@ -213,12 +277,14 @@ public final class PestHunter {
 		}
 		on = true;
 		waiting = false;
+		landing = false;
 		clearStall();
 		emptyPlots.clear();
 		settledTicks = 0;
 		forgetTarget();
 		Chat.client("Hunting pests with slot 1.", false);
-		Chat.clientNote("It flies to the plots the tab list names, then vacuums what it finds.");
+		Chat.clientNote("It goes to the plots the tab list names, then vacuums what it finds.");
+		takeOff(Minecraft.getInstance());
 	}
 
 	/** Releases everything. Stopping must never leave the trigger held. */
@@ -237,9 +303,15 @@ public final class PestHunter {
 		if (wasOn && why != null) {
 			Chat.client(why, false);
 		}
+		// Walking is how it was found, so walking is how it is handed back.
+		landing = weStartedFlying;
 	}
 
 	public void tick(Minecraft client) {
+		if (landing) {
+			land(client);
+			return;
+		}
 		if (!on) {
 			return;
 		}
@@ -306,7 +378,7 @@ public final class PestHunter {
 				// the corner's height is worked by jump and sneak rather than by
 				// pointing the camera at it.
 				boolean climbing = hold(client, corner.y);
-				Keys.set("w", !climbing);
+				go(!climbing);
 				creep(client.player.getEyePosition().distanceTo(corner), false);
 				return;
 			}
@@ -325,7 +397,7 @@ public final class PestHunter {
 					wantedY = target.y + HOVER;
 				}
 				boolean climbing = hold(client, wantedY);
-				Keys.set("w", !climbing);
+				go(!climbing);
 				if (climbing) {
 					// Going up is not going nowhere. The clock starts once it
 					// is actually on its way.
@@ -333,7 +405,7 @@ public final class PestHunter {
 					return;
 				}
 			} else {
-				Keys.set("w", true);
+				go(true);
 				level();
 			}
 			creep(away, overTheTop);
@@ -341,7 +413,7 @@ public final class PestHunter {
 		}
 
 		// Overhead. Come down to hovering height and vacuum from above it.
-		Keys.set("w", false);
+		go(false);
 		if (flying && chasingPest) {
 			hold(client, target.y + HOVER);
 		} else {
@@ -580,6 +652,13 @@ public final class PestHunter {
 		Keys.set("use", false);
 		Keys.set("space", false);
 		Keys.set("shift", false);
+		Keys.set("ctrl", false);
+	}
+
+	/** Forward, and at a run. Sprinting is faster on foot and in the air alike. */
+	private static void go(boolean forward) {
+		Keys.set("w", forward);
+		Keys.set("ctrl", forward);
 	}
 
 	private void clearProgress() {

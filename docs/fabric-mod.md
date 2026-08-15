@@ -484,6 +484,24 @@ Waiting is now only worth it while the climb is working. Half a second of
 holding jump without rising is taken as an answer: this is as high as it goes,
 get on with it.
 
+## Flying, and putting things back
+
+Whether flight is allowed is not something to work out from a cookie or a bowl
+of soup. Hypixel grants it, granting it is a flag on the player, and the client
+is told: `mayfly` answers the question without knowing the reason for it, and
+keeps answering when the reason changes.
+
+Flying is preferred, because a pest four plots away is a minute of walking and
+a few seconds of flight, and because the way there is over things rather than
+round them. Sprint is held whenever it moves, which is faster in the air as well
+as on foot.
+
+What it turned on it turns off. A macro that walks its route cannot be handed
+back a player in the air, and switching flight off up there is a fall rather
+than a landing, so it comes down first and only stops flying once there is
+nothing left to fall. Flight that was already on when the hunt started is left
+exactly as it was found: it was not the hunt's to take away.
+
 ## Sticking to one pest
 
 The target used to be worked out fresh every tick, always the nearest. That
