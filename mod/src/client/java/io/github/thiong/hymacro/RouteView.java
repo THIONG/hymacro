@@ -3,6 +3,7 @@ package io.github.thiong.hymacro;
 import java.util.List;
 import java.util.function.Supplier;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import net.minecraft.client.Minecraft;
 import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
 import net.minecraft.gizmos.TextGizmo;
@@ -55,6 +56,32 @@ public final class RouteView {
 	private static final int MAX_ARROWS = 40;
 	private static final double MAX_LEG = 400.0;
 
+	/**
+	 * How far away a leg still gets its arrowheads.
+	 *
+	 * <p>Every one of them is built again from nothing on every frame, and a
+	 * long macro can ask for hundreds. Beyond a hundred blocks an arrow is a
+	 * couple of pixels and says nothing the line it sits on does not, so the
+	 * line is kept and the heads are dropped. Nothing you could read disappears.
+	 */
+	private static final double ARROW_RANGE = 128.0;
+
+	/**
+	 * The styles, built once.
+	 *
+	 * <p>They are pure description and never change, so building three of them
+	 * per point per frame was making rubbish for the collector to sweep up for
+	 * the whole length of a run.
+	 */
+	private static final GizmoStyle GREY_BOX = box(GREY);
+	private static final GizmoStyle GREEN_BOX = box(GREEN);
+	private static final GizmoStyle ORANGE_BOX = box(ORANGE);
+	private static final TextGizmo.Style GREY_NUMBER = number(GREY);
+	private static final TextGizmo.Style GREEN_NUMBER = number(GREEN);
+	private static final TextGizmo.Style ORANGE_NUMBER = number(ORANGE);
+	private static final TextGizmo.Style CAPTION = caption(FAINT);
+	private static final TextGizmo.Style RETURN_CAPTION = caption(RETURN);
+
 	private RouteView() {
 	}
 
@@ -67,21 +94,25 @@ public final class RouteView {
 			return;
 		}
 
+		// Where it is being looked at from, for deciding what is too far away to
+		// be worth building. Without a player there is nothing to measure from,
+		// so everything is drawn, which is what always happened.
+		var viewer = Minecraft.getInstance().player;
+		boolean measurable = viewer != null;
+		double viewX = measurable ? viewer.getX() : 0.0;
+		double viewZ = measurable ? viewer.getZ() : 0.0;
+
 		List<Route.Waypoint> points = route.waypoints;
 		for (int i = 0; i < points.size(); i++) {
 			Route.Waypoint to = points.get(i);
 			int colour = colourFor(to);
 
-			Gizmos.cuboid(stand(to), GizmoStyle.strokeAndFill(colour, STROKE, translucent(colour)))
-				.setAlwaysOnTop();
-			Gizmos.billboardText(String.valueOf(i + 1), over(to, NUMBER_HEIGHT),
-					TextGizmo.Style.forColorAndCentered(colour).withScale(NUMBER_SCALE))
+			Gizmos.cuboid(stand(to), boxStyle(colour)).setAlwaysOnTop();
+			Gizmos.billboardText(String.valueOf(i + 1), over(to, NUMBER_HEIGHT), numberStyle(colour))
 				.setAlwaysOnTop();
 
 			if (points.size() < 2) {
-				Gizmos.billboardText(describe(to), over(to, TEXT_HEIGHT),
-						TextGizmo.Style.forColorAndCentered(FAINT).withScale(TEXT_SCALE))
-					.setAlwaysOnTop();
+				Gizmos.billboardText(label(to), over(to, TEXT_HEIGHT), CAPTION).setAlwaysOnTop();
 				continue;
 			}
 
@@ -94,12 +125,21 @@ public final class RouteView {
 			// Over the middle of the stretch it describes, not over its end. A
 			// caption above a point reads as belonging to the point, and the leg
 			// that ends there is the one before it.
-			Gizmos.billboardText(describe(to), middle(from, to),
-					TextGizmo.Style.forColorAndCentered(closing ? RETURN : FAINT)
-						.withScale(TEXT_SCALE))
+			Gizmos.billboardText(label(to), middle(from, to),
+					closing ? RETURN_CAPTION : CAPTION)
 				.setAlwaysOnTop();
-			flow(from, to, closing);
+			flow(from, to, closing, measurable, viewX, viewZ);
 		}
+	}
+
+	/** The caption for a point, worked out once and kept on the point. */
+	private static String label(Route.Waypoint point) {
+		String text = point.label;
+		if (text == null) {
+			text = describe(point);
+			point.label = text;
+		}
+		return text;
 	}
 
 	/** A full block at the point itself, so it reads as somewhere to stand. */
@@ -127,7 +167,8 @@ public final class RouteView {
 	 * direction visible. Arrows alone were too thin to read across a field, and
 	 * one arrow the length of the leg would be a single enormous head.
 	 */
-	private static void flow(Route.Waypoint from, Route.Waypoint to, boolean closing) {
+	private static void flow(Route.Waypoint from, Route.Waypoint to, boolean closing,
+			boolean measurable, double viewX, double viewZ) {
 		double dx = to.x - from.x;
 		double dy = to.y - from.y;
 		double dz = to.z - from.z;
@@ -140,6 +181,10 @@ public final class RouteView {
 		Gizmos.line(along(from, dx, dy, dz, 0.0), along(from, dx, dy, dz, 1.0), colour,
 				closing ? RETURN_PATH_WIDTH : PATH_WIDTH)
 			.setAlwaysOnTop();
+
+		if (measurable && beyond(from, to, viewX, viewZ)) {
+			return;
+		}
 
 		double spacing = Math.max(SPACING, length / MAX_ARROWS);
 		int steps = (int) Math.floor(length / spacing);
@@ -158,8 +203,46 @@ public final class RouteView {
 		return new Vec3(from.x + dx * t, from.y + dy * t + PATH_HEIGHT, from.z + dz * t);
 	}
 
+	/** True when neither end of a leg is close enough to make out an arrowhead. */
+	private static boolean beyond(Route.Waypoint from, Route.Waypoint to,
+			double viewX, double viewZ) {
+		return away(from, viewX, viewZ) > ARROW_RANGE && away(to, viewX, viewZ) > ARROW_RANGE;
+	}
+
+	private static double away(Route.Waypoint point, double viewX, double viewZ) {
+		double dx = point.x - viewX;
+		double dz = point.z - viewZ;
+		return Math.sqrt(dx * dx + dz * dz);
+	}
+
 	private static int translucent(int colour) {
 		return (colour & 0x00FFFFFF) | 0x33000000;
+	}
+
+	private static GizmoStyle box(int colour) {
+		return GizmoStyle.strokeAndFill(colour, STROKE, translucent(colour));
+	}
+
+	private static TextGizmo.Style number(int colour) {
+		return TextGizmo.Style.forColorAndCentered(colour).withScale(NUMBER_SCALE);
+	}
+
+	private static TextGizmo.Style caption(int colour) {
+		return TextGizmo.Style.forColorAndCentered(colour).withScale(TEXT_SCALE);
+	}
+
+	private static GizmoStyle boxStyle(int colour) {
+		if (colour == GREEN) {
+			return GREEN_BOX;
+		}
+		return colour == ORANGE ? ORANGE_BOX : GREY_BOX;
+	}
+
+	private static TextGizmo.Style numberStyle(int colour) {
+		if (colour == GREEN) {
+			return GREEN_NUMBER;
+		}
+		return colour == ORANGE ? ORANGE_NUMBER : GREY_NUMBER;
 	}
 
 	private static int colourFor(Route.Waypoint point) {

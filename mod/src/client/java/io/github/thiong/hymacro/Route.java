@@ -66,6 +66,16 @@ public final class Route {
 		/** How close counts as arrived here, or 0 to use the macro's own. */
 		public final double radius;
 
+		/**
+		 * What {@link RouteView} last wrote under this point.
+		 *
+		 * <p>Building that sentence is a handful of string joins, and the world
+		 * is drawn a hundred times a second for as long as a macro runs, which
+		 * is hours. A waypoint is replaced rather than edited, so a label kept
+		 * here cannot end up describing something the point no longer does.
+		 */
+		String label;
+
 		public Waypoint(double x, double y, double z, float yaw, float pitch,
 				List<Action> actions, String send, boolean walk, double radius) {
 			this.x = x;
