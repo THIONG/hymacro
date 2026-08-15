@@ -69,26 +69,6 @@ Points can be moved after the fact, so one being a block out is not a rebuild:
 
 `anchor` is how a macro moves to another plot of the same shape.
 
-## Pests
-
-Pests are outlined in red where the client knows about them, with a line to each
-so a few pixels the colour of the ground can be found at all. Hunting picks the
-vacuum off your hotbar by name, wherever on it you keep one. Where one was last
-seen is kept and drawn faintly, since out of range is exactly when the mark is
-wanted. **F10** walks up to each one and vacuums it.
-
-A macro can deal with them itself:
-
-```
-/hymacro when pests 3 hunt        pause, clear them, carry on from point 1
-/hymacro when pests 3 send <text>
-/hymacro when pests 3 stop
-/hymacro pests scan               what is actually around you, by name
-```
-
-Hunting aims the camera for you, which is further from a server's rules than a
-walking macro is.
-
 ## Seeing it
 
 The macro is drawn where it happens: a box on every point with its number above
@@ -132,15 +112,17 @@ standing on rather than to a macro, so loading another one does not change it.
 ### Hunting them
 
 **F10** turns the hunt on and off. It goes to the nearest pest, aims, and holds
-right click until the pest is gone, then goes to the next one. The vacuum goes
-in **slot 1**.
+right click until the pest is gone, then goes to the next one. The vacuum is
+found by name anywhere on your hotbar.
 
-In the air it climbs, crosses and comes down: over the barn and the plot walls
-rather than around them, at a height read from the ground under the way it is
-taking, then settling a few blocks above the pest to vacuum it. If something
-turns out to be in the way anyway it goes higher and tries again, and says so.
-On foot it just faces the pest and holds forward. It works out which of the two
-you are doing rather than asking.
+It flies if the server lets you, since a pest four plots away is a minute of
+walking and a few seconds of flight, and lands again afterwards if the flight
+was its doing. Where the way is blocked it searches for one, so a roof built to
+make pests spawn on top of it is no different to a wall or a row of cocoa.
+
+A pest three plots away is not something the client has been told about as a
+thing in the world, only as a line of text, so the plots the tab list names are
+flown to and the searching starts on arrival.
 
 It stays on between pests rather than switching itself off, because the next
 pest is the reason it was turned on. Nothing counts seconds of vacuuming: the
@@ -149,6 +131,22 @@ actually says it died.
 
 The hunt stops the macro when it starts. Both work the movement keys and right
 click every tick, and the two at once is a fight neither wins. F12 stops both.
+
+### Letting a macro handle it
+
+```
+/hymacro when pests 6 hunt              pause, clear them, carry on
+/hymacro when hunted send /warp garden  once the hunt is over
+/hymacro when away send /warp garden    if a restart moves you
+/hymacro when                           what is set
+```
+
+Three separate things: what is watched, the number that sets it off, and what
+happens next. Where a macro belongs is not typed in but taken from where you
+stand when the rule is made, so the same commands work on any island.
+
+Hunting aims the camera for you, which is further from a server's rules than a
+walking macro is.
 
 A pest is recognised by the name the server gives it. If one goes unmarked,
 `/hymacro pests scan` prints what is actually out there, nearest first, and the
