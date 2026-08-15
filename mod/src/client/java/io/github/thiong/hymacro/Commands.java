@@ -151,6 +151,7 @@ public final class Commands {
 					.then(argument("blocks", FloatArgumentType.floatArg(0.15f, 10.0f))
 						.executes(context -> setRadius(context, host))))
 				.then(literal("when")
+					.executes(context -> showRule(context, host))
 					.then(literal("off")
 						.executes(context -> clearRule(context, host)))
 					.then(literal("pests")
@@ -890,6 +891,38 @@ public final class Commands {
 		Chat.note(context.getSource(), Route.When.SEND.equals(then)
 			? "Leaving it sends " + text + ", and it carries on once back."
 			: "Leaving it stops the macro.");
+		return 1;
+	}
+
+	/**
+	 * What interrupts this macro, and where it thinks it belongs.
+	 *
+	 * <p>A rule about leaving somewhere keeps the name of the place it was made
+	 * in, which is a thing worth being able to read back: the command that sets
+	 * it never mentions a place, so there is otherwise nothing to say which one
+	 * it took.
+	 */
+	private static int showRule(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+
+		FabricClientCommandSource source = context.getSource();
+		Chat.heading(source, "When");
+		if (route.when == null) {
+			Chat.note(source, "Nothing interrupts this macro.");
+		} else {
+			Chat.bullet(source, route.when.describe(), true);
+		}
+
+		String here = Skyblock.location(Minecraft.getInstance());
+		Chat.note(source, here == null
+			? "The scoreboard does not say where this is."
+			: "You are on " + here + ".");
+		Chat.entry(source, "/hymacro when away send <text>", "if you end up anywhere else");
+		Chat.entry(source, "/hymacro when pests <n> hunt", "if pests turn up");
+		Chat.entry(source, "/hymacro when off", "remove it");
 		return 1;
 	}
 
