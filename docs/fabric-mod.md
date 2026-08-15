@@ -41,6 +41,8 @@ stand on the second block  /hymacro point
 | `/hymacro radius <blocks>` | How close counts as arrived |
 | `/hymacro send <text>` | Put in chat on arriving at that point |
 | `/hymacro show <true\|false>` | Draw the macro in the world |
+| `/hymacro pests <true\|false>` | Mark pests in red, with a line to each |
+| `/hymacro pests scan` | What is around you, and what it is called |
 | `/hymacro play`, `stop` | Also on F9 and F12 |
 
 Actions land on the leg you just made, which is what you mean while walking a
@@ -138,6 +140,178 @@ message.
 The part worth more than the parsing is what the macro will do. A shared macro
 can type into your chat, which is somebody else's commands running under your
 name. Import lists every line it would send, in red, before you ever press F9.
+
+## Marking pests
+
+A pest is the one thing that reliably ruins a run, and it is hard to see: small,
+the colour of the ground, and usually behind a wall of wart. So they are found
+wherever the client has been told about them and drawn in red.
+
+The two halves of that drawing answer different questions, and are drawn
+differently on purpose.
+
+The outline answers *which of these is the pest*, and is depth tested like
+anything else in the world. A wall hides it exactly as the wall hides the mob,
+so a pest turns red as it comes into view and nothing appears on screen that was
+not already there.
+
+The line from the player to it answers *where is it*, which is the part that is
+actually hard, and is drawn through terrain. Knowing a pest exists is no use
+without a direction to walk in, and a direction you can only see once you have
+already found the thing is not a direction. The label is the same answer in
+numbers, for when the line is nearly end on.
+
+Marking belongs to the book rather than to a route. It is about the ground you
+are standing on, not the path you are walking, and loading another macro should
+not change whether you can see what is eating your crops.
+
+### Finding one
+
+A pest is recognised by the name the server gives it, matched on whole words: a
+player called Piratebay is not a rat, and the cost of getting that wrong is a red
+box on somebody's back for the rest of the session.
+
+The name is sometimes on the mob and sometimes on an invisible marker floating
+over it, and which one it is has never been ours to decide. So a named thing
+with no body worth drawing a box around is taken as a label, and the nearest
+body under it is marked instead. A box around a nametag is a box around nothing.
+
+There are fifteen of them, one per crop, plus a Field Mouse that eats anything
+and a Lunar Moth that takes any of the three flowers. Two names contain another
+— a Lunar Moth is a moth by the letters and something else entirely by the loot,
+and a dragonfly is not a fly — so the longest match wins rather than the first.
+
+The list will go out of date the day a new pest is added, and it is a list of
+names on a wiki rather than of names seen in game.
+`/hymacro pests scan` prints what is around you and what the server calls it,
+nearest first, marking the ones that would be outlined. An unmarked pest is then
+a name to add rather than a mystery.
+
+### Ids rather than entities
+
+What is kept between ticks is entity ids. Holding the mobs themselves would hold
+the world they belong to, and a mod that quietly keeps every world you have
+visited is a leak with no symptom until the game stops. An int cannot do that,
+however badly the rest of it goes wrong.
+
+### Four times a second, not a hundred
+
+Searching the world and drawing it are different jobs at different rates. The
+world is searched four times a second: every entity is looked at, its name read,
+and a label matched to a body. Drawing happens on every frame, which is a
+hundred times a second for as long as the game is open.
+
+So the search leaves behind a list for the drawing to read, and the drawing
+reads it rather than doing the search again. Nothing is allocated per frame to
+say what to draw, and the pests are found by looking their ids up against the
+world instead of walking it: there is normally one pest and there can be
+hundreds of entities.
+
+### Where it is, not where it was
+
+A mob moves twenty times a second and is drawn a hundred, and the game covers
+the gap by rendering it part of the way between its last two positions. An
+outline built from the tick position alone therefore sits on where the mob was
+rather than where it is, which on anything that moves reads as the box lagging
+behind and shuddering while the mob glides.
+
+The outline asks for the same interpolated position the mob itself is drawn at
+and carries the collision box there, so the box is on the mob at whatever frame
+rate the game is running.
+
+A pest that dies between two searches is drawn for at most a quarter of a
+second: the id stops resolving to anything, and a mark with no entity behind it
+is skipped rather than drawn on its last known spot.
+
+## Hunting rather than routing
+
+The hunt is its own key and its own class, not a leg of a macro. A route is a
+shape walked over and over, so it is worth recording; a pest is somewhere new
+every time and there is nothing to record. They also never want to run at once,
+since both work the movement keys and right click every tick, so starting a hunt
+stops the macro and says so.
+
+The vacuum reaches ten blocks and a plot is ninety six across, so most of the
+work is getting there. Inside seven blocks it stops, finishes turning, and holds
+the trigger. Seven rather than ten leaves room for a pest that drifts.
+
+### Over things rather than around them
+
+Flying, the way there is climb, cross, come down. Flying over an obstacle is
+worth more than the cleverest way around one: there is nothing to work out, and
+nothing to get wedged against. The barn, a plot wall and somebody's build are
+all the same problem and all have the same answer.
+
+How high comes from the world itself. Every column knows how tall it is, so the
+line to the pest is sampled every few blocks and the crossing goes above the
+worst of it with six blocks to spare, but no higher: climbing to the sky for a
+pest across a flat plot would spend the whole trip going up and coming back
+down. It climbs before it sets off, so the first thing it does is not fly into
+the wall it was about to clear.
+
+That height is how tall the world is, not how tall what is standing on it is. A
+fence, a sign or a mob is not in it. So getting no closer for ten seconds adds
+four blocks and starts again, up to twenty four: a recovery that needs no map
+and no idea of what the obstacle was. Only when it runs out of room does it give
+up, and then it says so, because a hunt that quietly stops looks exactly like
+one that is working.
+
+Direction and height are worked separately because the game works them
+separately: flying forward is flat, and where the camera points only decides
+which way, never whether up or down. Height is jump and sneak. That split is
+also what leaves the aim free, since the camera is busy pointing at the pest and
+cannot be spent on steering.
+
+Whether any of this happens is not a setting. It asks whether the player is
+flying, and on foot does what it always did: face the pest and hold forward.
+
+It hunts remembered pests as well as live ones. Walking to where one was last
+seen is right either way: it either comes back into range and gets vacuumed, or
+arriving is exactly what proves it gone and drops the memory.
+
+### Nothing counts how long it has vacuumed
+
+The trigger goes down when the aim is on the pest and comes up when the pest is
+no longer in the world. A timer would have to guess, and guessing short leaves a
+pest on half health while the hunt walks away.
+
+That makes the aim tolerance matter in a way it otherwise would not. A pest that
+shuffles a degree out of line must not blink the trigger off and on, so starting
+is fussy — eight degrees — and continuing is not: twenty. Vacuuming survives the
+target moving; it ends when the target is gone.
+
+Walking is the one part that can hang, so it is the one part with a clock: ten
+seconds of getting no closer means a wall in the way, and it stops and says so
+rather than holding forward into it forever.
+
+## What is built every frame
+
+The world drawing runs on every frame, for as long as a macro runs, which is
+hours. Anything built there is built a hundred times a second.
+
+Three things were being rebuilt that never change. The gizmo styles are pure
+description, so they are made once now rather than three times per point per
+frame. A leg's caption is a handful of string joins, so it is worked out once
+and kept on the waypoint: a waypoint is replaced rather than edited, so a label
+kept there cannot end up describing something the point no longer does.
+
+The arrowheads are the expensive part, up to forty a leg, each of them two
+points and a shape. Beyond a hundred and twenty eight blocks an arrow is a
+couple of pixels and says nothing the line under it does not, so past that the
+line is drawn and the heads are not. Nothing that could be read disappears.
+
+None of this was a leak in the sense of something held forever. It was rubbish
+made faster than it was needed, which looks the same from the outside: a heap
+that climbs all session and a collector that keeps interrupting the frame.
+
+## Reading somebody else's code
+
+`/hymacro import` decompresses whatever is on the clipboard, and gzip expands.
+A few hundred bytes of zeros come out as gigabytes, and reading it whole would
+have taken the game down before any of the field by field checking ever ran. So
+the unpacking stops at a megabyte and says so. The largest macro this mod can
+hold, 512 points with everything set, is a fraction of that, so the limit
+refuses only what was never a macro.
 
 ## Why a macro stays selected
 

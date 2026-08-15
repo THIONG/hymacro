@@ -27,6 +27,15 @@ public final class RouteBook {
 	private final Map<String, Route> routes = new LinkedHashMap<>();
 	private String active;
 
+	/**
+	 * Whether pests are marked in the world.
+	 *
+	 * <p>It sits here rather than on a route because it is about the plot you
+	 * are standing on, not about the path you are walking. Loading another macro
+	 * should not change whether you can see what is eating your crops.
+	 */
+	public boolean pests = true;
+
 	public static Path path() {
 		return FabricLoader.getInstance().getConfigDir().resolve("hymacro-routes.json");
 	}
@@ -117,6 +126,9 @@ public final class RouteBook {
 					book.routes.put(name, Route.fromJson(saved.getAsJsonObject(name)));
 				}
 			}
+			if (root.has("pests")) {
+				book.pests = root.get("pests").getAsBoolean();
+			}
 			if (root.has("active") && book.routes.containsKey(root.get("active").getAsString())) {
 				book.active = root.get("active").getAsString();
 			} else if (!book.routes.isEmpty()) {
@@ -157,6 +169,7 @@ public final class RouteBook {
 		if (active != null) {
 			root.addProperty("active", active);
 		}
+		root.addProperty("pests", pests);
 		root.add("routes", saved);
 
 		try {

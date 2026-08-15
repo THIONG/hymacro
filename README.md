@@ -85,6 +85,56 @@ The leg from the last point back to the first is drawn faintly. It is real, the
 macro loops, but it is the way back rather than more of the same work.
 `/hymacro show false` turns the drawing off.
 
+## Pests
+
+A pest eats the plot the macro is walking, and the first sign of one is usually
+the yield rather than the pest itself: they are small, they are the colour of
+the ground, and they are behind a wall of wart as often as not.
+
+They are looked for wherever the game has told your client about them, and
+marked in red: an outline on the pest, and a line from you to it.
+
+| Command | Effect |
+|---------|--------|
+| `/hymacro pests` | Whether they are marked, and how many are around |
+| `/hymacro pests <true\|false>` | Mark them, or stop |
+| `/hymacro pests scan` | Everything around you, and what the server calls it |
+
+The outline is hidden by a wall exactly as the mob behind it is, so a pest turns
+red as it comes into view rather than showing through the ground. The line to it
+is drawn through terrain, because knowing one exists is no use without a
+direction to walk in, and a direction you can only see once you have already
+found the thing is not a direction.
+
+Marking is on, and stays as you leave it: it belongs to the plot you are
+standing on rather than to a macro, so loading another one does not change it.
+
+### Hunting them
+
+**F10** turns the hunt on and off. It goes to the nearest pest, aims, and holds
+right click until the pest is gone, then goes to the next one. The vacuum goes
+in **slot 1**.
+
+In the air it climbs, crosses and comes down: over the barn and the plot walls
+rather than around them, at a height read from the ground under the way it is
+taking, then settling a few blocks above the pest to vacuum it. If something
+turns out to be in the way anyway it goes higher and tries again, and says so.
+On foot it just faces the pest and holds forward. It works out which of the two
+you are doing rather than asking.
+
+It stays on between pests rather than switching itself off, because the next
+pest is the reason it was turned on. Nothing counts seconds of vacuuming: the
+trigger comes up when the pest leaves the world, which is the only thing that
+actually says it died.
+
+The hunt stops the macro when it starts. Both work the movement keys and right
+click every tick, and the two at once is a fight neither wins. F12 stops both.
+
+A pest is recognised by the name the server gives it. If one goes unmarked,
+`/hymacro pests scan` prints what is actually out there, nearest first, and the
+name it printed belongs in the list at the top of
+[`Pests.java`](mod/src/client/java/io/github/thiong/hymacro/Pests.java).
+
 ## Several macros
 
 ```
