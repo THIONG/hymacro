@@ -137,7 +137,12 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			return;
 		}
 
-		int seen = Route.When.PESTS.equals(route.when.watch) ? pests.count() : 0;
+		// What the server says is alive across the Garden, not only what is close
+		// enough to be an entity. A rule that counted the ones in range would
+		// almost never fire, since they are rarely on the plot being farmed.
+		int seen = Route.When.PESTS.equals(route.when.watch)
+			? Math.max(pests.count(), Pests.aliveEverywhere(client))
+			: 0;
 		if (seen < route.when.atLeast) {
 			ruleFired = false;
 			return;

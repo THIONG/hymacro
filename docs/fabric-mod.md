@@ -399,6 +399,29 @@ yaw and pitch, and keeps spamming whatever it was told to.
 It is off by default. Holding a key is what the macro has always done, and a
 route built around it should not change under its author.
 
+## Hunting across the Garden
+
+Entities exist only near you, so a pest three plots away cannot be looked for.
+It can be travelled to: the tab list carries `Plots: 4, 5, 12, 15, 21` and
+`Alive: 7` for pests the client has never been sent as things in the world.
+That is the whole trick. The text says where, the entities say what.
+
+Those lines are read by their shape rather than by their position, since the tab
+list arrives as an unordered collection and anything counting lines or reading
+under a heading would work right up until it quietly did not.
+
+Turning a plot number into somewhere to fly needs the Garden's spiral, which the
+game never tells the client. Written out from what the plot menu looks like, it
+was wrong in twelve of its twenty five squares. The one in `GardenPlots` is
+[SkyHanni's](https://github.com/hannibal002/SkyHanni), which has had it right for
+years, and `/hymacro pests plot` checks it against the plot the server says you
+are standing on rather than asking to be believed.
+
+Standing in a named plot and finding nothing is not a failure: entities arrive a
+moment after the chunks do, so it waits five seconds before deciding, then
+leaves that plot alone and tries the next. When every plot has come up empty the
+slate is cleared, because a pest that moved is not a pest that is gone.
+
 ## Being interrupted
 
 A macro can be told to watch for something and act on it:

@@ -118,6 +118,15 @@ public final class PestHunter {
 
 	private final Pests pests;
 
+	/** Near enough into a plot to be told about what lives there. */
+	private static final double PLOT_ARRIVED = 20.0;
+
+	/** How long to stand in a plot before deciding its pest is not here. */
+	private static final int SETTLE_TICKS = 100;
+
+	private final java.util.Set<Integer> emptyPlots = new java.util.HashSet<>();
+	private int settledTicks;
+
 	private boolean on;
 	private double closestYet;
 	private int stalledTicks;
@@ -125,6 +134,7 @@ public final class PestHunter {
 	private boolean firing;
 	private boolean closingIn;
 	private double lift;
+	private int travellingTo = -1;
 
 	public PestHunter(Pests pests) {
 		this.pests = pests;
@@ -154,8 +164,10 @@ public final class PestHunter {
 		on = true;
 		waiting = false;
 		clearStall();
+		emptyPlots.clear();
+		settledTicks = 0;
 		Chat.client("Hunting pests with slot 1.", false);
-		Chat.clientNote("It walks up to each one and holds right click. F10 again to stop.");
+		Chat.clientNote("It flies to the plots the tab list names, then vacuums what it finds.");
 	}
 
 	/** Releases everything. Stopping must never leave the trigger held. */
@@ -181,7 +193,14 @@ public final class PestHunter {
 			return;
 		}
 
-		Vec3 target = nearest(client);
+		Vec3 pest = nearest(client);
+		Vec3 target = pest == null ? plotToTry(client) : pest;
+		boolean chasingPest = pest != null;
+		if (chasingPest) {
+			// Something turned up, so every plot is worth trying again.
+			emptyPlots.clear();
+			settledTicks = 0;
+		}
 		if (target == null) {
 			// Nothing to do yet. It stays armed rather than turning itself off,
 			// because the next pest is the whole reason it is on.
@@ -240,6 +259,24 @@ public final class PestHunter {
 			hold(client, target.y + HOVER);
 		} else {
 			level();
+		}
+
+		// Standing in a plot the tab list named, waiting for it to tell us what
+		// is in it. Entities arrive a moment after the chunks do, so this waits
+		// rather than deciding at once, and gives up on a plot instead of
+		// hovering over it forever.
+		if (!chasingPest) {
+			firing = false;
+			Keys.set("use", false);
+			clearStall();
+			if (flat <= PLOT_ARRIVED && ++settledTicks > SETTLE_TICKS) {
+				settledTicks = 0;
+				if (travellingTo > 0) {
+					emptyPlots.add(travellingTo);
+					Chat.clientNote("Nothing in plot " + travellingTo + ". Trying the next one.");
+				}
+			}
+			return;
 		}
 
 		// Closes to seven, holds out to nine and a half. Same reasoning as the
@@ -372,6 +409,58 @@ public final class PestHunter {
 	private void clearStall() {
 		clearProgress();
 		lift = 0.0;
+	}
+
+	/**
+	 * The plot to head for when nothing is in sight but the server says there is.
+	 *
+	 * <p>Entities only exist near you, so a pest three plots away cannot be
+	 * looked for, only travelled to. The tab list names the plots; going to one
+	 * loads it, and then the ordinary searching takes over. That is the whole
+	 * trick: the text says where, the entities say what.
+	 */
+	private Vec3 plotToTry(Minecraft client) {
+		travellingTo = -1;
+		List<Integer> plots = Pests.plotsWithPests(client);
+		if (plots.isEmpty()) {
+			emptyPlots.clear();
+			return null;
+		}
+		if (emptyPlots.size() >= plots.size()) {
+			// Every one has been stood in and come up empty. They may have moved
+			// since, so the slate is cleared rather than the hunt giving up.
+			emptyPlots.clear();
+		}
+
+		double px = client.player.getX();
+		double pz = client.player.getZ();
+		int standingIn = GardenPlots.plotAt(px, pz);
+
+		Vec3 best = null;
+		double nearest = Double.MAX_VALUE;
+		for (int plot : plots) {
+			if (emptyPlots.contains(plot)) {
+				continue;
+			}
+			double[] centre = GardenPlots.centreOf(plot);
+			if (centre == null) {
+				continue;
+			}
+			double dx = centre[0] - px;
+			double dz = centre[1] - pz;
+			double away = Math.sqrt(dx * dx + dz * dz);
+			if (plot == standingIn) {
+				// Already here and it has shown nothing, or a pest would have
+				// been the target instead.
+				continue;
+			}
+			if (away < nearest) {
+				nearest = away;
+				best = new Vec3(centre[0], client.player.getY(), centre[1]);
+				travellingTo = plot;
+			}
+		}
+		return best;
 	}
 
 	/**

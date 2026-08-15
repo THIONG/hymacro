@@ -7,19 +7,23 @@ package io.github.thiong.hymacro;
  * in the middle, numbered outwards in a spiral. That never moves, so a number
  * from the tab list becomes somewhere to fly to with a lookup and no searching.
  *
- * <p>The spiral below is the part worth doubting. It is what the plot menu shows
- * and it is not something the game tells the client, so
- * {@code /hymacro pests plot} exists to check it against where the server says
- * you are standing rather than to be believed on sight.
+ * <p>{@code /hymacro pests plot} checks the table against where the server says
+ * you are standing, which is the only thing that can settle it.
  */
 public final class GardenPlots {
-	/** North west to south east, the barn as zero. */
+	/**
+	 * North west to south east, the barn as zero.
+	 *
+	 * <p>Taken from SkyHanni, which has had this right for years, rather than
+	 * from reading a menu and hoping. Written out from the menu it was wrong in
+	 * four of its five rows: the spiral is not the one it looks like.
+	 */
 	private static final int[][] LAYOUT = {
 		{21, 13,  9, 14, 22},
-		{17,  5,  1,  6, 18},
-		{11,  3,  0,  4, 12},
-		{19,  7,  2,  8, 20},
-		{23, 15, 10, 16, 24},
+		{15,  5,  1,  6, 16},
+		{10,  2,  0,  3, 11},
+		{17,  7,  4,  8, 18},
+		{23, 19, 12, 20, 24},
 	};
 
 	private static final int SIZE = 96;
