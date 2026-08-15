@@ -474,8 +474,8 @@ public final class Commands {
 			Chat.note(source, "No macro yet. Start with /hymacro new <name>");
 		} else {
 			Chat.bullet(source, book.activeName() + ", " + route.waypoints.size() + " points", true);
-			if (route.when != null) {
-				Chat.note(source, route.when.describe());
+			for (Route.When rule : route.rules) {
+				Chat.note(source, rule.describe());
 			}
 		}
 		return 1;
@@ -846,9 +846,10 @@ public final class Commands {
 		}
 
 		int count = IntegerArgumentType.getInteger(context, "count");
-		route.when = new Route.When(Route.When.PESTS, count, then, text, "");
+		Route.When rule = new Route.When(Route.When.PESTS, count, then, text, "");
+		route.setRule(rule);
 		host.book().save();
-		Chat.ok(context.getSource(), "This macro will " + route.when.describe() + ".");
+		Chat.ok(context.getSource(), "This macro will " + rule.describe() + ".");
 
 		// Coming back from a hunt starts at leg 1 from wherever the last pest
 		// was, which only works if leg 1 knows how to walk there.
@@ -885,7 +886,7 @@ public final class Commands {
 			return 0;
 		}
 
-		route.when = new Route.When(Route.When.AWAY, 1, then, text, here);
+		route.setRule(new Route.When(Route.When.AWAY, 1, then, text, here));
 		host.book().save();
 		Chat.ok(context.getSource(), "This macro belongs to " + here + ".");
 		Chat.note(context.getSource(), Route.When.SEND.equals(then)
@@ -910,10 +911,11 @@ public final class Commands {
 
 		FabricClientCommandSource source = context.getSource();
 		Chat.heading(source, "When");
-		if (route.when == null) {
+		if (route.rules.isEmpty()) {
 			Chat.note(source, "Nothing interrupts this macro.");
-		} else {
-			Chat.bullet(source, route.when.describe(), true);
+		}
+		for (Route.When rule : route.rules) {
+			Chat.bullet(source, rule.describe(), true);
 		}
 
 		String here = Skyblock.location(Minecraft.getInstance());
@@ -931,7 +933,7 @@ public final class Commands {
 		if (route == null) {
 			return 0;
 		}
-		route.when = null;
+		route.rules.clear();
 		host.book().save();
 		Chat.ok(context.getSource(), "Nothing interrupts this macro now.");
 		return 1;

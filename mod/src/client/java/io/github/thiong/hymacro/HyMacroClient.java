@@ -38,7 +38,9 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	private static final int RULE_EVERY = 5;
 
 	private int ruleTick;
-	private boolean ruleFired;
+
+	/** Which rules are already satisfied, so each fires on the way past. */
+	private final java.util.Set<String> fired = new java.util.HashSet<>();
 
 	/** The macro is paused for a hunt and wants to be started again after. */
 	private boolean resumeAfterHunt;
@@ -146,84 +148,6 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	 * neither, since the board is blank for a moment between worlds and reading
 	 * that as elsewhere would fire on every loading screen.
 	 */
-	private void watchPlace(Minecraft client, Route route) {
-		String here = Skyblock.location(client);
-		if (here == null) {
-			return;
-		}
-
-		if (here.equalsIgnoreCase(route.when.place)) {
-			if (resumeWhenBack && player == null) {
-				resumeWhenBack = false;
-				ruleFired = false;
-				Chat.client("Back on " + here + ".", false);
-				resume();
-			}
-			ruleFired = false;
-			return;
-		}
-		// Only while something is running. A rule is about a macro being
-		// interrupted, and warping a player who is simply out doing their
-		// shopping back to the plot is not an interruption, it is a nuisance.
-		if (ruleFired || player == null) {
-			return;
-		}
-		ruleFired = true;
-
-		Chat.client("This is " + here + ", not " + route.when.place + ".", true);
-		stop();
-		if (Route.When.SEND.equals(route.when.then)) {
-			RoutePlayer.sendChat(client, route.when.text);
-			resumeWhenBack = true;
-			Chat.clientNote("Sent " + route.when.text + ". It carries on once back.");
-		}
-	}
-
-	private void watchRule(Minecraft client) {
-		Route route = route();
-		if (route == null || route.when == null) {
-			ruleFired = false;
-			return;
-		}
-
-		// What the server says is alive across the Garden, not only what is close
-		// enough to be an entity. A rule that counted the ones in range would
-		// almost never fire, since they are rarely on the plot being farmed.
-		if (route.when.watchesPlace()) {
-			watchPlace(client, route);
-			return;
-		}
-
-		int seen = Route.When.PESTS.equals(route.when.watch)
-			? Math.max(pests.count(), Pests.aliveEverywhere(client))
-			: 0;
-		if (seen < route.when.atLeast) {
-			ruleFired = false;
-			return;
-		}
-		if (ruleFired || player == null) {
-			return;
-		}
-		ruleFired = true;
-
-		switch (route.when.then) {
-			case Route.When.HUNT -> {
-				Chat.client(seen + " pests. Pausing the macro to deal with them.", false);
-				stop();
-				hunter.start();
-				resumeAfterHunt = true;
-			}
-			case Route.When.SEND -> {
-				Chat.client(seen + " pests, sending " + route.when.text, false);
-				RoutePlayer.sendChat(client, route.when.text);
-			}
-			default -> {
-				Chat.client(seen + " pests. Stopping, as this macro asks.", true);
-				stop();
-			}
-		}
-	}
-
 	/**
 	 * Hunting and running a macro are the same two hands.
 	 *
@@ -239,6 +163,91 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			Chat.clientNote("The macro was stopped: it and the hunt cannot both hold the keys.");
 		}
 		hunter.toggle();
+	}
+
+	private void watchPlace(Minecraft client, Route.When rule) {
+		String here = Skyblock.location(client);
+		if (here == null) {
+			return;
+		}
+
+		if (here.equalsIgnoreCase(rule.place)) {
+			if (resumeWhenBack && player == null) {
+				resumeWhenBack = false;
+				Chat.client("Back on " + here + ".", false);
+				resume();
+			}
+			fired.remove(Route.When.AWAY);
+			return;
+		}
+		// Only while something is running. A rule is about a macro being
+		// interrupted, and warping a player who is simply out doing their
+		// shopping back to the plot is not an interruption, it is a nuisance.
+		if (player == null || !fired.add(Route.When.AWAY)) {
+			return;
+		}
+
+		Chat.client("This is " + here + ", not " + rule.place + ".", true);
+		stop();
+		if (Route.When.SEND.equals(rule.then)) {
+			RoutePlayer.sendChat(client, rule.text);
+			resumeWhenBack = true;
+			Chat.clientNote("Sent " + rule.text + ". It carries on once back.");
+		}
+	}
+
+	private void watchRule(Minecraft client) {
+		Route route = route();
+		if (route == null || route.rules.isEmpty()) {
+			fired.clear();
+			return;
+		}
+
+		// Being on the wrong island comes first: nothing else on the list can be
+		// done from the Hub, including hunting pests on a plot you are not on.
+		Route.When away = route.rule(Route.When.AWAY);
+		if (away != null) {
+			watchPlace(client, away);
+		}
+		Route.When pests = route.rule(Route.When.PESTS);
+		if (pests != null && !resumeWhenBack) {
+			watchPests(client, pests);
+		}
+	}
+
+	/**
+	 * Pests, counted as the server counts them.
+	 *
+	 * <p>What is alive across the Garden rather than what is close enough to be
+	 * an entity: they are rarely on the plot being farmed, so a rule counting
+	 * only the ones in range would almost never fire.
+	 */
+	private void watchPests(Minecraft client, Route.When rule) {
+		int seen = Math.max(pests.count(), Pests.aliveEverywhere(client));
+		if (seen < rule.atLeast) {
+			fired.remove(Route.When.PESTS);
+			return;
+		}
+		if (player == null || !fired.add(Route.When.PESTS)) {
+			return;
+		}
+
+		switch (rule.then) {
+			case Route.When.HUNT -> {
+				Chat.client(seen + " pests. Pausing the macro to deal with them.", false);
+				stop();
+				hunter.start();
+				resumeAfterHunt = true;
+			}
+			case Route.When.SEND -> {
+				Chat.client(seen + " pests, sending " + rule.text, false);
+				RoutePlayer.sendChat(client, rule.text);
+			}
+			default -> {
+				Chat.client(seen + " pests. Stopping, as this macro asks.", true);
+				stop();
+			}
+		}
 	}
 
 	@Override
@@ -296,7 +305,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// The hunt is fed by the same search that draws them, so turning the
 		// drawing off must not leave it hunting nothing.
 		Route watching = route();
-		boolean ruleNeedsThem = watching != null && watching.when != null;
+		boolean ruleNeedsThem = watching != null && watching.rule(Route.When.PESTS) != null;
 		if (book.pests || hunter.isOn() || ruleNeedsThem) {
 			pests.tick(client);
 		} else {

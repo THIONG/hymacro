@@ -188,8 +188,31 @@ public final class Route {
 	public final List<Waypoint> waypoints = new ArrayList<>();
 	public double arrivalRadius = 1.0;
 
-	/** What interrupts this macro, or null for nothing. */
-	public When when;
+	/**
+	 * Everything that interrupts this macro, one for each thing watched.
+	 *
+	 * <p>A list rather than one, because the things worth watching are not
+	 * alternatives: pests eat the plot while you farm it and a restart moves you
+	 * off the island, and wanting to handle both is the ordinary case rather than
+	 * a clever one. Setting a rule replaces the rule about the same thing and
+	 * leaves the rest alone.
+	 */
+	public final List<When> rules = new ArrayList<>();
+
+	/** The rule about one thing, or null. */
+	public When rule(String watch) {
+		for (When rule : rules) {
+			if (rule.watch.equals(watch)) {
+				return rule;
+			}
+		}
+		return null;
+	}
+
+	public void setRule(When rule) {
+		rules.removeIf(existing -> existing.watch.equals(rule.watch));
+		rules.add(rule);
+	}
 	/**
 	 * Seconds of getting no closer before a leg is given up on.
 	 *
@@ -239,17 +262,33 @@ public final class Route {
 			route.carryOverWarp(root.get("warpCommand").getAsString());
 		}
 		if (root.has("when")) {
-			JsonObject when = root.getAsJsonObject("when");
-			if (when.has("watch") && when.has("then")) {
-				route.when = new When(
-					when.get("watch").getAsString(),
-					when.has("atLeast") ? when.get("atLeast").getAsInt() : 1,
-					when.get("then").getAsString(),
-					when.has("text") ? when.get("text").getAsString() : "",
-					when.has("place") ? when.get("place").getAsString() : "");
+			JsonElement when = root.get("when");
+			if (when.isJsonArray()) {
+				for (JsonElement one : when.getAsJsonArray()) {
+					readRule(route, one);
+				}
+			} else {
+				// One rule was all there used to be, written as a lone object.
+				readRule(route, when);
 			}
 		}
 		return route;
+	}
+
+	private static void readRule(Route route, JsonElement element) {
+		if (!element.isJsonObject()) {
+			return;
+		}
+		JsonObject when = element.getAsJsonObject();
+		if (!when.has("watch") || !when.has("then")) {
+			return;
+		}
+		route.setRule(new When(
+			when.get("watch").getAsString(),
+			when.has("atLeast") ? when.get("atLeast").getAsInt() : 1,
+			when.get("then").getAsString(),
+			when.has("text") ? when.get("text").getAsString() : "",
+			when.has("place") ? when.get("place").getAsString() : ""));
 	}
 
 	/**
@@ -301,18 +340,22 @@ public final class Route {
 
 		JsonObject root = new JsonObject();
 		root.addProperty("arrivalRadius", arrivalRadius);
-		if (when != null) {
-			JsonObject rule = new JsonObject();
-			rule.addProperty("watch", when.watch);
-			rule.addProperty("atLeast", when.atLeast);
-			rule.addProperty("then", when.then);
-			if (!when.text.isBlank()) {
-				rule.addProperty("text", when.text);
+		if (!rules.isEmpty()) {
+			JsonArray written = new JsonArray();
+			for (When when : rules) {
+				JsonObject rule = new JsonObject();
+				rule.addProperty("watch", when.watch);
+				rule.addProperty("atLeast", when.atLeast);
+				rule.addProperty("then", when.then);
+				if (!when.text.isBlank()) {
+					rule.addProperty("text", when.text);
+				}
+				if (!when.place.isBlank()) {
+					rule.addProperty("place", when.place);
+				}
+				written.add(rule);
 			}
-			if (!when.place.isBlank()) {
-				rule.addProperty("place", when.place);
-			}
-			root.add("when", rule);
+			root.add("when", written);
 		}
 		root.addProperty("stallSeconds", stallSeconds);
 		root.addProperty("visible", visible);
