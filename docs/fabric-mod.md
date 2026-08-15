@@ -399,6 +399,33 @@ yaw and pitch, and keeps spamming whatever it was told to.
 It is off by default. Holding a key is what the macro has always done, and a
 route built around it should not change under its author.
 
+## Being interrupted
+
+A macro can be told to watch for something and act on it:
+
+```
+/hymacro when pests 3 hunt          pause, clear them, carry on
+/hymacro when pests 3 send /warp garden
+/hymacro when pests 3 stop
+/hymacro when off
+```
+
+Three separate things on purpose: what is watched, the number that sets it off,
+and what happens next. Pests are the first thing worth watching, not the only
+shape this can ever have, so a second one later is a name in a list rather than
+a rewrite.
+
+It fires on the way past the number rather than for as long as it is above it.
+A rule that fired every tick would stop, hunt, resume and stop again before the
+macro took a step.
+
+Coming back from a hunt starts at leg 1, from wherever the last pest was, with
+no check of where that is. Pressing play checks, because a macro started far
+from its beginning is usually the wrong macro; a hunt ending in a field is
+exactly the case that check would wrongly refuse. Leg 1 is the way back to point
+1, which is what it is for, so setting this up says so when leg 1 cannot walk
+itself.
+
 ## Why legs end on arrival
 
 The first version of the mod, and the executable before it, ran on a stopwatch:

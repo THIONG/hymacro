@@ -33,6 +33,12 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	private boolean huntWasDown;
 	private int confirmTicks;
 
+	/** True while the rule is already satisfied, so it fires on the way past. */
+	private boolean ruleFired;
+
+	/** The macro is paused for a hunt and wants to be started again after. */
+	private boolean resumeAfterHunt;
+
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
 	private final Pests pests = new Pests();
@@ -100,6 +106,66 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	}
 
 	/**
+	 * Starts the macro again after something interrupted it, from the beginning.
+	 *
+	 * <p>No check of where you are, unlike pressing play. A hunt ends wherever
+	 * the last pest was, which is exactly the case the check exists to catch, and
+	 * refusing to carry on there would leave the macro stopped in a field. Leg 1
+	 * is the way back to point 1, which is what it is for.
+	 */
+	private void resume() {
+		Minecraft client = Minecraft.getInstance();
+		Route route = route();
+		if (route == null || route.isEmpty() || client.player == null) {
+			return;
+		}
+		player = new RoutePlayer(client, route);
+		Chat.client("Back to '" + book.activeName() + "'.", false);
+	}
+
+	/**
+	 * Watches whatever the macro asked to be watched.
+	 *
+	 * <p>Only while one is running, and only on the way past the number rather
+	 * than for as long as it is above it: a rule that fired every tick would stop
+	 * and start the macro faster than it could take a step.
+	 */
+	private void watchRule(Minecraft client) {
+		Route route = route();
+		if (route == null || route.when == null) {
+			ruleFired = false;
+			return;
+		}
+
+		int seen = Route.When.PESTS.equals(route.when.watch) ? pests.count() : 0;
+		if (seen < route.when.atLeast) {
+			ruleFired = false;
+			return;
+		}
+		if (ruleFired || player == null) {
+			return;
+		}
+		ruleFired = true;
+
+		switch (route.when.then) {
+			case Route.When.HUNT -> {
+				Chat.client(seen + " pests. Pausing the macro to deal with them.", false);
+				stop();
+				hunter.start();
+				resumeAfterHunt = true;
+			}
+			case Route.When.SEND -> {
+				Chat.client(seen + " pests, sending " + route.when.text, false);
+				RoutePlayer.sendChat(client, route.when.text);
+			}
+			default -> {
+				Chat.client(seen + " pests. Stopping, as this macro asks.", true);
+				stop();
+			}
+		}
+	}
+
+	/**
 	 * Hunting and running a macro are the same two hands.
 	 *
 	 * <p>Both work the movement keys and the right button every tick, so the two
@@ -124,6 +190,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	@Override
 	public void stop() {
 		confirmTicks = 0;
+		resumeAfterHunt = false;
 		if (player == null) {
 			return;
 		}
@@ -169,12 +236,23 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		// somebody farming by hand.
 		// The hunt is fed by the same search that draws them, so turning the
 		// drawing off must not leave it hunting nothing.
-		if (book.pests || hunter.isOn()) {
+		Route watching = route();
+		boolean ruleNeedsThem = watching != null && watching.when != null;
+		if (book.pests || hunter.isOn() || ruleNeedsThem) {
 			pests.tick(client);
 		} else {
 			pests.forget();
 		}
 		hunter.tick(client);
+
+		// The hunt has run out of pests, so the macro that stood aside for it
+		// gets its keys back.
+		if (resumeAfterHunt && hunter.isIdle()) {
+			resumeAfterHunt = false;
+			hunter.stop(null);
+			resume();
+		}
+		watchRule(client);
 
 		if (player != null) {
 			player.tick();

@@ -276,8 +276,12 @@ public final class RoutePlayer {
 		return false;
 	}
 
-	/** A leading slash means a command; anything else is said out loud. */
 	private void send(String text) {
+		sendChat(client, text);
+	}
+
+	/** A leading slash means a command; anything else is said out loud. */
+	static void sendChat(Minecraft client, String text) {
 		if (client.player == null) {
 			return;
 		}

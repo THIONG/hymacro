@@ -134,6 +134,18 @@ public final class PestHunter {
 		return on;
 	}
 
+	/** On, but with nothing left to go at: the moment a macro may take over. */
+	public boolean isIdle() {
+		return on && waiting;
+	}
+
+	/** Starts without the message, for when a macro is doing the starting. */
+	public void start() {
+		on = true;
+		waiting = false;
+		clearStall();
+	}
+
 	public void toggle() {
 		if (on) {
 			stop("Stopped hunting.");

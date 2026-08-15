@@ -150,6 +150,19 @@ public final class Commands {
 				.then(literal("radius")
 					.then(argument("blocks", FloatArgumentType.floatArg(0.15f, 10.0f))
 						.executes(context -> setRadius(context, host))))
+				.then(literal("when")
+					.then(literal("off")
+						.executes(context -> clearRule(context, host)))
+					.then(literal("pests")
+						.then(argument("count", IntegerArgumentType.integer(1, 50))
+							.then(literal("hunt")
+								.executes(context -> setRule(context, host, Route.When.HUNT, "")))
+							.then(literal("stop")
+								.executes(context -> setRule(context, host, Route.When.STOP, "")))
+							.then(literal("send")
+								.then(argument("text", StringArgumentType.greedyString())
+									.executes(context -> setRule(context, host, Route.When.SEND,
+										StringArgumentType.getString(context, "text"))))))))
 				.then(literal("stall")
 					.then(argument("seconds", IntegerArgumentType.integer(2, 300))
 						.executes(context -> setStall(context, host))))
@@ -426,6 +439,8 @@ public final class Commands {
 		Chat.entry(source, "/hymacro radius <blocks>", "how close counts as arrived");
 		Chat.note(source, "Takes decimals, and /hymacro leg <n> radius sets just one.");
 		Chat.entry(source, "/hymacro stall <seconds>", "how long stuck before it gives up");
+		Chat.entry(source, "/hymacro when pests <n> hunt", "pause, clear them, carry on");
+		Chat.note(source, "Also: when pests <n> send <text>, when pests <n> stop, when off");
 
 		Chat.heading(source, "Macros");
 		Chat.entry(source, "/hymacro list", "every macro you have");
@@ -451,6 +466,9 @@ public final class Commands {
 			Chat.note(source, "No macro yet. Start with /hymacro new <name>");
 		} else {
 			Chat.bullet(source, book.activeName() + ", " + route.waypoints.size() + " points", true);
+			if (route.when != null) {
+				Chat.note(source, route.when.describe());
+			}
 		}
 		return 1;
 	}
@@ -786,6 +804,46 @@ public final class Commands {
 		host.book().save();
 		Chat.ok(context.getSource(), "A leg is given up on after "
 			+ Math.round(route.stallSeconds) + "s of getting no closer.");
+		return 1;
+	}
+
+	/**
+	 * What should interrupt this macro, and what it should do about it.
+	 *
+	 * <p>Kept as three separate things: what to watch, the number that sets it
+	 * off, and what happens next. Pests are the first thing worth watching, not
+	 * the only shape this can ever have.
+	 */
+	private static int setRule(CommandContext<FabricClientCommandSource> context, Host host,
+			String then, String text) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+
+		int count = IntegerArgumentType.getInteger(context, "count");
+		route.when = new Route.When(Route.When.PESTS, count, then, text);
+		host.book().save();
+		Chat.ok(context.getSource(), "This macro will " + route.when.describe() + ".");
+
+		// Coming back from a hunt starts at leg 1 from wherever the last pest
+		// was, which only works if leg 1 knows how to walk there.
+		if (Route.When.HUNT.equals(then) && !route.isEmpty() && !route.waypoints.get(0).walk) {
+			Chat.error(context.getSource(), "Leg 1 does not walk itself.");
+			Chat.note(context.getSource(),
+				"After a hunt it starts there from wherever the pests were. /hymacro leg 1 walk");
+		}
+		return 1;
+	}
+
+	private static int clearRule(CommandContext<FabricClientCommandSource> context, Host host) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		route.when = null;
+		host.book().save();
+		Chat.ok(context.getSource(), "Nothing interrupts this macro now.");
 		return 1;
 	}
 

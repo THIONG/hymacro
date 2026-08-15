@@ -59,6 +59,18 @@ public final class Pests {
 		"Lunar Moth",     // any of the three flowers
 		"Field Mouse");   // any crop at all
 
+	/**
+	 * The same names, lowered once.
+	 *
+	 * <p>Matching lowered the entity's name once per candidate, so every entity
+	 * in range was lowered fifteen times a scan and each of those built a
+	 * string. Four scans a second across a busy plot is thousands of them a
+	 * second for an answer that never changes.
+	 */
+	private static final List<String> LOWERED = NAMES.stream()
+		.map(name -> name.toLowerCase(Locale.ROOT))
+		.toList();
+
 	/** Four times a second. A pest walks; it does not teleport. */
 	private static final int EVERY_TICKS = 5;
 
@@ -275,10 +287,14 @@ public final class Pests {
 		if (custom == null) {
 			return null;
 		}
-		String text = plain(custom.getString());
+		String text = plain(custom.getString()).toLowerCase(Locale.ROOT);
 		String best = null;
-		for (String name : NAMES) {
-			if (mentions(text, name) && (best == null || name.length() > best.length())) {
+		for (int i = 0; i < NAMES.size(); i++) {
+			String name = NAMES.get(i);
+			if (best != null && name.length() <= best.length()) {
+				continue;
+			}
+			if (mentions(text, LOWERED.get(i))) {
 				best = name;
 			}
 		}
@@ -337,9 +353,8 @@ public final class Pests {
 		return out.toString();
 	}
 
-	private static boolean mentions(String text, String word) {
-		String haystack = text.toLowerCase(Locale.ROOT);
-		String needle = word.toLowerCase(Locale.ROOT);
+	/** Both already lowered, so this allocates nothing. */
+	private static boolean mentions(String haystack, String needle) {
 		int at = haystack.indexOf(needle);
 		while (at >= 0) {
 			int end = at + needle.length();

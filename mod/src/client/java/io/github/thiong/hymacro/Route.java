@@ -48,6 +48,46 @@ public final class Route {
 		}
 	}
 
+	/**
+	 * Something to watch for while running, and what to do when it happens.
+	 *
+	 * <p>Deliberately not "stop for pests". What is watched, the number that
+	 * sets it off and what happens next are three separate things, so a second
+	 * thing worth watching later is a name in a list rather than a rewrite. Pests
+	 * are simply the first one worth watching.
+	 *
+	 * <p>It fires on the way past the number, not while above it. A macro that
+	 * fired every tick that four pests were in sight would stop, hunt, resume and
+	 * stop again before it took a step.
+	 */
+	public static final class When {
+		public static final String PESTS = "pests";
+		public static final String HUNT = "hunt";
+		public static final String SEND = "send";
+		public static final String STOP = "stop";
+
+		public final String watch;
+		public final int atLeast;
+		public final String then;
+		public final String text;
+
+		public When(String watch, int atLeast, String then, String text) {
+			this.watch = watch;
+			this.atLeast = Math.max(1, atLeast);
+			this.then = then;
+			this.text = text == null ? "" : text;
+		}
+
+		public String describe() {
+			String what = atLeast + " " + watch;
+			return switch (then) {
+				case HUNT -> "on " + what + ", hunt them and come back";
+				case SEND -> "on " + what + ", send " + text;
+				default -> "on " + what + ", stop";
+			};
+		}
+	}
+
 	/** Somewhere to reach, facing a particular way, doing particular things. */
 	public static final class Waypoint {
 		public final double x;
@@ -138,6 +178,9 @@ public final class Route {
 
 	public final List<Waypoint> waypoints = new ArrayList<>();
 	public double arrivalRadius = 1.0;
+
+	/** What interrupts this macro, or null for nothing. */
+	public When when;
 	/**
 	 * Seconds of getting no closer before a leg is given up on.
 	 *
@@ -185,6 +228,16 @@ public final class Route {
 		}
 		if (root.has("warpCommand")) {
 			route.carryOverWarp(root.get("warpCommand").getAsString());
+		}
+		if (root.has("when")) {
+			JsonObject when = root.getAsJsonObject("when");
+			if (when.has("watch") && when.has("then")) {
+				route.when = new When(
+					when.get("watch").getAsString(),
+					when.has("atLeast") ? when.get("atLeast").getAsInt() : 1,
+					when.get("then").getAsString(),
+					when.has("text") ? when.get("text").getAsString() : "");
+			}
 		}
 		return route;
 	}
@@ -238,6 +291,16 @@ public final class Route {
 
 		JsonObject root = new JsonObject();
 		root.addProperty("arrivalRadius", arrivalRadius);
+		if (when != null) {
+			JsonObject rule = new JsonObject();
+			rule.addProperty("watch", when.watch);
+			rule.addProperty("atLeast", when.atLeast);
+			rule.addProperty("then", when.then);
+			if (!when.text.isBlank()) {
+				rule.addProperty("text", when.text);
+			}
+			root.add("when", rule);
+		}
 		root.addProperty("stallSeconds", stallSeconds);
 		root.addProperty("visible", visible);
 		root.add("waypoints", points);

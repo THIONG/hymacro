@@ -69,6 +69,25 @@ Points can be moved after the fact, so one being a block out is not a rebuild:
 
 `anchor` is how a macro moves to another plot of the same shape.
 
+## Pests
+
+Pests are outlined in red where the client knows about them, with a line to each
+so a few pixels the colour of the ground can be found at all. Where one was last
+seen is kept and drawn faintly, since out of range is exactly when the mark is
+wanted. **F10** walks up to each one and vacuums it.
+
+A macro can deal with them itself:
+
+```
+/hymacro when pests 3 hunt        pause, clear them, carry on from point 1
+/hymacro when pests 3 send <text>
+/hymacro when pests 3 stop
+/hymacro pests scan               what is actually around you, by name
+```
+
+Hunting aims the camera for you, which is further from a server's rules than a
+walking macro is.
+
 ## Seeing it
 
 The macro is drawn where it happens: a box on every point with its number above
