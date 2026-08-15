@@ -849,7 +849,7 @@ public final class Commands {
 		Route.When rule = new Route.When(Route.When.PESTS, count, then, text, "");
 		route.setRule(rule);
 		host.book().save();
-		Chat.ok(context.getSource(), "This macro will " + rule.describe() + ".");
+		Chat.ok(context.getSource(), "Rule set: " + rule.describe() + ".");
 
 		// Coming back from a hunt starts at leg 1 from wherever the last pest
 		// was, which only works if leg 1 knows how to walk there.
@@ -882,7 +882,7 @@ public final class Commands {
 		String here = Skyblock.location(Minecraft.getInstance());
 		if (here == null) {
 			Chat.error(context.getSource(), "Cannot tell where this is from the scoreboard.");
-			Chat.note(context.getSource(), "Try it on Skyblock, where the island is written on it.");
+			showSidebar(context.getSource());
 			return 0;
 		}
 
@@ -919,13 +919,35 @@ public final class Commands {
 		}
 
 		String here = Skyblock.location(Minecraft.getInstance());
-		Chat.note(source, here == null
-			? "The scoreboard does not say where this is."
-			: "You are on " + here + ".");
+		if (here == null) {
+			Chat.note(source, "The scoreboard does not say where this is.");
+			showSidebar(source);
+		} else {
+			Chat.note(source, "You are on " + here + ".");
+		}
 		Chat.entry(source, "/hymacro when away send <text>", "if you end up anywhere else");
 		Chat.entry(source, "/hymacro when pests <n> hunt", "if pests turn up");
 		Chat.entry(source, "/hymacro when off", "remove it");
 		return 1;
+	}
+
+	/**
+	 * What the scoreboard says, when the island could not be found in it.
+	 *
+	 * <p>The failure carries its own evidence. Reporting that a thing was not
+	 * found and leaving what was actually there unsaid is the shape of message
+	 * that costs somebody an afternoon.
+	 */
+	private static void showSidebar(FabricClientCommandSource source) {
+		List<String> lines = Skyblock.sidebar(Minecraft.getInstance());
+		if (lines.isEmpty()) {
+			Chat.note(source, "It has no scoreboard at all right now.");
+			return;
+		}
+		Chat.note(source, "What it does say:");
+		for (String line : lines) {
+			Chat.bullet(source, line, false);
+		}
 	}
 
 	private static int clearRule(CommandContext<FabricClientCommandSource> context, Host host) {

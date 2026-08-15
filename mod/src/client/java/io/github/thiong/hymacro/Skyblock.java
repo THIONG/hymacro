@@ -1,5 +1,7 @@
 package io.github.thiong.hymacro;
 
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.scores.DisplaySlot;
@@ -21,7 +23,13 @@ import net.minecraft.world.scores.Scoreboard;
  * else" would fire on every loading screen.
  */
 public final class Skyblock {
-	/** The mark Skyblock puts before the island name on the scoreboard. */
+	/**
+	 * The mark Skyblock puts before the island name on the scoreboard.
+	 *
+	 * <p>Written as its number rather than as itself, so that what the compiler
+	 * reads cannot depend on how this file was saved or on the encoding of the
+	 * machine building it.
+	 */
 	private static final char AREA = '⏣';
 
 	private Skyblock() {
@@ -29,17 +37,7 @@ public final class Skyblock {
 
 	/** The island the player is on, or null when the board does not say. */
 	public static String location(Minecraft client) {
-		if (client.level == null) {
-			return null;
-		}
-		Scoreboard board = client.level.getScoreboard();
-		Objective side = board.getDisplayObjective(DisplaySlot.SIDEBAR);
-		if (side == null) {
-			return null;
-		}
-
-		for (PlayerScoreEntry entry : board.listPlayerScores(side)) {
-			String line = plain(shown(board, entry)).trim();
+		for (String line : sidebar(client)) {
 			int mark = line.indexOf(AREA);
 			if (mark < 0) {
 				continue;
@@ -50,6 +48,32 @@ public final class Skyblock {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * The scoreboard as text.
+	 *
+	 * <p>Public because failing to find the island is worth showing rather than
+	 * only reporting: what the board actually said is the whole of the evidence,
+	 * and asking for it separately is a command that exists for one bad day.
+	 */
+	public static List<String> sidebar(Minecraft client) {
+		List<String> lines = new ArrayList<>();
+		if (client.level == null) {
+			return lines;
+		}
+		Scoreboard board = client.level.getScoreboard();
+		Objective side = board.getDisplayObjective(DisplaySlot.SIDEBAR);
+		if (side == null) {
+			return lines;
+		}
+		for (PlayerScoreEntry entry : board.listPlayerScores(side)) {
+			String line = plain(shown(board, entry)).trim();
+			if (!line.isEmpty()) {
+				lines.add(line);
+			}
+		}
+		return lines;
 	}
 
 	private static String shown(Scoreboard board, PlayerScoreEntry entry) {
