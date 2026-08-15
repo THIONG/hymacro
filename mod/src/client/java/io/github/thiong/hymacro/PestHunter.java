@@ -114,13 +114,9 @@ public final class PestHunter {
 	/** Below this much still to climb, it is close enough to set off. */
 	private static final double CLIMB_FIRST = 2.0;
 
-	/** Above this much higher than the player, getting up is the whole problem. */
-	private static final double ABOVE_ME = 2.5;
-
-	/** How far out to look for somewhere with open sky, and how finely. */
-	private static final double GAP_REACH = 24.0;
-	private static final double GAP_STEP = 2.0;
-	private static final int GAP_ANGLES = 12;
+	/** How often the way through is worked out again, and how near counts as reached. */
+	private static final int REPLAN_TICKS = 20;
+	private static final double CORNER_REACHED = 1.6;
 
 	/** How often the ground under the way is read, and at most how many times. */
 	private static final double SAMPLE_EVERY = 4.0;
@@ -160,6 +156,9 @@ public final class PestHunter {
 	/** The one it settled on: an entity id, or a remembered spot. */
 	private int lockedId = -1;
 	private double[] lockedMark;
+
+	private List<Vec3> path;
+	private int pathAge;
 
 	public PestHunter(Pests pests) {
 		this.pests = pests;
@@ -206,6 +205,7 @@ public final class PestHunter {
 		closingIn = false;
 		lift = 0.0;
 		forgetTarget();
+		path = null;
 		release();
 		if (wasOn && why != null) {
 			Chat.client(why, false);
@@ -250,11 +250,11 @@ public final class PestHunter {
 
 		boolean flying = client.player.getAbilities().flying;
 
-		// Under a roof with the pest above it, the job is not to reach the pest
-		// but to reach somewhere the sky is open. Everything else follows once
-		// it is out.
-		Vec3 gap = flying ? wayUp(client, target) : null;
-		Vec3 heading = gap == null ? target : gap;
+		// Nothing between here and there: go at it. Something in the way: work
+		// out a way through, which handles a roof, a wall and the gaps between
+		// rows of cocoa without knowing which of them it is looking at.
+		Vec3 corner = flying ? corner(client, target) : null;
+		Vec3 heading = corner == null ? target : corner;
 
 		float off = aim(client, heading);
 		double away = client.player.getEyePosition().distanceTo(target);
@@ -264,7 +264,7 @@ public final class PestHunter {
 		// has to drift well back out before that is undone: three of the pests
 		// fly, and one hovering on the line would otherwise flip between the
 		// two several times a second.
-		closingIn = gap != null
+		closingIn = corner != null
 			? false
 			: closingIn ? flat <= STILL_OVERHEAD : flat <= OVERHEAD;
 
@@ -274,12 +274,13 @@ public final class PestHunter {
 			firing = false;
 			Keys.set("use", false);
 			boolean overTheTop = false;
-			if (gap != null) {
-				// Making for the opening. Height is left alone: pressing up into
-				// the roof is what this is getting away from.
-				level();
-				Keys.set("w", true);
-				creep(client.player.getEyePosition().distanceTo(gap), false);
+			if (corner != null) {
+				// Following the way through. Forward is flat in this game, so
+				// the corner's height is worked by jump and sneak rather than by
+				// pointing the camera at it.
+				boolean climbing = hold(client, corner.y);
+				Keys.set("w", !climbing);
+				creep(client.player.getEyePosition().distanceTo(corner), false);
 				return;
 			}
 			if (flying) {
@@ -374,42 +375,40 @@ public final class PestHunter {
 	}
 
 	/**
-	 * Somewhere nearby it can actually climb from, or null if none is needed.
+	 * The next corner of a way through, or null when straight there will do.
 	 *
-	 * <p>The roofs over a plot are built so pests spawn on top of them, which
-	 * makes the usual case a pest directly overhead with a ceiling in between.
-	 * Climbing is impossible and flying at it is flying into the roof, so the
-	 * only move is sideways: out from under the roof, then up.
+	 * <p>Worked out afresh a few times a second rather than every tick: the
+	 * search is cheap for a plot and not free, and pests do not move far in a
+	 * second. A corner is dropped once it is reached, and when the last one goes
+	 * the flying is straight again.
 	 *
-	 * <p>Rings of rays going outwards, taking the first opening it finds, and
-	 * sweeping each ring from the direction of the pest outwards so the way out
-	 * chosen is the one that also makes progress. This is not a path and cannot
-	 * follow one round a corner; it finds a hole in a ceiling, which is the
-	 * shape this world actually has.
+	 * <p>When no way is found at all this hands back nothing, and what happens
+	 * next is the climbing and crossing that came before it. A sealed room ends
+	 * in giving up either way; this only means it is not tried for ever.
 	 */
-	private static Vec3 wayUp(Minecraft client, Vec3 target) {
+	private Vec3 corner(Minecraft client, Vec3 target) {
 		Vec3 eye = client.player.getEyePosition();
-		if (target.y < client.player.getY() + ABOVE_ME) {
+		if (clear(client, eye, target)) {
+			path = null;
 			return null;
 		}
-		if (clear(client, eye, eye.add(0.0, CLEARANCE, 0.0))) {
+		if (eye.distanceTo(target) > Flightpath.RANGE) {
+			path = null;
 			return null;
 		}
 
-		double towards = Math.atan2(target.z - eye.z, target.x - eye.x);
-		for (double out = GAP_STEP; out <= GAP_REACH; out += GAP_STEP) {
-			for (int i = 0; i < GAP_ANGLES; i++) {
-				// 0, +30, -30, +60, -60 ... so the nearest opening towards the
-				// pest wins over one behind.
-				int step = (i + 1) / 2;
-				double angle = towards + Math.toRadians(30.0 * step * (i % 2 == 0 ? 1 : -1));
-				Vec3 at = eye.add(Math.cos(angle) * out, 0.0, Math.sin(angle) * out);
-				if (clear(client, eye, at) && clear(client, at, at.add(0.0, CLEARANCE, 0.0))) {
-					return at;
-				}
-			}
+		while (path != null && !path.isEmpty()
+			&& eye.distanceTo(path.get(0)) < CORNER_REACHED) {
+			path.remove(0);
 		}
-		return null;
+		if (path != null && path.isEmpty()) {
+			path = null;
+		}
+		if (path == null || ++pathAge >= REPLAN_TICKS) {
+			pathAge = 0;
+			path = Flightpath.between(client.level, eye, target);
+		}
+		return path == null || path.isEmpty() ? null : path.get(0);
 	}
 
 	/**

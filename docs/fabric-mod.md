@@ -428,52 +428,36 @@ moment after the chunks do, so it waits five seconds before deciding, then
 leaves that plot alone and tries the next. When every plot has come up empty the
 slate is cleared, because a pest that moved is not a pest that is gone.
 
-## Going over, and going straight
+## Finding a way through
 
-Climbing above everything and crossing is the right way to reach a pest across
-the Garden, and the wrong way to reach one in the same room.
+Flying straight at a pest works until something is between the two of you, and
+the things that get in the way are not one shape. A roof built so pests spawn on
+top of it. A wall around a plot. The gaps between rows of cocoa. Each was met
+with a rule, and each rule needed the next one: fly over it, unless there is a
+ceiling, unless the pest is above the ceiling, in which case go sideways until
+the sky is open.
 
-The crossing height comes from the heightmap, which indoors is the roof. Inside
-the Greenhouse that aims for a point on the far side of the ceiling: it never
-arrives, and the answer to being stuck was to climb four blocks further into the
-thing stopping it.
+The rules were answering a question they could not hold. It searches now: an
+ordinary A* over blocks, which does not care which of those shapes it is looking
+at.
 
-Two questions settle it, both a single ray. Is the line to the pest clear, in
-which case there is nothing to climb over? Is there a ceiling overhead, in which
-case there is nowhere to climb to? Either way it flies straight at the pest
-instead, and going higher is no longer offered as the answer to being stuck when
-it was never going over anything.
+Two things keep it honest inside a running game. It searches a box around the
+two ends rather than the world, so the cost has a ceiling however far off the
+pest is; and it stops after six thousand blocks looked at, so a sealed room
+costs a known amount and then hands back nothing rather than hunting for ever.
+When it finds nothing, what happens is the climbing and crossing that came
+before, and a pest that truly cannot be reached still ends in giving up out
+loud.
 
-That still left the case those roofs exist to create. They are built over a plot
-so pests spawn on top of them, which makes the ordinary situation a pest
-directly overhead with a ceiling in between: climbing is impossible and flying
-straight at it is flying into the roof. Neither ray helps, because both are
-answering the wrong question.
+Diagonal steps check the straight neighbours too, because two blocks meeting at
+an edge leave a gap that is a gap on paper and a wall in the game. What comes
+back is corners rather than steps: the staircase A* returns is pulled straight
+wherever one corner can see the next, so long runs are flown as one line and
+only the turns that matter are turned.
 
-The only move is sideways. Rings of rays go outwards looking for a column with
-open sky, each ring swept from the pest's direction outwards so the way out
-chosen also makes progress, and it heads for the first opening it finds. Out
-from under the roof, then up.
-
-This is not pathfinding, and does not pretend to be. It cannot follow a route
-round a corner; it finds a hole in a ceiling, which is the shape this world
-actually has. A pest genuinely walled off from every direction still ends in
-giving up, and giving up says so.
-
-## A height that chased itself
-
-Flying to a plot climbed for ever and never set off, while flying to a pest was
-fine and walking to either was fine. Three symptoms, one cause.
-
-A pest sits at a fixed height in the world. A plot has no height of its own, so
-the one it carried was the player's, read again every tick. The crossing height
-was floored at three above the target, which for a plot meant three above
-wherever the climb had got to by now: every block gained raised the bar by the
-same block. Since climbing holds the forward key off until it is at height, it
-never took a step.
-
-The floor belongs to a pest and to nothing else. The crossing height is now read
-from the world alone.
+Height is worked by jump and sneak rather than by pointing the camera, because
+flying forward in this game is flat: where you look decides which way, never
+whether up or down.
 
 ## Sticking to one pest
 
