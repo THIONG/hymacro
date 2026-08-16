@@ -116,6 +116,14 @@ public final class Commands {
 							.then(argument("on", BoolArgumentType.bool())
 								.executes(context -> setWalk(context, host, named(context),
 									BoolArgumentType.getBool(context, "on")))))
+						.then(literal("sprint")
+							.executes(context -> setSprint(context, host, named(context), true))
+							.then(argument("on", BoolArgumentType.bool())
+								.executes(context -> setSprint(context, host, named(context),
+									BoolArgumentType.getBool(context, "on")))))
+						.then(literal("drop")
+							.then(argument("key", StringArgumentType.word())
+								.executes(context -> dropAction(context, host, named(context)))))
 						.then(literal("radius")
 							.then(argument("blocks", FloatArgumentType.floatArg(0.15f, 10.0f))
 								.executes(context -> setLegRadius(context, host))))
@@ -153,7 +161,13 @@ public final class Commands {
 				.then(literal("when")
 					.executes(context -> showRule(context, host))
 					.then(literal("off")
-						.executes(context -> clearRule(context, host)))
+						.executes(context -> clearRule(context, host))
+						.then(literal("pests")
+							.executes(context -> clearOneRule(context, host, Route.When.PESTS)))
+						.then(literal("away")
+							.executes(context -> clearOneRule(context, host, Route.When.AWAY)))
+						.then(literal("hunted")
+							.executes(context -> clearOneRule(context, host, Route.When.HUNTED))))
 					.then(literal("pests")
 						.then(argument("count", IntegerArgumentType.integer(1, 50))
 							.then(literal("hunt")
@@ -192,6 +206,14 @@ public final class Commands {
 					.then(argument("on", BoolArgumentType.bool())
 						.executes(context -> setWalk(context, host, LAST,
 							BoolArgumentType.getBool(context, "on")))))
+				.then(literal("sprint")
+					.executes(context -> setSprint(context, host, LAST, true))
+					.then(argument("on", BoolArgumentType.bool())
+						.executes(context -> setSprint(context, host, LAST,
+							BoolArgumentType.getBool(context, "on")))))
+				.then(literal("drop")
+					.then(argument("key", StringArgumentType.word())
+						.executes(context -> dropAction(context, host, LAST))))
 				.then(literal("list")
 					.executes(context -> listRoutes(context, host)))
 				.then(literal("new")
@@ -385,6 +407,9 @@ public final class Commands {
 		if (point.walk) {
 			Chat.bullet(context.getSource(), "walks itself there", false);
 		}
+		if (point.sprint) {
+			Chat.bullet(context.getSource(), "at a run", false);
+		}
 		if (point.radius > 0.0) {
 			Chat.bullet(context.getSource(),
 				"arrives within " + round((float) point.radius) + " blocks", false);
@@ -433,6 +458,8 @@ public final class Commands {
 		Chat.entry(source, "/hymacro spam <key> [ticks]", "click it over and over");
 		Chat.entry(source, "/hymacro once <key>", "click it once as the leg starts");
 		Chat.entry(source, "/hymacro walk", "steer to that point on its own");
+		Chat.entry(source, "/hymacro sprint", "run that leg rather than walk it");
+		Chat.entry(source, "/hymacro drop <key>", "take one thing off the leg");
 		Chat.entry(source, "/hymacro look <yaw> <pitch>", "aim that leg by numbers");
 		Chat.entry(source, "/hymacro move [n]", "put that point where you stand");
 		Chat.entry(source, "/hymacro anchor [n]", "carry the whole macro to you");
@@ -935,7 +962,7 @@ public final class Commands {
 		}
 		Chat.entry(source, "/hymacro when away send <text>", "if you end up anywhere else");
 		Chat.entry(source, "/hymacro when pests <n> hunt", "if pests turn up");
-		Chat.entry(source, "/hymacro when off", "remove it");
+		Chat.entry(source, "/hymacro when off [what]", "remove one rule, or all of them");
 		if (route.isEmpty()) {
 			Chat.note(source, "This macro has no points: F9 just watches, which is allowed.");
 		}
@@ -988,6 +1015,85 @@ public final class Commands {
 		Chat.ok(context.getSource(), "Rule set: " + rule.describe() + ".");
 		if (Route.When.SEND.equals(then)) {
 			Chat.note(context.getSource(), "It waits a second afterwards, then carries on.");
+		}
+		return 1;
+	}
+
+	/**
+	 * Runs rather than walks, for a leg with ground to cover.
+	 *
+	 * <p>Its own thing rather than holding the sprint key by name. The key can be
+	 * rebound, and a macro that assumed control was sprint would quietly do
+	 * nothing at all for anyone who had moved it.
+	 */
+	private static int setSprint(CommandContext<FabricClientCommandSource> context, Host host,
+			int requested, boolean on) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		int index = resolve(context, route, requested);
+		if (index == LAST) {
+			return 0;
+		}
+
+		route.waypoints.set(index, route.waypoints.get(index).withSprint(on));
+		host.book().save();
+		Chat.ok(context.getSource(), "Leg " + legName(route, index)
+			+ (on ? " runs it now." : " walks it now."));
+		return 1;
+	}
+
+	/**
+	 * Takes one thing off a leg rather than everything on it.
+	 *
+	 * <p>Clearing a leg was all there was, so wanting to stop the hitting while
+	 * keeping the walking meant setting the whole leg up again. Naming what to
+	 * take off is the smaller and more obvious half of being able to add it.
+	 */
+	private static int dropAction(CommandContext<FabricClientCommandSource> context, Host host,
+			int requested) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		int index = resolve(context, route, requested);
+		if (index == LAST) {
+			return 0;
+		}
+
+		String key = StringArgumentType.getString(context, "key").toLowerCase();
+		Route.Waypoint point = route.waypoints.get(index);
+		List<Route.Action> left = new ArrayList<>(point.actions);
+		if (!left.removeIf(action -> action.key.equals(key))) {
+			Chat.error(context.getSource(),
+				"Leg " + legName(route, index) + " does nothing with " + key + ".");
+			Chat.entry(context.getSource(), "/hymacro leg " + (index + 1), "what it does do");
+			return 0;
+		}
+
+		route.waypoints.set(index, point.withActions(left));
+		host.book().save();
+		Chat.ok(context.getSource(),
+			"Leg " + legName(route, index) + " no longer touches " + key + ".");
+		return 1;
+	}
+
+	private static int clearOneRule(CommandContext<FabricClientCommandSource> context, Host host,
+			String watch) {
+		Route route = active(context, host);
+		if (route == null) {
+			return 0;
+		}
+		if (route.rule(watch) == null) {
+			Chat.error(context.getSource(), "There is no " + watch + " rule on this macro.");
+			return 0;
+		}
+		route.rules.removeIf(rule -> rule.watch.equals(watch));
+		host.book().save();
+		Chat.ok(context.getSource(), "Dropped the " + watch + " rule.");
+		for (Route.When rule : route.rules) {
+			Chat.note(context.getSource(), "still: " + rule.describe());
 		}
 		return 1;
 	}

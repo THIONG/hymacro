@@ -120,11 +120,20 @@ public final class Route {
 		/** Steer towards this point rather than holding a fixed direction. */
 		public final boolean walk;
 
+		/**
+		 * Run rather than walk.
+		 *
+		 * <p>Its own flag rather than holding the sprint key by name. The key can
+		 * be rebound and a macro that assumed control was sprint would quietly do
+		 * nothing for whoever had moved it.
+		 */
+		public final boolean sprint;
+
 		/** How close counts as arrived here, or 0 to use the macro's own. */
 		public final double radius;
 
 		public Waypoint(double x, double y, double z, float yaw, float pitch,
-				List<Action> actions, String send, boolean walk, double radius) {
+				List<Action> actions, String send, boolean walk, double radius, boolean sprint) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
@@ -134,15 +143,16 @@ public final class Route {
 			this.send = send == null ? "" : send;
 			this.walk = walk;
 			this.radius = radius;
+			this.sprint = sprint;
 		}
 
 		public Waypoint(double x, double y, double z, float yaw, float pitch,
 				List<Action> actions, String send, boolean walk) {
-			this(x, y, z, yaw, pitch, actions, send, walk, 0.0);
+			this(x, y, z, yaw, pitch, actions, send, walk, 0.0, false);
 		}
 
 		public Waypoint(double x, double y, double z, float yaw, float pitch, List<Action> actions) {
-			this(x, y, z, yaw, pitch, actions, "", false, 0.0);
+			this(x, y, z, yaw, pitch, actions, "", false, 0.0, false);
 		}
 
 		/** How close counts as arrived here, falling back to the macro's own. */
@@ -155,7 +165,7 @@ public final class Route {
 		}
 
 		public Waypoint withPosition(double newX, double newY, double newZ) {
-			return new Waypoint(newX, newY, newZ, yaw, pitch, actions, send, walk, radius);
+			return new Waypoint(newX, newY, newZ, yaw, pitch, actions, send, walk, radius, sprint);
 		}
 
 		public Waypoint movedBy(double byX, double byY, double byZ) {
@@ -163,23 +173,27 @@ public final class Route {
 		}
 
 		public Waypoint withActions(List<Action> replacement) {
-			return new Waypoint(x, y, z, yaw, pitch, replacement, send, walk, radius);
+			return new Waypoint(x, y, z, yaw, pitch, replacement, send, walk, radius, sprint);
 		}
 
 		public Waypoint withLook(float newYaw, float newPitch) {
-			return new Waypoint(x, y, z, newYaw, newPitch, actions, send, walk, radius);
+			return new Waypoint(x, y, z, newYaw, newPitch, actions, send, walk, radius, sprint);
 		}
 
 		public Waypoint withSend(String text) {
-			return new Waypoint(x, y, z, yaw, pitch, actions, text, walk, radius);
+			return new Waypoint(x, y, z, yaw, pitch, actions, text, walk, radius, sprint);
+		}
+
+		public Waypoint withSprint(boolean running) {
+			return new Waypoint(x, y, z, yaw, pitch, actions, send, walk, radius, running);
 		}
 
 		public Waypoint withRadius(double newRadius) {
-			return new Waypoint(x, y, z, yaw, pitch, actions, send, walk, newRadius);
+			return new Waypoint(x, y, z, yaw, pitch, actions, send, walk, newRadius, sprint);
 		}
 
 		public Waypoint withWalk(boolean steering) {
-			return new Waypoint(x, y, z, yaw, pitch, actions, send, steering, radius);
+			return new Waypoint(x, y, z, yaw, pitch, actions, send, steering, radius, sprint);
 		}
 	}
 
@@ -332,6 +346,9 @@ public final class Route {
 			if (waypoint.radius > 0.0) {
 				point.addProperty("radius", waypoint.radius);
 			}
+			if (waypoint.sprint) {
+				point.addProperty("sprint", true);
+			}
 			point.add("actions", actions);
 			points.add(point);
 		}
@@ -400,7 +417,8 @@ public final class Route {
 			actions,
 			point.has("send") ? point.get("send").getAsString() : "",
 			point.has("walk") && point.get("walk").getAsBoolean(),
-			point.has("radius") ? Math.max(0.0, point.get("radius").getAsDouble()) : 0.0);
+			point.has("radius") ? Math.max(0.0, point.get("radius").getAsDouble()) : 0.0,
+			point.has("sprint") && point.get("sprint").getAsBoolean());
 	}
 
 	private static double coordinate(JsonObject point, String name) {

@@ -360,9 +360,11 @@ public final class RouteView {
 	private static String describe(Route.Waypoint point) {
 		StringBuilder text = new StringBuilder();
 		if (point.walk) {
-			text.append("walk here");
+			text.append(point.sprint ? "run here" : "walk here");
 		} else if (point.actions.isEmpty()) {
-			text.append("nothing set");
+			text.append(point.sprint ? "run" : "nothing set");
+		} else if (point.sprint) {
+			text.append("run");
 		}
 		for (int i = 0; i < point.actions.size(); i++) {
 			if (i == 0 && text.length() > 0) {

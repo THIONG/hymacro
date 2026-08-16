@@ -241,6 +241,11 @@ public final class RoutePlayer {
 		stalledTicks = 0;
 		closestYet = client.player == null ? Double.MAX_VALUE : distanceToTarget();
 
+		if (target.sprint) {
+			Keys.set("ctrl", true);
+			held.add("ctrl");
+		}
+
 		for (Route.Action action : target.actions) {
 			if (!Keys.isKnown(action.key)) {
 				continue;

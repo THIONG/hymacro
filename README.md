@@ -43,6 +43,8 @@ every command, in colour, in game.
 | `/hymacro spam <key> [ticks]` | Click it over and over |
 | `/hymacro once <key>` | Click it once as the leg starts |
 | `/hymacro walk` | Steer to the point on its own |
+| `/hymacro sprint` | Run that leg rather than walk it |
+| `/hymacro drop <key>` | Take one thing off the leg |
 | `/hymacro look <yaw> <pitch>` | Aim it by numbers |
 | `/hymacro send <text>` | Put in chat on arriving there |
 
@@ -56,6 +58,7 @@ two does not need undoing back from leg six:
 /hymacro leg 2            what it does
 /hymacro leg 2 walk       change it
 /hymacro leg 2 clear      make it only walk
+/hymacro leg 2 drop attack   stop the hitting, keep the rest
 ```
 
 A leg is numbered after where it ends: leg 2 runs from point 1 to point 2.
@@ -140,6 +143,8 @@ click every tick, and the two at once is a fight neither wins. F12 stops both.
 /hymacro when hunted send /warp garden  once the hunt is over
 /hymacro when away send /warp garden    if a restart moves you
 /hymacro when                           what is set
+/hymacro when off pests                 drop one rule
+/hymacro when off                       drop all of them
 ```
 
 Three separate things: what is watched, the number that sets it off, and what
