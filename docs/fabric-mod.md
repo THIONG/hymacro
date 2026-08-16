@@ -37,6 +37,13 @@ that only runs when no screen is open. With one open it never counts down, and
 every attack is refused before it begins. It is cleared while a macro is asking
 to attack and left alone otherwise.
 
+Clearing it only on the ticks the game was skipping fixed exactly half of it.
+Closing the screen sets the timer again, and from then on it does count down,
+at one a tick: eight minutes. What really clears it is letting go of the button,
+which a person does without thinking between closing a menu and getting back to
+work, and a macro holding attack never does at all. So the mining stopped on
+coming back to the game, which is the same fault seen from the other side.
+
 Guessing produced two confident explanations, both wrong and neither testable
 from where they were written. `/hymacro why` counts what the game actually did:
 how often it was asked, how often it agreed, what it was looking at. One number

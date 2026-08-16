@@ -137,19 +137,27 @@ public final class Clicks {
 	 */
 	public static void carryOn(Minecraft client, boolean attack, boolean use) {
 		wanted = attack;
-		watch(client, attack);
-		if (client.player == null || client.level == null || gameWillDoIt(client)) {
+		if (client.player == null || client.level == null) {
 			return;
 		}
-		// The timer the game sets to ten thousand whenever a screen opens, so the
-		// click that closed a menu does not also swing at the world. It counts
-		// down one a tick, inside the step that only runs when no screen is
-		// open, so with one open it never counts down at all and every attack
-		// is refused before it starts. Cleared only while a macro is asking.
+		watch(client, attack);
+
+		// The timer the game sets to ten thousand whenever a screen opens or
+		// closes, so that the click which worked the menu does not also swing at
+		// the world. It counts down one a tick, which is eight minutes, and the
+		// thing that really clears it is letting go of the button: a person
+		// always does, between closing a menu and getting back to work. A macro
+		// never does, so it waited out the eight minutes instead.
+		//
+		// Cleared whether or not the game means to act this tick, because the
+		// screen being open was only ever half of when it gets in the way.
 		if (attack && client.missTime > 0) {
 			client.missTime = 0;
 		}
 
+		if (gameWillDoIt(client)) {
+			return;
+		}
 		if (attack) {
 			client.continueAttack(true);
 		} else {
