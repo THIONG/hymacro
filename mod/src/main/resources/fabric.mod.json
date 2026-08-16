@@ -12,6 +12,9 @@
   "license": "MIT",
   "environment": "client",
   "accessWidener": "hymacro.accesswidener",
+  "mixins": [
+    { "config": "hymacro.mixins.json", "environment": "client" }
+  ],
   "entrypoints": {
     "client": ["io.github.thiong.hymacro.HyMacroClient"]
   },

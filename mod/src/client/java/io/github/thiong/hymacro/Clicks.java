@@ -32,8 +32,26 @@ public final class Clicks {
 	private static final int USE_EVERY = 4;
 
 	private static int useIn;
+	private static boolean wanted;
 
 	private Clicks() {
+	}
+
+	/**
+	 * Whether the mod is asking for the attack button to be down.
+	 *
+	 * <p>Read by the one thing that has to overrule the game's own answer, and
+	 * false whenever nothing of ours is running, so that outside a macro the
+	 * game decides on its own exactly as it always did.
+	 */
+	public static boolean wantsAttack() {
+		return wanted;
+	}
+
+	/** Nothing of ours is running, so nothing of ours is asking. */
+	public static void idle() {
+		wanted = false;
+		useIn = 0;
 	}
 
 	/**
@@ -54,6 +72,7 @@ public final class Clicks {
 	 * @param use whether it is holding the use button
 	 */
 	public static void carryOn(Minecraft client, boolean attack, boolean use) {
+		wanted = attack;
 		if (client.player == null || client.level == null || gameWillDoIt(client)) {
 			return;
 		}

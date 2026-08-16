@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "io.github.thiong.hymacro.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "KeepAttackingMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
