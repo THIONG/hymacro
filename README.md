@@ -141,11 +141,17 @@ click every tick, and the two at once is a fight neither wins. F12 stops both.
 ```
 /hymacro when pests 6 hunt              pause, clear them, carry on
 /hymacro when hunted send /warp garden  once the hunt is over
-/hymacro when away send /warp garden    if a restart moves you
+/hymacro when away send /skyblock | /warp garden   if anything moves you
 /hymacro when                           what is set
 /hymacro when off pests                 drop one rule
 /hymacro when off                       drop all of them
 ```
+
+A send may be several commands, separated by bars and said in order with a
+pause between: thrown out to the Hypixel lobby it takes `/skyblock` before
+`/warp garden` means anything. Getting back is also tried again until it works,
+since a warp refused because you were in the wrong lobby looks exactly like
+nothing happening.
 
 Three separate things: what is watched, the number that sets it off, and what
 happens next. Where a macro belongs is not typed in but taken from where you

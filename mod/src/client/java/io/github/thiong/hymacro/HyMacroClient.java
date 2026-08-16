@@ -56,6 +56,25 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 
 	private static final int AFTER_SEND = 20;
 
+	/**
+	 * What is left to say, and how long until the next line of it.
+	 *
+	 * <p>Getting back somewhere is not always one command. Thrown out to the
+	 * Hypixel lobby it takes /skyblock and then /warp garden, and the second is
+	 * refused until the first has landed you somewhere it means anything. So a
+	 * send is a list, separated by bars, sent in order with a pause between.
+	 */
+	private final java.util.ArrayDeque<String> pending = new java.util.ArrayDeque<>();
+	private int sendIn;
+
+	/** Three seconds, which is long enough for a server to hand you over. */
+	private static final int BETWEEN_SENDS = 60;
+
+	/** How long before trying the way back again, if it did not work. */
+	private static final int RETRY_AFTER = 300;
+
+	private int awayWait;
+
 	private RouteBook book = new RouteBook();
 	private RoutePlayer player;
 
@@ -227,7 +246,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			return;
 		}
 		Chat.client("Hunt over, sending " + after.text, false);
-		RoutePlayer.sendChat(client, after.text);
+		queue(after.text);
 		resumeIn = AFTER_SEND;
 	}
 
@@ -277,6 +296,18 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 				resume();
 			}
 			fired.remove(Route.When.AWAY);
+			awayWait = 0;
+			return;
+		}
+
+		// Still somewhere else after saying the way back. One try is not enough:
+		// a warp refused because you were in the wrong lobby, or a server that
+		// was not ready, both look like nothing happening. It says it again.
+		if (fired.contains(Route.When.AWAY)) {
+			if (pending.isEmpty() && ++awayWait > RETRY_AFTER) {
+				awayWait = 0;
+				fired.remove(Route.When.AWAY);
+			}
 			return;
 		}
 		// Only while something is running. A rule is about a macro being
@@ -287,11 +318,15 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		}
 
 		Chat.client("This is " + here + ", not " + rule.place + ".", true);
+		boolean tryingAgain = resumeWhenBack;
 		stop();
 		if (Route.When.SEND.equals(rule.then)) {
-			RoutePlayer.sendChat(client, rule.text);
+			queue(rule.text);
 			resumeWhenBack = true;
-			Chat.clientNote("Sent " + rule.text + ". It carries on once back.");
+			awayWait = 0;
+			Chat.clientNote(tryingAgain
+				? "Still not back. Saying it again."
+				: "Sending " + rule.text + ". It carries on once back.");
 		}
 	}
 
@@ -340,7 +375,7 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			}
 			case Route.When.SEND -> {
 				Chat.client(seen + " pests, sending " + rule.text, false);
-				RoutePlayer.sendChat(client, rule.text);
+				queue(rule.text);
 			}
 			default -> {
 				Chat.client(seen + " pests. Stopping, as this macro asks.", true);
@@ -369,6 +404,8 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 		resumeWhenBack = false;
 		resumeWhenLanded = false;
 		resumeIn = 0;
+		pending.clear();
+		awayWait = 0;
 		if (settling) {
 			settling = false;
 			Keys.set("shift", false);
@@ -446,7 +483,8 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			resumeWhenLanded = false;
 			afterHunt(client);
 		}
-		if (resumeIn > 0 && --resumeIn == 0) {
+		say(client);
+		if (resumeIn > 0 && pending.isEmpty() && --resumeIn == 0) {
 			resume();
 		}
 		if (++ruleTick >= RULE_EVERY) {
@@ -474,6 +512,36 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 	 * may fly or who turned it on. If somewhere refuses to be landed on it gives
 	 * up waiting and carries on: a macro walking badly beats a macro stopped.
 	 */
+	/**
+	 * Splits a send into its lines, to be said one after another.
+	 *
+	 * <p>Bars rather than semicolons: a command has no use for one, and a line of
+	 * chat rarely does either.
+	 */
+	private void queue(String text) {
+		pending.clear();
+		for (String part : text.split("\\|")) {
+			String line = part.trim();
+			if (!line.isEmpty()) {
+				pending.add(line);
+			}
+		}
+		sendIn = 0;
+	}
+
+	/** Says the next line when its turn comes round. */
+	private void say(Minecraft client) {
+		if (pending.isEmpty()) {
+			return;
+		}
+		if (sendIn > 0) {
+			sendIn--;
+			return;
+		}
+		RoutePlayer.sendChat(client, pending.poll());
+		sendIn = BETWEEN_SENDS;
+	}
+
 	private void settle(Minecraft client) {
 		if (client.player == null) {
 			settling = false;

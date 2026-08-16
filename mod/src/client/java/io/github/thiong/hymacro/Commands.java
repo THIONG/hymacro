@@ -477,6 +477,7 @@ public final class Commands {
 		Chat.entry(source, "F9  /hymacro play", "start or stop");
 		Chat.entry(source, "F12 /hymacro stop", "stop");
 		Chat.entry(source, "/hymacro send <text>", "put in chat on arriving there");
+		Chat.note(source, "Bars separate several: /skyblock | /warp garden");
 		Chat.note(source, "A slash makes it a command: /hymacro send /warp garden");
 		Chat.entry(source, "/hymacro radius <blocks>", "how close counts as arrived");
 		Chat.note(source, "Takes decimals, and /hymacro leg <n> radius sets just one.");
@@ -927,6 +928,10 @@ public final class Commands {
 		Chat.note(context.getSource(), Route.When.SEND.equals(then)
 			? "Leaving it sends " + text + ", and it carries on once back."
 			: "Leaving it stops the macro.");
+		if (Route.When.SEND.equals(then) && !text.contains("|")) {
+			Chat.note(context.getSource(),
+				"Several commands go in one rule with bars: /skyblock | /warp garden");
+		}
 		return 1;
 	}
 
