@@ -1,0 +1,16 @@
+accessWidener	v2	official
+
+# Clicking while the window is not in front.
+#
+# The game only works the attack and use buttons when no screen is open and the
+# mouse is captured, which is right for a person: a click meant for a menu is
+# not a click meant for the world. It is wrong for this, because the whole point
+# of the mod is that the route keeps going while the computer is used for
+# something else, and a route that walks the plot without breaking anything is
+# worse than one that stops.
+#
+# Only these two, and only so they can be called on the ticks the game has
+# decided to skip them.
+accessible	method	net/minecraft/client/Minecraft	continueAttack	(Z)V
+accessible	method	net/minecraft/client/Minecraft	startUseItem	()V
+accessible	method	net/minecraft/client/Minecraft	startAttack	()Z

@@ -13,6 +13,28 @@ focus stops being part of the problem.
 The source is in [`mod/`](../mod), built by [`mod.yml`](../.github/workflows/mod.yml)
 and released by [`mod-release.yml`](../.github/workflows/mod-release.yml).
 
+## Clicking with the window behind something else
+
+Movement never needed anything: the keys are read straight out of the bindings,
+so a route walks whether or not you are looking at it. Clicking is gated. The
+game works the attack and use buttons only while no screen is open and the mouse
+is captured, which is right for a person, since a click aimed at a menu is not a
+click aimed at the world.
+
+It is wrong for this. Pressing escape or moving to another window left a player
+walking the rows and breaking nothing at all, which is worse than stopping,
+because it looks like it is working.
+
+Those two methods are private, so an access widener opens them and the mod calls
+them on the ticks the game decided to skip. It asks the same two questions the
+game asks before doing so, since doing it as well as the game would mine at
+double speed. Use is spaced out the way the game spaces it, because holding a
+button is not twenty presses a second and does not look like it.
+
+This is the thing the executable could never do, and the reason the mod exists.
+It is also the point at which nothing about the mod can be read as anything but
+automation.
+
 ## Building a route
 
 A route is a list of points. A leg is the stretch between one point and the next,

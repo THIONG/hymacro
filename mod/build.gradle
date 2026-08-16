@@ -10,6 +10,8 @@ base {
 }
 
 loom {
+	accessWidenerPath = file("src/main/resources/hymacro.accesswidener")
+
 	splitEnvironmentSourceSets()
 
 	mods {

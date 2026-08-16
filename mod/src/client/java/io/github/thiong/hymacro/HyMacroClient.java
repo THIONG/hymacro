@@ -497,6 +497,12 @@ public final class HyMacroClient implements ClientModInitializer, Commands.Host 
 			return;
 		}
 
+		// Only while something of ours is running. Outside that the game is the
+		// only thing that should be deciding what a button press means.
+		if (running || hunter.isOn()) {
+			Clicks.carryOn(client, Keys.attackHeld(), Keys.useHeld());
+		}
+
 		if (player != null) {
 			player.tick();
 			if (player.isFinished()) {

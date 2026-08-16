@@ -11,6 +11,7 @@
   },
   "license": "MIT",
   "environment": "client",
+  "accessWidener": "hymacro.accesswidener",
   "entrypoints": {
     "client": ["io.github.thiong.hymacro.HyMacroClient"]
   },

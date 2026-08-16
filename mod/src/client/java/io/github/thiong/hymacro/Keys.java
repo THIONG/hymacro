@@ -50,7 +50,30 @@ public final class Keys {
 		return codeFor(name) != GLFW.GLFW_KEY_UNKNOWN || mouseButtonFor(name) >= 0;
 	}
 
+	private static boolean attackHeld;
+	private static boolean useHeld;
+
+	/** Whether the mod is holding the attack button down right now. */
+	public static boolean attackHeld() {
+		return attackHeld;
+	}
+
+	/** Whether the mod is holding the use button down right now. */
+	public static boolean useHeld() {
+		return useHeld;
+	}
+
 	public static void set(String name, boolean held) {
+		// Remembered because the game will not always act on it: with the window
+		// behind something else it reads the button as up whatever the binding
+		// says, and something has to know what was actually meant.
+		String plain = name.toLowerCase();
+		if (ATTACK.equals(plain)) {
+			attackHeld = held;
+		} else if (USE.equals(plain)) {
+			useHeld = held;
+		}
+
 		int button = mouseButtonFor(name);
 		if (button >= 0) {
 			KeyMapping.set(InputConstants.Type.MOUSE.getOrCreate(button), held);

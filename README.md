@@ -10,7 +10,8 @@ Skyblock Garden.
 
 You walk the plot once, marking where each stretch ends and saying what happens
 on the way there. The macro is drawn in the world as you build it, and it runs
-from inside the game, so the computer stays yours while it works.
+from inside the game, so the computer stays yours while it works: it keeps
+walking and keeps mining with the window behind whatever else you are doing.
 
 ## Install
 
