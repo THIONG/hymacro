@@ -144,6 +144,8 @@ public final class Commands {
 				.then(literal("show")
 					.then(argument("visible", BoolArgumentType.bool())
 						.executes(context -> setVisible(context, host))))
+				.then(literal("why")
+					.executes(context -> why(context, host)))
 				.then(literal("hunt")
 					.executes(context -> {
 						host.hunt();
@@ -170,7 +172,9 @@ public final class Commands {
 							.executes(context -> clearOneRule(context, host, Route.When.HUNTED))))
 					.then(literal("pests")
 						.then(argument("count", IntegerArgumentType.integer(1, 50))
-							.then(literal("hunt")
+							.then(literal("why")
+					.executes(context -> why(context, host)))
+				.then(literal("hunt")
 								.executes(context -> setRule(context, host, Route.When.HUNT, "")))
 							.then(literal("stop")
 								.executes(context -> setRule(context, host, Route.When.STOP, "")))
@@ -1100,6 +1104,23 @@ public final class Commands {
 		for (Route.When rule : route.rules) {
 			Chat.note(context.getSource(), "still: " + rule.describe());
 		}
+		return 1;
+	}
+
+	/**
+	 * What the game did with the clicking, since this was last asked.
+	 *
+	 * <p>Two explanations for it stopping when the window goes behind something
+	 * have been wrong, and neither could be tested from where they were written.
+	 * This counts instead: run a macro, put the game behind something for ten
+	 * seconds, come back and ask.
+	 */
+	private static int why(CommandContext<FabricClientCommandSource> context, Host host) {
+		Chat.heading(context.getSource(), "Clicking");
+		for (String line : Clicks.report()) {
+			Chat.note(context.getSource(), line);
+		}
+		Chat.note(context.getSource(), "Counted since the last time you asked.");
 		return 1;
 	}
 

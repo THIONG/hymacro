@@ -34,6 +34,28 @@ public final class Clicks {
 	private static int useIn;
 	private static boolean wanted;
 
+	/**
+	 * What actually happened, counted rather than reasoned about.
+	 *
+	 * <p>Two explanations for the clicking stopping have now been wrong, both of
+	 * them plausible and neither testable from here. Counting is what the game
+	 * will answer honestly: how often it was asked, how often it agreed, and what
+	 * it was looking at when it did.
+	 */
+	private static int sampled;
+	private static int askedFor;
+	private static int reached;
+	private static int aimedAtBlock;
+	private static int paused;
+	private static int screened;
+	private static int ungrabbed;
+	private static int lastMiss;
+
+	/** Counted by the mixin every time the game gets round to asking. */
+	public static void reached() {
+		reached++;
+	}
+
 	private Clicks() {
 	}
 
@@ -46,6 +68,48 @@ public final class Clicks {
 	 */
 	public static boolean wantsAttack() {
 		return wanted;
+	}
+
+	/** Notes the state of every question that could be stopping a swing. */
+	private static void watch(Minecraft client, boolean attack) {
+		sampled++;
+		if (attack) {
+			askedFor++;
+		}
+		if (client.isPaused()) {
+			paused++;
+		}
+		if (client.screen != null) {
+			screened++;
+		}
+		if (!client.mouseHandler.isMouseGrabbed()) {
+			ungrabbed++;
+		}
+		if (client.hitResult != null
+			&& client.hitResult.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+			aimedAtBlock++;
+		}
+		lastMiss = client.missTime;
+	}
+
+	/** What has happened since this was last asked, then starts counting again. */
+	public static java.util.List<String> report() {
+		java.util.List<String> lines = new java.util.ArrayList<>();
+		lines.add(sampled + " ticks watched");
+		lines.add(askedFor + " of them wanted to attack");
+		lines.add(reached + " reached the game's own attack step");
+		lines.add(aimedAtBlock + " were looking at a block");
+		lines.add(paused + " were paused, " + screened + " had a screen open, "
+			+ ungrabbed + " had the mouse loose");
+		lines.add("miss timer last read " + lastMiss);
+		sampled = 0;
+		askedFor = 0;
+		reached = 0;
+		aimedAtBlock = 0;
+		paused = 0;
+		screened = 0;
+		ungrabbed = 0;
+		return lines;
 	}
 
 	/** Nothing of ours is running, so nothing of ours is asking. */
@@ -73,9 +137,19 @@ public final class Clicks {
 	 */
 	public static void carryOn(Minecraft client, boolean attack, boolean use) {
 		wanted = attack;
+		watch(client, attack);
 		if (client.player == null || client.level == null || gameWillDoIt(client)) {
 			return;
 		}
+		// The timer the game sets to ten thousand whenever a screen opens, so the
+		// click that closed a menu does not also swing at the world. It counts
+		// down one a tick, inside the step that only runs when no screen is
+		// open, so with one open it never counts down at all and every attack
+		// is refused before it starts. Cleared only while a macro is asking.
+		if (attack && client.missTime > 0) {
+			client.missTime = 0;
+		}
+
 		if (attack) {
 			client.continueAttack(true);
 		} else {

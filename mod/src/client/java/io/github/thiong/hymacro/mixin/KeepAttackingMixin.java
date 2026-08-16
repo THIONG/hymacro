@@ -24,6 +24,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 public class KeepAttackingMixin {
 	@ModifyVariable(method = "continueAttack", at = @At("HEAD"), argsOnly = true)
 	private boolean hymacro$keepBreaking(boolean pressed) {
+		Clicks.reached();
 		return pressed || Clicks.wantsAttack();
 	}
 }

@@ -14,3 +14,6 @@ accessWidener	v2	official
 accessible	method	net/minecraft/client/Minecraft	continueAttack	(Z)V
 accessible	method	net/minecraft/client/Minecraft	startUseItem	()V
 accessible	method	net/minecraft/client/Minecraft	startAttack	()Z
+
+# Read only, to report why a swing did nothing.
+accessible	field	net/minecraft/client/Minecraft	missTime	I

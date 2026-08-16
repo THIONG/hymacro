@@ -25,6 +25,23 @@ It is wrong for this. Pressing escape or moving to another window left a player
 walking the rows and breaking nothing at all, which is worse than stopping,
 because it looks like it is working.
 
+It took three goes and two wrong answers, and what settled it was counting
+rather than reasoning. Calling the game's own method from the end of the tick
+was undone at the start of the next one, so a mixin supplies the flag instead.
+That was still not enough, and the number that said why was a timer reading ten
+thousand.
+
+The game sets that timer when a screen opens, so that the click closing a menu
+does not also swing at the world, and counts it down one a tick inside the step
+that only runs when no screen is open. With one open it never counts down, and
+every attack is refused before it begins. It is cleared while a macro is asking
+to attack and left alone otherwise.
+
+Guessing produced two confident explanations, both wrong and neither testable
+from where they were written. `/hymacro why` counts what the game actually did:
+how often it was asked, how often it agreed, what it was looking at. One number
+in that list ended the argument.
+
 Those two methods are private, so an access widener opens them and the mod calls
 them on the ticks the game decided to skip. It asks the same two questions the
 game asks before doing so, since doing it as well as the game would mine at
